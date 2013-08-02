@@ -1,0 +1,68 @@
+name:              friday
+version:           0.0.1
+license:           GPL-3
+author:            Raphael Javaux <raphaeljavaux[at]gmail.com>
+maintainer:        Raphael Javaux <raphaeljavaux[at]gmail.com>
+synopsis:          Fast image IO and transformations based on repa arrays.
+description:       Fast image IO and transformations based on repa arrays.
+category:          Machine Vision
+stability:         Experimental
+cabal-version:     >= 1.9.2
+build-type:        Simple
+--homepage:          http://github.org/
+
+library
+    exposed-modules:    Vision.Image
+                        Vision.Image.Class
+                        Vision.Image.Function
+                        Vision.Image.GreyImage
+                        Vision.Image.GreyImage.Type
+                        Vision.Image.GreyImage.Conversion
+                        Vision.Image.GreyImage.Storage
+                        Vision.Image.Interpolate
+                        Vision.Image.Primitive
+                        Vision.Image.RGBAImage
+                        Vision.Image.RGBAImage.Type
+                        Vision.Image.RGBAImage.Conversion
+                        Vision.Image.RGBAImage.Storage
+                        Vision.Image.RGBImage
+                        Vision.Image.RGBImage.Type
+                        Vision.Image.RGBImage.Conversion
+                        Vision.Image.RGBImage.Storage
+                        Vision.Image.Storage
+                        Vision.Image.Transform
+
+    ghc-options:        -Wall -O2 -threaded
+    hs-source-dirs:     src/
+
+    build-depends: base                         >= 4           && < 5
+                 , convertible                  >= 1           && < 2
+                 , ratio-int                    >= 0.1
+                 , repa                         >= 3.2         && < 4
+                 , repa-devil                   >= 0.3         && < 1.0
+                 , vector                       >= 0.10.0.1    && < 1.0
+
+Benchmark benchmark
+    type:               exitcode-stdio-1.0
+
+    main-is:            Benchmark.hs
+    ghc-options:        -Wall -O2 -threaded -rtsopts
+    hs-source-dirs:     bench/
+
+    build-depends: base                         >= 4            && < 5
+                 , criterion                    >= 0.8          && < 1.0
+                 , friday
+
+Test-Suite test
+    type:       exitcode-stdio-1.0
+
+    main-is:            Test.hs
+    ghc-options:        -Wall -O2 -threaded -rtsopts
+    hs-source-dirs:     test/
+
+    build-depends: base                         >= 4            && < 5
+                 , QuickCheck                   >= 2.6          && < 3
+                 , friday
+                 , repa                         >= 3.2          && < 4
+                 , test-framework               >= 0.8          && < 0.9
+                 , test-framework-quickcheck2   >= 0.3.0.2      && < 0.4

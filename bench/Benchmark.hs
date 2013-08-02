@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns, FlexibleContexts #-}
 import Criterion.Main
 
 import Vision.Image
@@ -9,8 +9,8 @@ path = "bench/image.jpg"
 main :: IO ()
 main = do
     Right io <- load path
-    let !img        = convert io :: RGBImage F
-        Z :. h :. w = extent img
+    let !img           = convert io :: RGBImage F
+        !(Z :. h :. w) = extent img
 
     defaultMain [
           bgroup "IO" [
@@ -52,4 +52,21 @@ main = do
               bench "horizontal" $ whnf horizontalFlip img
             , bench "vertical"   $ whnf verticalFlip   img
             ]
+
+        , bgroup "application" [
+              bench "miniature 150x150" $ whnf miniature img
+            ]
         ]
+
+-- | Crops the image in a square as large as the largest side of the image.
+miniature :: (FromFunction i, Interpolable i, Source r (Channel i)
+             , Source (FunctionRepr i) (Channel i))
+          => i r -> i (FunctionRepr i)
+miniature !img =
+    if w > h then resize' $ crop img (Rect ((w - h) `quot` 2) 0 h h)
+             else resize' $ crop img (Rect 0 ((h - w) `quot` 2) w w)
+  where
+    -- Resizes the cropped image to a square of miniatureSize
+    resize' !img' = resize img' Bilinear (Z :. 150 :. 150)
+
+    !(Z :. h :. w) = extent img
