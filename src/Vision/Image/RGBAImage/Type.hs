@@ -1,8 +1,10 @@
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances, FlexibleContexts, MultiParamTypeClasses
+           , TypeFamilies, UndecidableInstances #-}
 module Vision.Image.RGBAImage.Type (RGBAImage (..), RGBAPixel (..)) where
 
 import Data.Array.Repa (
-      Array, DIM3, U, Z (..), (:.) (..), extent, linearIndex, fromUnboxed
+      Array, DIM3, Source, U, Z (..)
+    , (:.) (..), extent, linearIndex, fromUnboxed
     )
 import Data.Array.Repa.Shape (toIndex)
 import Data.STRef (newSTRef, readSTRef, writeSTRef)
@@ -16,10 +18,8 @@ import Vision.Image.Interpolate (Interpolable (..))
 newtype RGBAImage r = RGBAImage { unRGBAImage :: Array r DIM3 Word8 }
 
 data RGBAPixel = RGBAPixel {
-      rgbaRed   :: {-# UNPACK #-} !Word8
-    , rgbaGreen :: {-# UNPACK #-} !Word8
-    , rgbaBlue  :: {-# UNPACK #-} !Word8
-    , rgbaAlpha :: {-# UNPACK #-} !Word8
+      rgbaRed   :: {-# UNPACK #-} !Word8, rgbaGreen :: {-# UNPACK #-} !Word8
+    , rgbaBlue  :: {-# UNPACK #-} !Word8, rgbaAlpha :: {-# UNPACK #-} !Word8
     } deriving (Show)
 
 instance Image RGBAImage where
@@ -39,9 +39,9 @@ instance Image RGBAImage where
         let idx = toIndex (extent arr) (sh :. 0)
         in RGBAPixel {
               rgbaRed   = arr `linearIndex` idx
-            , rgbaGreen = arr `linearIndex` idx + 1
-            , rgbaBlue  = arr `linearIndex` idx + 2
-            , rgbaAlpha = arr `linearIndex` idx + 3
+            , rgbaGreen = arr `linearIndex` (idx + 1)
+            , rgbaBlue  = arr `linearIndex` (idx + 2)
+            , rgbaAlpha = arr `linearIndex` (idx + 3)
             }
     {-# INLINE getPixel #-}
 
@@ -71,24 +71,17 @@ instance FromFunction RGBAImage where
     {-# INLINE fromFunction #-}
 
 instance Interpolable RGBAImage where
-    interpol2 _ f a b =
+    interpol _ f a b =
         let RGBAPixel aRed aGreen aBlue aAlpha = a
             RGBAPixel bRed bGreen bBlue bAlpha = b
         in RGBAPixel {
               rgbaRed   = f aRed   bRed,  rgbaGreen = f aGreen bGreen
             , rgbaBlue  = f aBlue  bBlue, rgbaAlpha = f aAlpha bAlpha
             }
-    {-# INLINE interpol2 #-}
+    {-# INLINE interpol #-}
 
-    interpol4 _ f a b c d =
-        let RGBAPixel aRed aGreen aBlue aAlpha = a
-            RGBAPixel bRed bGreen bBlue bAlpha = b
-            RGBAPixel cRed cGreen cBlue cAlpha = c
-            RGBAPixel dRed dGreen dBlue dAlpha = d
-        in RGBAPixel {
-              rgbaRed   = f aRed   bRed   cRed   dRed
-            , rgbaGreen = f aGreen bGreen cGreen dGreen
-            , rgbaBlue  = f aBlue  bBlue  cBlue  dBlue
-            , rgbaAlpha = f aAlpha bAlpha cAlpha dAlpha
-            }
-    {-# INLINE interpol4 #-}
+instance Source r (Channel RGBAImage) => Eq (RGBAImage r) where
+    a == b = toRepa a == toRepa b
+
+instance Show (Array r DIM3 Word8) => Show (RGBAImage r) where
+    show = show . toRepa

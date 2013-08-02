@@ -1,8 +1,10 @@
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances, FlexibleContexts, MultiParamTypeClasses
+           , TypeFamilies, UndecidableInstances #-}
 module Vision.Image.RGBImage.Type (RGBImage (..), RGBPixel (..)) where
 
 import Data.Array.Repa (
-      Array, DIM3, U, Z (..), (:.) (..), extent, linearIndex, fromUnboxed
+      Array, DIM3, Source, U, Z (..), (:.) (..)
+    , extent, linearIndex, fromUnboxed
     )
 import Data.Array.Repa.Shape (toIndex)
 import Data.STRef (newSTRef, readSTRef, writeSTRef)
@@ -16,8 +18,7 @@ import Vision.Image.Interpolate (Interpolable (..))
 newtype RGBImage  r = RGBImage  { unRGBImage  :: Array r DIM3 Word8 }
 
 data RGBPixel = RGBPixel {
-      rgbRed   :: {-# UNPACK #-} !Word8
-    , rgbGreen :: {-# UNPACK #-} !Word8
+      rgbRed   :: {-# UNPACK #-} !Word8, rgbGreen :: {-# UNPACK #-} !Word8
     , rgbBlue  :: {-# UNPACK #-} !Word8
     } deriving (Show)
 
@@ -38,8 +39,8 @@ instance Image RGBImage where
         let idx = toIndex (extent arr) (sh :. 0)
         in RGBPixel {
               rgbRed   = arr `linearIndex` idx
-            , rgbGreen = arr `linearIndex` idx + 1
-            , rgbBlue  = arr `linearIndex` idx + 2
+            , rgbGreen = arr `linearIndex` (idx + 1)
+            , rgbBlue  = arr `linearIndex` (idx + 2)
             }
     {-# INLINE getPixel #-}
 
@@ -67,23 +68,17 @@ instance FromFunction RGBImage where
     {-# INLINE fromFunction #-}
 
 instance Interpolable RGBImage where
-    interpol2 _ f a b =
+    interpol _ f a b =
         let RGBPixel aRed aGreen aBlue = a
             RGBPixel bRed bGreen bBlue = b
         in RGBPixel {
               rgbRed   = f aRed   bRed, rgbGreen = f aGreen bGreen
             , rgbBlue  = f aBlue  bBlue
             }
-    {-# INLINE interpol2 #-}
+    {-# INLINE interpol #-}
 
-    interpol4 _ f a b c d =
-        let RGBPixel aRed aGreen aBlue = a
-            RGBPixel bRed bGreen bBlue = b
-            RGBPixel cRed cGreen cBlue = c
-            RGBPixel dRed dGreen dBlue = d
-        in RGBPixel {
-              rgbRed   = f aRed   bRed   cRed   dRed
-            , rgbGreen = f aGreen bGreen cGreen dGreen
-            , rgbBlue  = f aBlue  bBlue  cBlue  dBlue
-            }
-    {-# INLINE interpol4 #-}
+instance Source r (Channel RGBImage) => Eq (RGBImage r) where
+    a == b = toRepa a == toRepa b
+
+instance Show (Array r DIM3 Word8) => Show (RGBImage r) where
+    show = show . toRepa

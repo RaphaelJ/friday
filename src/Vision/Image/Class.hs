@@ -1,4 +1,6 @@
-{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses, TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, MultiParamTypeClasses
+           , TypeFamilies, UndecidableInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Vision.Image.Class (Image (..), FromFunction (..)) where
 
 import Data.Array.Repa (Array, DIM2, DIM3, Source)

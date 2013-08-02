@@ -5,14 +5,15 @@ module Vision.Image.GreyImage.Conversion (
       Convertible (..), convert, rgbToGrey
     ) where
 
-import Data.Array.Repa (D, Source, (:.) (..), (!), extent, fromFunction)
+import Data.Array.Repa (D, Source)
 import Data.Convertible (Convertible (..), convert)
 import Data.Word
 
-import Vision.Image.Class (Channel)
-import Vision.Image.GreyImage.Type (GreyImage (..))
-import Vision.Image.RGBAImage.Type (RGBAImage (..))
-import Vision.Image.RGBImage.Type (RGBImage (..))
+import Vision.Image.Class (Image (..), fromFunction)
+import Vision.Image.Function (extent)
+import Vision.Image.GreyImage.Type (GreyImage (..), GreyPixel (..))
+import Vision.Image.RGBAImage.Type (RGBAImage (..), RGBAPixel (..))
+import Vision.Image.RGBImage.Type (RGBImage (..), RGBPixel (..))
 
 instance Convertible (GreyImage r) (GreyImage r) where
     safeConvert = Right
@@ -21,28 +22,23 @@ instance Convertible (GreyImage r) (GreyImage r) where
 -- | Converts a RGBA image to greyscale.
 instance (Source r (Channel RGBAImage))
       => Convertible (RGBAImage r) (GreyImage D) where
-    safeConvert (RGBAImage rgba) =
-        Right $ GreyImage $ fromFunction (size :. 1) $ \(i :. ~1) ->
-            let !r = rgba ! (i :. 0)
-                !g = rgba ! (i :. 1)
-                !b = rgba ! (i :. 2)
-                !a = rgba ! (i :. 3)
-            in word8 $ rgbToGrey r g b * int a `quot` 255
+    safeConvert img =
+        Right $ fromFunction size $ \idx ->
+            let RGBAPixel r g b a = img `getPixel` idx
+            in GreyPixel $ word8 $ rgbToGrey r g b * int a `quot` 255
       where
-        size :. ~4 = extent rgba
+        size = extent img
     {-# INLINE safeConvert #-}
 
--- | Converts a RGB image to greyscale.
+-- | Converts a RGB image to a delayed greyscale.
 instance (Source r (Channel RGBImage))
       => Convertible (RGBImage r) (GreyImage D) where
-    safeConvert (RGBImage rgb) =
-        Right $ GreyImage $ fromFunction (size :. 1) $ \(i :. ~1) ->
-            let !r = rgb ! (i :. 0)
-                !g = rgb ! (i :. 1)
-                !b = rgb ! (i :. 2)
-            in word8 $ rgbToGrey r g b
+    safeConvert img =
+        Right $ fromFunction size $ \idx ->
+            let RGBPixel r g b = img `getPixel` idx
+            in GreyPixel $ word8 $ rgbToGrey r g b
       where
-        size :. ~3 = extent rgb
+        size = extent img
     {-# INLINE safeConvert #-}
 
 -- | Converts the colors to greyscale using the human eye colors perception.

@@ -1,7 +1,8 @@
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances, FlexibleContexts, MultiParamTypeClasses
+           , TypeFamilies, UndecidableInstances #-}
 module Vision.Image.GreyImage.Type (GreyImage (..), GreyPixel (..)) where
 
-import Data.Array.Repa (Array, D, DIM3, (:.) (..), (!))
+import Data.Array.Repa (Array, D, DIM3, Source, (:.) (..), (!))
 import qualified Data.Array.Repa as R
 import Data.Word
 
@@ -38,9 +39,11 @@ instance FromFunction GreyImage where
     {-# INLINE fromFunction #-}
 
 instance Interpolable GreyImage where
-    interpol2 _ f (GreyPixel a) (GreyPixel b) = GreyPixel $ f a b
-    {-# INLINE interpol2 #-}
+    interpol _ f (GreyPixel a) (GreyPixel b) = GreyPixel $ f a b
+    {-# INLINE interpol #-}
 
-    interpol4 _ f (GreyPixel a) (GreyPixel b) (GreyPixel c) (GreyPixel d) =
-        GreyPixel $ f a b c d
-    {-# INLINE interpol4 #-}
+instance Source r (Channel GreyImage) => Eq (GreyImage r) where
+    a == b = toRepa a == toRepa b
+
+instance Show (Array r DIM3 Word8) => Show (GreyImage r) where
+    show = show . toRepa

@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts, MultiParamTypeClasses #-}
+-- | Uses the repa-devil package to load and save images.
 module Vision.Image.Storage (IOImage (..), load, save) where
 
 import Control.Applicative ((<$>))

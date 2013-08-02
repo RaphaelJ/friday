@@ -17,6 +17,9 @@ instance Convertible IOImage (RGBAImage D) where
     safeConvert (RGBIOImage  rgb)  = Right $ convert rgb
     {-# INLINE safeConvert #-}
 
+-- | Prefers this instance to the computation of an manifest image from
+-- 'RGBAImage D' as it uses the original IO image if the source image is an
+-- 'RGBAImage'.
 instance Convertible IOImage (RGBAImage F) where
     safeConvert img =
         case img of

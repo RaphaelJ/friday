@@ -11,12 +11,16 @@ import Vision.Image.RGBImage.Conversion ()
 import Vision.Image.RGBImage.Type (RGBImage (..))
 import Vision.Image.Storage (IOImage (..))
 
+
 instance Convertible IOImage (RGBImage D) where
     safeConvert (GreyIOImage grey) = Right $ convert grey
     safeConvert (RGBAIOImage rgba) = Right $ convert rgba
     safeConvert (RGBIOImage  rgb)  = Right $ delay   rgb
     {-# INLINE safeConvert #-}
 
+-- | Prefers this instance to the computation of an manifest image from
+-- 'RGBImage D' as it uses the original IO image if the source image is an
+-- 'RGBImage'.
 instance Convertible IOImage (RGBImage F) where
     safeConvert img =
         case img of

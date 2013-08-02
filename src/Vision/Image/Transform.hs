@@ -1,6 +1,8 @@
 {-# LANGUAGE BangPatterns, FlexibleContexts #-}
 -- | Provides high level functions to manipulate images.
-module Vision.Image.Transform (InterpolMethod (..), crop, resize) where
+module Vision.Image.Transform (
+      InterpolMethod (..), crop, resize, horizontalFlip, verticalFlip
+    ) where
 
 import Data.Array.Repa (DIM2, Source, Z (..), (:.) (..))
 import Data.RatioInt (RatioInt, (%))
@@ -18,19 +20,21 @@ data InterpolMethod =
     | Bilinear        -- ^ Does a double linear interpolation over the four
                       -- surrounding points (slow).
 
+-- | Maps the content of the image\'s rectangle in a new image.
 crop :: (FromFunction i, Source r (Channel i)) => i r -> Rect
      -> i (FunctionRepr i)
-crop !img !(Rect rx ry rw rh) =
-    fromFunction (Z :. rh :. rw) $ \(Z :. y :. w) ->
+crop img !(Rect rx ry rw rh) =
+    fromFunction (Z :. rh :. rw) $ \(Z :. y :. x) ->
         img `getPixel` (Z :. ry + y :. rx + x)
 {-# INLINE crop #-}
 
 -- | Resizes the 'Image' using the given interpolation method.
 resize :: (FromFunction i, Interpolable i, Source r (Channel i))
-       => InterpolMethod -> i r -> DIM2 -> i (FunctionRepr i)
-resize !method !img !size'@(Z :. h' :. w') =
+       => i r -> InterpolMethod -> DIM2 -> i (FunctionRepr i)
+resize img !method !size'@(Z :. h' :. w') =
     case method of
         TruncateInteger ->
+            -- FIXME: w' - 1 == 0
             let !widthRatio  = double (w - 1) / double (w' - 1)
                 !heightRatio = double (h - 1) / double (h' - 1)
             in fromFunction size' $ \(Z :. y' :. x') ->
@@ -54,6 +58,30 @@ resize !method !img !size'@(Z :. h' :. w') =
   where
     !(Z :. h :. w) = extent img
 {-# INLINE resize #-}
+
+-- | Reverses the image horizontally.
+horizontalFlip :: (FromFunction i, Source r (Channel i)) => i r
+               -> i (FunctionRepr i)
+horizontalFlip !img =
+    fromFunction size $ \(line :. x') ->
+        let !x = maxX - x'
+        in img `getPixel` (line :. x)
+  where
+    !size@(_ :. w) = extent img
+    !maxX = w - 1
+{-# INLINABLE horizontalFlip #-}
+
+-- | Reverses the image vertically.
+verticalFlip :: (FromFunction i, Source r (Channel i)) => i r
+             -> i (FunctionRepr i)
+verticalFlip !img =
+    fromFunction size $ \(Z :. y' :. x) ->
+        let !y = maxY - y'
+        in img `getPixel` (Z :. y :. x)
+  where
+    !size@(Z :. h :. _) = extent img
+    !maxY = h - 1
+{-# INLINABLE verticalFlip #-}
 
 double :: Integral a => a -> Double
 double = fromIntegral
