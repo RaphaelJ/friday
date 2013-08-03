@@ -3,7 +3,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Vision.Image.Class (Image (..), FromFunction (..)) where
 
-import Data.Array.Repa (Array, DIM2, DIM3, Source)
+import Data.Array.Repa (Array, DIM1, DIM2, DIM3, Source, (:.) (..))
 
 class Image i where
     -- | Determines the number of channels and the type of each pixel of the
@@ -29,7 +29,21 @@ class Image i where
     getPixel :: Source r (Channel i) => i r -> DIM2 -> Pixel i
 
 -- | Defines how an image can be generated from a function.
+-- Minimal definition is 'fromFunction' or 'fromFunctionLine'.
 class Image i => FromFunction i where
     type FunctionRepr i
 
+    -- | Calls the given function for each pixel of the constructed image.
     fromFunction :: DIM2 -> (DIM2 -> Pixel i) -> i (FunctionRepr i)
+    fromFunction size pixel = fromFunctionLine size (const ())
+                                                    (\_ dim2 -> pixel dim2)
+    {-# INLINE fromFunction #-}
+
+    -- | Calls the first function at each line of the image then calls the
+    -- second function for each pixel of the constructed image, giving the
+    -- value which has been computed at each line.
+    fromFunctionLine :: DIM2 -> (DIM1 -> a) -> (a -> DIM2 -> Pixel i)
+                     -> i (FunctionRepr i)
+    fromFunctionLine size line pixel =
+        fromFunction size (\dim2@(dim1 :. _) -> pixel (line dim1) dim2)
+    {-# INLINE fromFunctionLine #-}

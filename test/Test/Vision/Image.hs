@@ -17,7 +17,7 @@ import Vision.Image (
     )
 
 maxImageSize :: Int
-maxImageSize = 5
+maxImageSize = 100
 
 arbitraryImage :: (Unbox (Channel i), Arbitrary (Channel i), Image i) => Int
                -> Gen (i U)

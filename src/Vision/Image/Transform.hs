@@ -24,8 +24,9 @@ data InterpolMethod =
 crop :: (FromFunction i, Source r (Channel i)) => i r -> Rect
      -> i (FunctionRepr i)
 crop img !(Rect rx ry rw rh) =
-    fromFunction (Z :. rh :. rw) $ \(Z :. y :. x) ->
-        img `getPixel` (Z :. ry + y :. rx + x)
+    let line (Z :. y) = ry + y
+        pixel y' (Z :. _ :. x) = img `getPixel` (Z :. y' :. rx + x)
+    in fromFunctionLine (Z :. rh :. rw) line pixel
 {-# INLINE crop #-}
 
 -- | Resizes the 'Image' using the given interpolation method.
@@ -34,27 +35,44 @@ resize :: (FromFunction i, Interpolable i, Source r (Channel i))
 resize img !method !size'@(Z :. h' :. w') =
     case method of
         TruncateInteger ->
-            -- FIXME: w' - 1 == 0
-            let !widthRatio  = double (w - 1) / double (w' - 1)
-                !heightRatio = double (h - 1) / double (h' - 1)
-            in fromFunction size' $ \(Z :. y' :. x') ->
-                let !x = truncate $ double x' * widthRatio
-                    !y = truncate $ double y' * heightRatio
-                in img `getPixel` (Z :. y :. x)
+            -- Interpolates the index of the middle of the corresponding pixel
+            -- in the source image.
+            let !widthRatio   = double w / double w'
+                !widthMiddle  = (widthRatio - 1) / 2
+                !heightRatio  = double h / double h'
+                !heightMiddle = (heightRatio - 1) / 2
+                line (Z :. y') = truncate $   double y' * heightRatio
+                                            + heightMiddle
+                pixel y (_ :. x') =
+                    let !x = truncate $ double x' * widthRatio + widthMiddle
+                    in img `getPixel` (Z :. y :. x)
+            in fromFunctionLine size' line pixel
         NearestNeighbor ->
-            let !widthRatio  = double (w - 1) / double (w' - 1)
-                !heightRatio = double (h - 1) / double (h' - 1)
-            in fromFunction size' $ \(Z :. y' :. x') ->
-                let !x = round $ double x' * widthRatio
-                    !y = round $ double y' * heightRatio
-                in img `getPixel` (Z :. y :. x)
+            let !widthRatio   = double w / double w'
+                !widthMiddle  = (widthRatio - 1) / 2
+                !heightRatio  = double h / double h'
+                !heightMiddle = (heightRatio - 1) / 2
+                line (Z :. y') = round $ double y' * heightRatio + heightMiddle
+                pixel y (_ :. x') =
+                    let !x = round $ double x' * widthRatio + widthMiddle
+                    in img `getPixel` (Z :. y :. x)
+            in fromFunctionLine size' line pixel
         Bilinear ->
-            let !widthRatio  = (w - 1) % (w' - 1)
+            let !widthRatio  = w % w'
+                !widthMiddle = (widthRatio - 1) / 2
+                !maxWidth = ratio (w - 1)
                 !heightRatio = (h - 1) % (h' - 1)
-            in fromFunction size' $ \(Z :. y' :. x') ->
-                let !x = ratio x' * widthRatio
-                    !y = ratio y' * heightRatio
-                in img `bilinearInterpol` RPoint x y
+                !heightMiddle = (heightRatio - 1) / 2
+                !maxHeight = ratio (h - 1)
+                -- Limits the interpolation to inner pixel as first and last
+                -- pixels can have out of bound coordinates.
+                bound limit = min limit . max 0
+                line (Z :. y') = bound maxHeight $   ratio y' * heightRatio
+                                                   + heightMiddle
+                pixel y (_ :. x') =
+                    let !x = bound maxWidth $ ratio x' * widthRatio  + widthMiddle
+                    in img `bilinearInterpol` RPoint x y
+            in fromFunctionLine size' line pixel
   where
     !(Z :. h :. w) = extent img
 {-# INLINE resize #-}
@@ -75,9 +93,9 @@ horizontalFlip !img =
 verticalFlip :: (FromFunction i, Source r (Channel i)) => i r
              -> i (FunctionRepr i)
 verticalFlip !img =
-    fromFunction size $ \(Z :. y' :. x) ->
-        let !y = maxY - y'
-        in img `getPixel` (Z :. y :. x)
+    let line (Z :. y') = maxY - y'
+        pixel y (_ :. x) = img `getPixel` (Z :. y :. x)
+    in fromFunctionLine size line pixel
   where
     !size@(Z :. h :. _) = extent img
     !maxY = h - 1

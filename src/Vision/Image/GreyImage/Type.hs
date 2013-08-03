@@ -32,9 +32,9 @@ instance Image GreyImage where
 instance FromFunction GreyImage where
     type FunctionRepr GreyImage = D
 
-    fromFunction size f = GreyImage $
-        R.fromFunction (size :. 1) $ \(coords :. ~0) ->
-            let GreyPixel pix = f coords
+    fromFunction size pixel = GreyImage $
+        R.fromFunction (size :. 1) $ \(dim2 :. ~0) ->
+            let GreyPixel pix = pixel dim2
             in pix
     {-# INLINE fromFunction #-}
 

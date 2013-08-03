@@ -47,15 +47,16 @@ instance Image RGBImage where
 instance FromFunction RGBImage where
     type FunctionRepr RGBImage = U
 
-    fromFunction size@(Z :. h :. w) f = RGBImage $ fromUnboxed (size :. 3) $
-        create $ do
+    fromFunctionLine size@(Z :. h :. w) line pixel =
+        RGBImage $ fromUnboxed (size :. 3) $ create $ do
             arr <- new (h * w * 3)
 
             i <- newSTRef 0
-            forM_ (enumFromN 0 h) $ \y ->
+            forM_ (enumFromN 0 h) $ \y -> do
+                let dim1 = line (Z :. y)
                 forM_ (enumFromN 0 w) $ \x -> do
                     offset <- readSTRef i
-                    let RGBPixel r g b = f (Z :. y :. x)
+                    let RGBPixel r g b = pixel dim1 (Z :. y :. x)
                         rOffset = offset
                         gOffset = rOffset + 1
                         bOffset = gOffset + 1
