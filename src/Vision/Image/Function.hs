@@ -2,7 +2,7 @@
 -- | Provides low level functions to manipulate images.
 -- Most of these functions are symmetric to their Repa homonyms.
 module Vision.Image.Function (
-      applyRepa, computeP, computeS, copyS, delay, extent, inImage
+      applyRepa, computeP, computeS, copyS, delay, extent, inImage, toList
     ) where
 
 import Control.Monad (liftM)
@@ -53,6 +53,11 @@ inImage :: (Image i, Source r (Channel i)) => DIM2 -> i r -> Bool
        -- Casts to unsigned to removes the lower bound check.
     in word x < word w && word y < word h
 {-# INLINE inImage #-}
+
+-- | Returns the value of each channel of each pixel.
+toList :: (Image i, Source r (Channel i)) => i r -> [Channel i]
+toList = R.toList . toRepa
+{-# INLINE toList #-}
 
 word :: Integral a => a -> Word
 word = fromIntegral

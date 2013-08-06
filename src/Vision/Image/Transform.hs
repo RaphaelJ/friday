@@ -70,7 +70,8 @@ resize img !method !size'@(Z :. h' :. w') =
                 line (Z :. y') = bound maxHeight $   ratio y' * heightRatio
                                                    + heightMiddle
                 pixel y (_ :. x') =
-                    let !x = bound maxWidth $ ratio x' * widthRatio  + widthMiddle
+                    let !x = bound maxWidth $   ratio x' * widthRatio 
+                                              + widthMiddle
                     in img `bilinearInterpol` RPoint x y
             in fromFunctionLine size' line pixel
   where

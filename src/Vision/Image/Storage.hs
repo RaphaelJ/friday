@@ -3,6 +3,7 @@
 module Vision.Image.Storage (IOImage (..), load, save) where
 
 import Control.Applicative ((<$>))
+import Control.Exception (SomeException, try)
 import Data.Array.Repa (D, (:.) (..), computeP, extent, reshape)
 import Data.Array.Repa.Repr.ForeignPtr (F)
 import qualified Data.Array.Repa.IO.DevIL as IL
@@ -20,13 +21,14 @@ instance Convertible IOImage IOImage where
 
 load :: FilePath -> IO (Either String IOImage)
 load path = do
-    ilImg <- IL.runIL $ IL.readImage path
+    ilImg <- try $ IL.runIL $ IL.readImage path
     return $ case ilImg of
-        IL.Grey img -> let sh = extent img :. 1
-                       in Right $ GreyIOImage $ GreyImage $ reshape sh img
-        IL.RGBA img -> Right $ RGBAIOImage $ RGBAImage img
-        IL.RGB  img -> Right $ RGBIOImage  $ RGBImage  img
-        _           -> Left "Unsupported format"
+        Right (IL.Grey img) -> let sh = extent img :. 1
+                               in Right $ GreyIOImage $ GreyImage $ reshape sh img
+        Right (IL.RGBA img) -> Right $ RGBAIOImage $ RGBAImage img
+        Right (IL.RGB  img) -> Right $ RGBIOImage  $ RGBImage  img
+        Right (_          ) -> Left "Unsupported format"
+        Left err            -> Left $ show (err :: SomeException)
 
 save :: (Convertible i IOImage) => FilePath -> i -> IO ()
 save path img = do
