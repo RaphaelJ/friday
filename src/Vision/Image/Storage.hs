@@ -23,8 +23,8 @@ load :: FilePath -> IO (Either String IOImage)
 load path = do
     ilImg <- try $ IL.runIL $ IL.readImage path
     return $ case ilImg of
-        Right (IL.Grey img) -> let sh = extent img :. 1
-                               in Right $ GreyIOImage $ GreyImage $ reshape sh img
+        Right (IL.Grey img) -> let img' = reshape (extent img :. 1) img
+                               in Right $ GreyIOImage $ GreyImage img'
         Right (IL.RGBA img) -> Right $ RGBAIOImage $ RGBAImage img
         Right (IL.RGB  img) -> Right $ RGBIOImage  $ RGBImage  img
         Right (_          ) -> Left "Unsupported format"
