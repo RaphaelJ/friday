@@ -45,5 +45,5 @@ instance Interpolable GreyImage where
 instance Source r (Channel GreyImage) => Eq (GreyImage r) where
     a == b = toRepa a == toRepa b
 
-instance Show (Array r DIM3 Word8) => Show (GreyImage r) where
+instance Show (Array r DIM3 (Channel GreyImage)) => Show (GreyImage r) where
     show = show . toRepa

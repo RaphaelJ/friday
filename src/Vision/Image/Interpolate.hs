@@ -3,13 +3,14 @@
 -- using a bilinear interpolation.
 --
 -- Estimates the value of a rational point @p@ using @a@, @b@, @c@ and @d@ :
--- @      x1       x2
 --
--- y1    a ------ b
---       -        -
---       -  p     -
---       -        -
--- y2    c ------ d@
+-- >       x1       x2
+-- >
+-- > y1    a ------ b
+-- >       -        -
+-- >       -  p     -
+-- >       -        -
+-- > y2    c ------ d
 module Vision.Image.Interpolate (
       RPoint (..), Interpolable (..), bilinearInterpol
     ) where

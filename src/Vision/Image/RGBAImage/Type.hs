@@ -84,5 +84,5 @@ instance Interpolable RGBAImage where
 instance Source r (Channel RGBAImage) => Eq (RGBAImage r) where
     a == b = toRepa a == toRepa b
 
-instance Show (Array r DIM3 Word8) => Show (RGBAImage r) where
+instance Show (Array r DIM3 (Channel RGBAImage)) => Show (RGBAImage r) where
     show = show . toRepa

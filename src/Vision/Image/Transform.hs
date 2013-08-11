@@ -4,11 +4,11 @@ module Vision.Image.Transform (
       InterpolMethod (..), crop, resize, horizontalFlip, verticalFlip
     ) where
 
-import Data.Array.Repa (DIM2, Source, Z (..), (:.) (..))
+import Data.Array.Repa (D, DIM2, Source, Z (..), (:.) (..))
 import Data.RatioInt (RatioInt, (%))
 
 import Vision.Image.Class (Image (..), FromFunction (..))
-import Vision.Image.Function (extent)
+import Vision.Image.Function (extent, extract)
 import Vision.Image.Interpolate (RPoint (..), Interpolable, bilinearInterpol)
 import Vision.Image.Primitive (Rect (..))
 
@@ -21,12 +21,8 @@ data InterpolMethod =
                       -- surrounding points (slow).
 
 -- | Maps the content of the image\'s rectangle in a new image.
-crop :: (FromFunction i, Source r (Channel i)) => i r -> Rect
-     -> i (FunctionRepr i)
-crop img !(Rect rx ry rw rh) =
-    let line (Z :. y) = ry + y
-        pixel y' (Z :. _ :. x) = img `getPixel` (Z :. y' :. rx + x)
-    in fromFunctionLine (Z :. rh :. rw) line pixel
+crop :: (Image i, Source r (Channel i)) => i r -> Rect -> i D
+crop !img !(Rect rx ry rw rh) = extract (Z :. ry :. rx) (Z :. rh :. rw) img
 {-# INLINE crop #-}
 
 -- | Resizes the 'Image' using the given interpolation method.
