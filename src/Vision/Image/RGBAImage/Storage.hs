@@ -1,8 +1,7 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE BangPatterns, MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Vision.Image.RGBAImage.Storage (Convertible (..), convert) where
 
-import Data.Array.Repa (D, U)
 import Data.Array.Repa.Repr.ForeignPtr (F)
 import Data.Convertible (Convertible (..), convert)
 
@@ -23,9 +22,9 @@ instance Convertible IOImage (RGBAImage D) where
 instance Convertible IOImage (RGBAImage F) where
     safeConvert img =
         case img of
-            GreyIOImage grey -> Right $ computeS $ toDelayed grey
+            GreyIOImage grey -> Right grey
             RGBAIOImage rgba -> Right rgba
-            RGBIOImage  rgb  -> Right $ computeS $ toDelayed rgb
+            RGBIOImage  rgb  -> Right rgb
       where
         toDelayed :: Convertible i (RGBAImage D) => i -> RGBAImage D
         toDelayed = convert

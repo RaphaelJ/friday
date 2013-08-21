@@ -14,7 +14,6 @@ build-type:        Simple
 library
     exposed-modules:    Vision.Image
                         Vision.Image.Class
-                        Vision.Image.Function
                         Vision.Image.GreyImage
                         Vision.Image.GreyImage.Type
                         Vision.Image.GreyImage.Conversion

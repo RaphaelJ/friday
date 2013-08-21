@@ -1,17 +1,19 @@
-{-# LANGUAGE FlexibleInstances, FlexibleContexts, MultiParamTypeClasses
-           , TypeFamilies, UndecidableInstances #-}
+{-# LANGUAGE TypeFamilies #-}
 module Vision.Image.GreyImage.Type (GreyImage (..), GreyPixel (..)) where
 
-import Data.Array.Repa (Array, D, DIM3, Source, (:.) (..), (!))
-import qualified Data.Array.Repa as R
+import Data.Vector.Unboxed (Vector, (!), create, enumFromN, forM_)
+import Data.Vector.Unboxed.Mutable (new, write)
 import Data.Word
 
 import Vision.Image.Class (Image (..), FromFunction (..))
 import Vision.Image.Interpolate (Interpolable (..))
 
-newtype GreyImage r = GreyImage { unGreyImage :: Array r DIM3 Word8 }
+data GreyImage = GreyImage {
+      greySize   :: {-# UNPACK #-} !Size
+    , greyVector :: {-# UNPACK #-} !(Vector Word8)
+    } deriving (Eq, Show)
 
-newtype GreyPixel = GreyPixel Word8
+newtype GreyPixel = GreyPixel Word8 deriving (Eq, Show)
 
 instance Image GreyImage where
     type Pixel   GreyImage = GreyPixel
@@ -20,30 +22,36 @@ instance Image GreyImage where
     nChannels _ = 1
     {-# INLINE nChannels #-}
 
-    toRepa   = unGreyImage
-    {-# INLINE toRepa #-}
+    getSize = greySize
+    {-# INLINE size #-}
 
-    fromRepa = GreyImage
-    {-# INLINE fromRepa #-}
+    fromVector = GreyImage
+    {-# INLINE fromVector #-}
 
-    GreyImage img `getPixel` sh = GreyPixel $ img ! (sh :. 0)
+    toVector = greyVector
+    {-# INLINE toVector #-}
+
+    GreyImage (Size w _) vec `getPixel` Point x y =
+        GreyPixel $ vec ! (y * w + x)
     {-# INLINE getPixel #-}
 
 instance FromFunction GreyImage where
-    type FunctionRepr GreyImage = D
+    fromFunctionLine size@(Size w h) line pixel = GreyImage size $ create $ do
+        arr <- new (h * w)
 
-    fromFunction size pixel = GreyImage $
-        R.fromFunction (size :. 1) $ \(dim2 :. ~0) ->
-            let GreyPixel pix = pixel dim2
-            in pix
-    {-# INLINE fromFunction #-}
+        forM_ (enumFromN 0 h) $ \y -> do
+            let !lineVal    = line y
+                !lineOffset = y * w
+            forM_ (enumFromN 0 w) $ \x -> do
+                let !(GreyPixel val) = pixel lineVal (Point x y)
+                write arr (lineOffset + x) val
+
+        return arr
+    {-# INLINE fromFunctionLine #-}
 
 instance Interpolable GreyImage where
     interpol _ f (GreyPixel a) (GreyPixel b) = GreyPixel $ f a b
     {-# INLINE interpol #-}
 
-instance Source r (Channel GreyImage) => Eq (GreyImage r) where
-    a == b = toRepa a == toRepa b
-
-instance Show (Array r DIM3 (Channel GreyImage)) => Show (GreyImage r) where
-    show = show . toRepa
+instance Eq (GreyImage r) where
+    GreyImage size vec == GreyImage size' vec' = size == size' && vec == vec'
