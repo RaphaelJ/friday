@@ -1,48 +1,32 @@
-{-# LANGUAGE BangPatterns, FlexibleContexts, FlexibleInstances
-           , MultiParamTypeClasses #-}
+{-# LANGUAGE BangPatterns, MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-module Vision.Image.RGBImage.Conversion (Convertible (..), convert) where
+module Vision.Image.RGBImage.Conversion () where
 
-import Data.Array.Repa (D, Source, (:.) (..), (!), extent, fromFunction)
-import Data.Convertible (Convertible (..), convert)
+import Data.Convertible (Convertible (..))
 import Data.Word
 
-import Vision.Image.Class (Channel)
-import Vision.Image.GreyImage.Type (GreyImage (..))
-import Vision.Image.RGBAImage.Type (RGBAImage (..))
-import Vision.Image.RGBImage.Type (RGBImage (..))
+import Vision.Image.GreyImage.Type (GreyPixel (..))
+import Vision.Image.RGBAImage.Type (RGBAPixel (..))
+import Vision.Image.RGBImage.Type (RGBPixel (..))
 
-instance Convertible (RGBImage r) (RGBImage r) where
+instance Convertible RGBPixel RGBPixel where
     safeConvert = Right
     {-# INLINE safeConvert #-}
 
--- | Converts a greyscale image to RGB.
-instance (Source r (Channel RGBImage))
-      => Convertible (GreyImage r) (RGBImage D) where
-    safeConvert (GreyImage grey) =
-        Right $ RGBImage $ fromFunction (size :. 3) pixFromGrey
-      where
-        size :. ~1 = extent grey
-
-        pixFromGrey (i :. _) = grey ! (i :. 0)
-        {-# INLINE pixFromGrey #-}
+instance Convertible GreyPixel RGBPixel where
+    safeConvert !(GreyPixel pix) = Right $ RGBPixel pix pix pix
     {-# INLINE safeConvert #-}
 
--- | Converts a RGBA image to RGB.
-instance (Source r (Channel RGBImage))
-      => Convertible (RGBAImage r) (RGBImage D) where
-    safeConvert (RGBAImage rgba) =
-        Right $ RGBImage $ fromFunction (size :. 3) pixFromRGBA
+instance Convertible RGBAPixel RGBPixel where
+    safeConvert !(RGBAPixel r g b a) =
+        Right $ RGBPixel (withAlpha r) (withAlpha g) (withAlpha b)
       where
-        size :. ~4 = extent rgba
-
-        pixFromRGBA i@(i' :. _) =
-            let alpha = int $ rgba ! (i' :. 3)
-                val   = int $ rgba ! i
-            in word8 $ val * alpha `quot` 255
+        !a' = int a
+        withAlpha !val = word8 $ int val * a' `quot` 255
     {-# INLINE safeConvert #-}
 
 int :: Integral a => a -> Int
 int = fromIntegral
+
 word8 :: Integral a => a -> Word8
 word8 = fromIntegral

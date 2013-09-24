@@ -9,8 +9,8 @@ path = "bench/image.jpg"
 main :: IO ()
 main = do
     Right io <- load path
-    let !img           = convert io :: RGBImage F
-        !(Z :. h :. w) = extent img
+    let !img        = convert io :: RGBImage
+        !(Size w h) = getSize img
 
     defaultMain [
           bgroup "IO" [
@@ -18,55 +18,51 @@ main = do
             ]
         , bgroup "conversion" [
               bench "RGB to grey" $
-                whnf (  (computeS :: GreyImage D -> GreyImage F)
-                      . (convert  :: RGBImage  F -> GreyImage D))
-                     img
+                whnf (convert :: RGBImage -> GreyImage) img
             , bench "RGB to RGBA" $
-                whnf (  (computeS :: RGBAImage D -> RGBAImage F)
-                      . (convert  :: RGBImage  F -> RGBAImage D))
-                     img
+                whnf (convert :: RGBImage -> RGBAImage) img
             ]
         , bgroup "crop" [
               bench "RGB" $
-                whnf (crop img) (Rect (w `quot` 2) (h `quot` 2)
-                                      (w `quot` 2) (h `quot` 2))
+                whnf (crop img :: Rect -> RGBImage)
+                     (Rect (w `quot` 2) (h `quot` 2) (w `quot` 2) (h `quot` 2))
             ]
         , bgroup "resize" [
               bench "truncate-integer 50%" $
-                whnf (resize img TruncateInteger)
-                    (Z :. (h `quot` 2) :. (w `quot` 2))
+                whnf (resize' img TruncateInteger)
+                     (Size (w `quot` 2) (h `quot` 2))
             , bench "truncate-integer 200%" $
-                whnf (resize img TruncateInteger) (Z :. (h * 2) :. (w * 2))
+                whnf (resize' img TruncateInteger) (Size (w * 2) (h * 2))
             , bench "nearest-neighbor 50%" $
-                whnf (resize img NearestNeighbor)
-                    (Z :. (h `quot` 2) :. (w `quot` 2))
+                whnf (resize' img NearestNeighbor)
+                     (Size (w `quot` 2) (h `quot` 2))
             , bench "nearest-neighbor 200%" $
-                whnf (resize img NearestNeighbor) (Z :. (h * 2) :. (w * 2))
+                whnf (resize' img NearestNeighbor) (Size (w * 2) (h * 2))
             , bench "bilinear 50%" $
-                whnf (resize img Bilinear)
-                    (Z :. (h `quot` 2) :. (w `quot` 2))
+                whnf (resize' img Bilinear)
+                     (Size (w `quot` 2) (h `quot` 2))
             , bench "bilinear 200%" $
-                whnf (resize img Bilinear) (Z :. (h * 2) :. (w * 2))
+                whnf (resize' img Bilinear) (Size (w * 2) (h * 2))
             ]
         , bgroup "flip" [
-              bench "horizontal" $ whnf horizontalFlip img
-            , bench "vertical"   $ whnf verticalFlip   img
+              bench "horizontal" $ whnf (horizontalFlip :: RGBImage -> RGBImage)
+                                        img
+            , bench "vertical"   $ whnf (verticalFlip :: RGBImage -> RGBImage)
+                                        img
             ]
 
         , bgroup "application" [
               bench "miniature 150x150" $ whnf miniature img
             ]
         ]
-
--- | Crops the image in a square as large as the largest side of the image.
-miniature :: (FromFunction i, Interpolable i, Source r (Channel i)
-             , Source (FunctionRepr i) (Channel i))
-          => i r -> i (FunctionRepr i)
-miniature !img =
-    if w > h then resize' $ crop img (Rect ((w - h) `quot` 2) 0 h h)
-             else resize' $ crop img (Rect 0 ((h - w) `quot` 2) w w)
   where
-    -- Resizes the cropped image to a square of miniatureSize
-    resize' !img' = resize img' Bilinear (Z :. 150 :. 150)
+    resize' :: RGBImage -> InterpolMethod -> Size -> RGBImage
+    resize' = resize
 
-    !(Z :. h :. w) = extent img
+    miniature !img =
+        let Size w h = getSize img
+        in if w > h then resizeSquare $ crop img (Rect ((w - h) `quot` 2) 0 h h)
+                    else resizeSquare $ crop img (Rect 0 ((h - w) `quot` 2) w w)
+
+    resizeSquare :: RGBDelayed -> RGBImage
+    resizeSquare !img = resize img Bilinear (Size 150 150)

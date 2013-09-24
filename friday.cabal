@@ -13,23 +13,20 @@ build-type:        Simple
 
 library
     exposed-modules:    Vision.Image
-                        Vision.Image.Class
                         Vision.Image.GreyImage
                         Vision.Image.GreyImage.Type
                         Vision.Image.GreyImage.Conversion
-                        Vision.Image.GreyImage.Storage
                         Vision.Image.Interpolate
                         Vision.Image.Primitive
                         Vision.Image.RGBAImage
                         Vision.Image.RGBAImage.Type
                         Vision.Image.RGBAImage.Conversion
-                        Vision.Image.RGBAImage.Storage
                         Vision.Image.RGBImage
                         Vision.Image.RGBImage.Type
                         Vision.Image.RGBImage.Conversion
-                        Vision.Image.RGBImage.Storage
                         Vision.Image.Storage
                         Vision.Image.Transform
+                        Vision.Image.Type
 
     ghc-options:        -Wall -O2 -threaded
     hs-source-dirs:     src/
@@ -37,9 +34,13 @@ library
     build-depends: base                         >= 4            && < 5
                  , convertible                  >= 1            && < 2
                  , ratio-int                    >= 0.1
-                 , repa                         >= 3.2          && < 4
-                 , repa-devil                   >= 0.3          && < 1.0
                  , vector                       >= 0.10.0.1     && < 1.0
+                 , transformers                 >= 0.3          && < 0.4
+
+    Build-tools:        hsc2hs
+
+    Extra-Libraries:    IL
+
 
 Benchmark benchmark
     type:               exitcode-stdio-1.0
@@ -62,6 +63,5 @@ Test-Suite test
     build-depends: base                         >= 4            && < 5
                  , QuickCheck                   >= 2.6          && < 3
                  , friday
-                 , repa                         >= 3.2          && < 4
                  , test-framework               >= 0.8          && < 0.9
                  , test-framework-quickcheck2   >= 0.3.0.2      && < 0.4

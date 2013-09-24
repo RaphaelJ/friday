@@ -1,39 +1,30 @@
 {-# LANGUAGE BangPatterns, MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-module Vision.Image.GreyImage.Conversion (
-      Convertible (..), convert, rgbToGrey
-    ) where
+module Vision.Image.GreyImage.Conversion () where
 
-import Data.Convertible (Convertible (..), convert)
+import Data.Convertible (Convertible (..))
 import Data.Word
 
-import Vision.Image.Class (Image (..), fromFunction)
-import Vision.Image.GreyImage.Type (GreyImage (..), GreyPixel (..))
-import Vision.Image.RGBAImage.Type (RGBAImage (..), RGBAPixel (..))
-import Vision.Image.RGBImage.Type (RGBImage (..), RGBPixel (..))
+import Vision.Image.GreyImage.Type (GreyPixel (..))
+import Vision.Image.RGBAImage.Type (RGBAPixel (..))
+import Vision.Image.RGBImage.Type (RGBPixel (..))
 
-instance Convertible GreyImage GreyImage where
+instance Convertible GreyPixel GreyPixel where
     safeConvert = Right
     {-# INLINE safeConvert #-}
 
-instance Convertible RGBAImage GreyImage where
-    safeConvert img =
-        Right $ fromFunction (size img) $ \!pt ->
-            let !(RGBAPixel r g b a) = img `getPixel` pt
-            in GreyPixel $ word8 $ rgbToGrey r g b * int a `quot` 255
+instance Convertible RGBAPixel GreyPixel where
+    safeConvert !(RGBAPixel r g b a) =
+        Right $ GreyPixel $ word8 $ rgbToGrey r g b * int a `quot` 255
     {-# INLINE safeConvert #-}
 
-instance Convertible RGBImage GreyImage where
-    safeConvert img =
-        Right $ fromFunction (size img) $ \!pt ->
-            let !(RGBPixel r g b) = img `getPixel` pt
-            in GreyPixel $ word8 $ rgbToGrey r g b
+instance Convertible RGBPixel GreyPixel where
+    safeConvert !(RGBPixel r g b) = Right $ GreyPixel $ word8 $ rgbToGrey r g b
     {-# INLINE safeConvert #-}
 
 -- | Converts the colors to greyscale using the human eye colors perception.
 rgbToGrey :: Word8 -> Word8 -> Word8 -> Int
 rgbToGrey !r !g !b = (int r * 30 + int g * 59 + int b * 11) `quot` 100
-{-# INLINE rgbToGrey #-}
 
 int :: Integral a => a -> Int
 int = fromIntegral
