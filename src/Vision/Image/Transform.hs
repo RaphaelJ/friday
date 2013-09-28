@@ -73,7 +73,7 @@ resize img !method !size'@(Size w' h') =
             in fromFunctionLine size' line pixel
   where
     !(Size w h) = getSize img
-{-# INLINABLE resize #-}
+{-# INLINE resize #-}
 
 -- | Reverses the image horizontally.
 horizontalFlip :: (Image i1, FromFunction i2, ImagePixel i1 ~ ImagePixel i2)

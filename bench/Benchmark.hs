@@ -58,6 +58,7 @@ main = do
   where
     resize' :: RGBImage -> InterpolMethod -> Size -> RGBImage
     resize' = resize
+    {-# INLINE resize' #-}
 
     miniature !img =
         let Size w h = getSize img

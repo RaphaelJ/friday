@@ -21,7 +21,7 @@ type RGBImage = Manifest RGBPixel
 type RGBDelayed = Delayed RGBPixel
 
 instance Storable RGBPixel where
-    sizeOf _ = 4 * sizeOf (undefined :: Word8)
+    sizeOf _ = 3 * sizeOf (undefined :: Word8)
     {-# INLINE sizeOf #-}
 
     alignment _ = alignment (undefined :: Word8)
@@ -43,7 +43,7 @@ instance Storable RGBPixel where
 instance Pixel RGBPixel where
     type PixelChannel RGBPixel = Word8
 
-    nChannels _ = 4
+    nChannels _ = 3
     {-# INLINE nChannels #-}
 
 instance Interpolable RGBPixel where

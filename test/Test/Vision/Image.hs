@@ -1,39 +1,39 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, UndecidableInstances #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, TypeFamilies
+           , UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Test.Vision.Image (tests) where
 
 import Control.Applicative ((<*>), (<$>))
-import Data.Array.Repa.Arbitrary (arbitraryUShaped)
-import Data.Array.Repa.Repr.Unboxed (Unbox)
+import Data.Vector.Storable (Storable, replicateM)
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.QuickCheck (Arbitrary (..), Gen, choose)
+import Test.QuickCheck (Arbitrary (..), choose)
 
 import Vision.Image (
-      Image (..), Interpolable, FromFunction (..)
-    , D, Source, U, Z (..), (:.) (..)
-    , GreyImage, RGBAImage, RGBImage, InterpolMethod (..)
-    , computeS, convert, delay, extent, resize, horizontalFlip, verticalFlip
+      Image (..), Interpolable, FromFunction (..), Manifest (..), Delayed (..), Size (..)
+    , GreyImage, GreyPixel (..), RGBAImage, RGBAPixel (..), RGBADelayed, RGBImage, RGBDelayed, RGBPixel (..)
+    , InterpolMethod (..)
+    , convert, resize, horizontalFlip, verticalFlip
     )
 
 maxImageSize :: Int
 maxImageSize = 100
 
-arbitraryImage :: (Unbox (Channel i), Arbitrary (Channel i), Image i) => Int
-               -> Gen (i U)
-arbitraryImage nChans = do
-    (w, h) <- (,) <$> choose (1, maxImageSize) <*> choose (1, maxImageSize)
-    let sh = Z :. h :. w :. nChans
-    fromRepa <$> arbitraryUShaped sh
+instance (Arbitrary p, Storable p) => Arbitrary (Manifest p) where
+    arbitrary = do
+        size <- Size <$> choose (1, maxImageSize) <*> choose (1, maxImageSize)
+        vect <- replicateM (sWidth size * sHeight size) arbitrary
+        return $ Manifest size vect
 
-instance Arbitrary (GreyImage U) where
-    arbitrary = arbitraryImage 1
+instance Arbitrary GreyPixel where
+    arbitrary = GreyPixel <$> arbitrary
 
-instance Arbitrary (RGBAImage U) where
-    arbitrary = arbitraryImage 4
+instance Arbitrary RGBAPixel where
+    arbitrary = RGBAPixel <$> arbitrary <*> arbitrary <*> arbitrary
+                          <*> arbitrary
 
-instance Arbitrary (RGBImage U) where
-    arbitrary = arbitraryImage 3
+instance Arbitrary RGBPixel where
+    arbitrary = RGBPixel <$> arbitrary <*> arbitrary <*> arbitrary
 
 tests :: [Test]
 tests = [
@@ -44,69 +44,74 @@ tests = [
         ]
     , testGroup "Nearest-neighbor resize" [
           testProperty "Grey"
-            (propImageResize . delay :: GreyImage U -> Bool)
+            (propImageResize :: GreyImage -> Bool)
         , testProperty "RGBA"
-            (propImageResize :: RGBAImage U -> Bool)
-        , testProperty "RGB" 
-            (propImageResize :: RGBImage U -> Bool)
+            (propImageResize :: RGBAImage -> Bool)
+        , testProperty "RGB"
+            (propImageResize :: RGBImage -> Bool)
         ]
     , testGroup "Horizontal flip" [
           testProperty "Grey"
-            (propHorizontalFlip . delay :: GreyImage U -> Bool)
+            (propHorizontalFlip :: GreyImage -> Bool)
         , testProperty "RGBA"
-            (propHorizontalFlip :: RGBAImage U -> Bool)
+            (propHorizontalFlip :: RGBAImage -> Bool)
         , testProperty "RGB"
-            (propHorizontalFlip :: RGBImage U -> Bool)
+            (propHorizontalFlip :: RGBImage -> Bool)
         ]
     , testGroup "Vertical flip" [
           testProperty "Grey"
-            (propVerticalFlip . delay :: GreyImage U -> Bool)
+            (propVerticalFlip :: GreyImage -> Bool)
         , testProperty "RGBA"
-            (propVerticalFlip :: RGBAImage U -> Bool)
+            (propVerticalFlip :: RGBAImage -> Bool)
         , testProperty "RGB"
-            (propVerticalFlip :: RGBImage U -> Bool)
+            (propVerticalFlip :: RGBImage -> Bool)
         ]
     ]
 
 -- | Tests if the conversions between greyscale and RGBA images give the same
 -- images.
-propGreyRGBA :: GreyImage U -> Bool
+propGreyRGBA :: GreyImage -> Bool
 propGreyRGBA img =
-    let img' = convert (convert img :: RGBAImage D) :: GreyImage D
-    in img == computeS img'
+    let img' = convert (convert img :: RGBADelayed) :: GreyImage
+    in img == img'
 
 -- | Tests if the conversions between greyscale and RGBA images give the same
 -- images.
-propGreyRGB :: GreyImage U -> Bool
+propGreyRGB :: GreyImage -> Bool
 propGreyRGB img =
-    let img' = convert (convert img :: RGBImage D) :: GreyImage D
-    in img == computeS img'
+    let img' = convert (convert img :: RGBDelayed) :: GreyImage
+    in img == img'
 
 -- | Tests if the conversions between RGB and RGBA images give the same images.
-propRGBRGBA :: RGBImage U -> Bool
+propRGBRGBA :: RGBImage -> Bool
 propRGBRGBA img =
-    let img' = convert (convert img :: RGBAImage D) :: RGBImage D
-    in img == computeS img'
+    let img' = convert (convert img :: RGBADelayed) :: RGBImage
+    in img == img'
 
 -- | Tests if by increasing the size of the image by a factor of two and then
 -- reducing by a factor of two give the original image.
-propImageResize :: (FromFunction i, Interpolable i
-                   , Source (FunctionRepr i) (Channel i)
-                   , Eq (i (FunctionRepr i)))
-                => i (FunctionRepr i) -> Bool
+propImageResize :: (FromFunction i, Interpolable (ImagePixel i), Eq i)
+                => i -> Bool
 propImageResize img =
-    let size@(Z :. h :. w) = extent img
-    in img == resize (resize img NearestNeighbor (Z :. (h * 2) :. (w * 2)))
-                     NearestNeighbor size
+    img == resize' (resize' img (Size (w * 2) (h * 2))) size
+  where
+    size@(Size w h) = getSize img
+
+    resize' :: (FromFunction i, Interpolable (ImagePixel i)) => i -> Size -> i
+    resize' img' = resize img' NearestNeighbor
 
 -- | Tests if applying the horizontal flip twice gives the original image.
-propHorizontalFlip :: (FromFunction i, Source (FunctionRepr i) (Channel i)
-                           , Eq (i (FunctionRepr i)))
-                        => i (FunctionRepr i) -> Bool
-propHorizontalFlip img = img == horizontalFlip (horizontalFlip img)
+propHorizontalFlip :: (FromFunction i, Eq i) => i -> Bool
+propHorizontalFlip img =
+    img == horizontalFlip (delayedFlip img)
+  where
+    delayedFlip :: (Image i, ImagePixel i ~ p) => i -> Delayed p
+    delayedFlip = horizontalFlip
 
 -- | Tests if applying the vertical flip twice gives the original image.
-propVerticalFlip :: (FromFunction i, Source (FunctionRepr i) (Channel i)
-                           , Eq (i (FunctionRepr i)))
-                        => i (FunctionRepr i) -> Bool
-propVerticalFlip img = img == verticalFlip (verticalFlip img)
+propVerticalFlip :: (FromFunction i, Eq i) => i -> Bool
+propVerticalFlip img =
+    img == verticalFlip (delayedFlip img)
+  where
+    delayedFlip :: (Image i, ImagePixel i ~ p) => i -> Delayed p
+    delayedFlip = verticalFlip

@@ -66,7 +66,7 @@ img `bilinearInterpol` RPoint x y
             !c      = img `getPixel` Point x1 y2
             !deltaY2 = compl deltaY1
         in interpol (interpolChannel deltaY1 deltaY2) a c
-    | otherwise = img `getPixel` Point (numerator y) (numerator x)
+    | otherwise = img `getPixel` Point (numerator x) (numerator y)
 --     | x1 >= 0 && y1 >= 0 && (Z :. y2 :. x2) `inImage` img =
 --         error "Invalid index"
   where
@@ -89,6 +89,7 @@ img `bilinearInterpol` RPoint x y
               numerator = int chanA * numerator deltaB
                         + int chanB * numerator deltaA
             }
+    {-# INLINE interpolChannel #-}
 {-# INLINE bilinearInterpol #-}
 
 int :: Integral a => a -> Int

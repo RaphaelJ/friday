@@ -65,3 +65,5 @@ Test-Suite test
                  , friday
                  , test-framework               >= 0.8          && < 0.9
                  , test-framework-quickcheck2   >= 0.3.0.2      && < 0.4
+                 , vector                       >= 0.10.0.1     && < 1.0
+
