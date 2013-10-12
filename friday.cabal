@@ -28,7 +28,7 @@ library
                         Vision.Image.Transform
                         Vision.Image.Type
 
-    ghc-options:        -Wall -O2 -threaded
+    ghc-options:        -Wall -O2
     hs-source-dirs:     src/
 
     build-depends: base                         >= 4            && < 5
@@ -41,12 +41,11 @@ library
 
     Extra-Libraries:    IL
 
-
 Benchmark benchmark
     type:               exitcode-stdio-1.0
 
     main-is:            Benchmark.hs
-    ghc-options:        -Wall -O2 -threaded -rtsopts
+    ghc-options:        -Wall -O2 -rtsopts
     hs-source-dirs:     bench/
 
     build-depends: base                         >= 4            && < 5
@@ -57,7 +56,7 @@ Test-Suite test
     type:       exitcode-stdio-1.0
 
     main-is:            Test.hs
-    ghc-options:        -Wall -O2 -threaded -rtsopts
+    ghc-options:        -Wall -O2 -rtsopts
     hs-source-dirs:     test/
 
     build-depends: base                         >= 4            && < 5

@@ -6,8 +6,8 @@ module Vision.Image.Transform (
 
 import Data.RatioInt (RatioInt, (%))
 
-import Vision.Image.Interpolate (RPoint (..), Interpolable, bilinearInterpol)
-import Vision.Image.Primitive (Point (..), Rect (..), Size (..))
+import Vision.Image.Interpolate (Interpolable, bilinearInterpol)
+import Vision.Image.Primitive (Point (..), RPoint (..), Rect (..), Size (..))
 import Vision.Image.Type (Image (..), FromFunction (..))
 
 -- | Defines the set of possible methods for pixel interpolations when looking
@@ -67,13 +67,13 @@ resize img !method !size'@(Size w' h') =
                 line y' = bound maxHeight $   ratio y' * heightRatio
                                             + heightMiddle
                 pixel y (Point x' _) =
-                    let !x = bound maxWidth $   ratio x' * widthRatio 
+                    let !x = bound maxWidth $   ratio x' * widthRatio
                                               + widthMiddle
                     in img `bilinearInterpol` RPoint x y
             in fromFunctionLine size' line pixel
   where
     !(Size w h) = getSize img
-{-# INLINE resize #-}
+{-# INLINABLE resize #-}
 
 -- | Reverses the image horizontally.
 horizontalFlip :: (Image i1, FromFunction i2, ImagePixel i1 ~ ImagePixel i2)

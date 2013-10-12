@@ -9,6 +9,7 @@ import Foreign.Storable (Storable (..))
 import Foreign.Ptr (castPtr, plusPtr)
 
 import Vision.Image.Interpolate (Interpolable (..))
+import Vision.Image.Transform (horizontalFlip, verticalFlip)
 import Vision.Image.Type (Pixel (..), Manifest, Delayed)
 
 data RGBAPixel = RGBAPixel {
@@ -56,3 +57,6 @@ instance Interpolable RGBAPixel where
             , rgbaBlue = f aBlue bBlue, rgbaAlpha = f aAlpha bAlpha
             }
     {-# INLINE interpol #-}
+
+{-# SPECIALIZE horizontalFlip :: RGBAImage -> RGBAImage #-}
+{-# SPECIALIZE verticalFlip :: RGBAImage -> RGBAImage #-}

@@ -50,7 +50,6 @@ main = do
             , bench "vertical"   $ whnf (verticalFlip :: RGBImage -> RGBImage)
                                         img
             ]
-
         , bgroup "application" [
               bench "miniature 150x150" $ whnf miniature img
             ]

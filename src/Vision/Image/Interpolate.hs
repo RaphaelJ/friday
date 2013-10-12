@@ -1,18 +1,8 @@
 {-# LANGUAGE BangPatterns, FlexibleContexts #-}
 -- | Provides a way to estimate the value of a pixel at rational coordinates
--- using a bilinear interpolation.
---
--- Estimates the value of a rational point @p@ using @a@, @b@, @c@ and @d@ :
---
--- >       x1       x2
--- >
--- > y1    a ------ b
--- >       -        -
--- >       -  p     -
--- >       -        -
--- > y2    c ------ d
+-- using a linear interpolation.
 module Vision.Image.Interpolate (
-      RPoint (..), Interpolable (..), bilinearInterpol
+      Interpolable (..), bilinearInterpol
     ) where
 
 import Data.RatioInt (RatioInt, denominator, numerator)
@@ -30,6 +20,16 @@ class Integral (PixelChannel p) => Interpolable p where
 
 -- | Uses a bilinear interpolation to find the value of the pixel at the
 -- rational coordinates.
+--
+-- Estimates the value of a rational point @p@ using @a@, @b@, @c@ and @d@ :
+--
+-- >       x1       x2
+-- >
+-- > y1    a ------ b
+-- >       -        -
+-- >       -  p     -
+-- >       -        -
+-- > y2    c ------ d
 bilinearInterpol :: (Image i, Interpolable (ImagePixel i))
                  => i -> RPoint -> ImagePixel i
 img `bilinearInterpol` RPoint x y
