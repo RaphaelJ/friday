@@ -15,19 +15,17 @@ instance Convertible GreyPixel GreyPixel where
 
 instance Convertible RGBAPixel GreyPixel where
     safeConvert !(RGBAPixel r g b a) =
-        Right $ GreyPixel $ word8 $ rgbToGrey r g b * int a `quot` 255
+        Right $ GreyPixel $ truncate $ rgbToGrey r g b * double a / 255
     {-# INLINE safeConvert #-}
 
 instance Convertible RGBPixel GreyPixel where
-    safeConvert !(RGBPixel r g b) = Right $ GreyPixel $ word8 $ rgbToGrey r g b
+    safeConvert !(RGBPixel r g b) =
+        Right $ GreyPixel $ truncate $ rgbToGrey r g b
     {-# INLINE safeConvert #-}
 
 -- | Converts the colors to greyscale using the human eye colors perception.
-rgbToGrey :: Word8 -> Word8 -> Word8 -> Int
-rgbToGrey !r !g !b = (int r * 30 + int g * 59 + int b * 11) `quot` 100
+rgbToGrey :: Word8 -> Word8 -> Word8 -> Double
+rgbToGrey !r !g !b = double r * 0.30 + double g * 0.59 + double b * 0.11
 
-int :: Integral a => a -> Int
-int = fromIntegral
-
-word8 :: Integral a => a -> Word8
-word8 = fromIntegral
+double :: Integral a => a -> Double
+double = fromIntegral
