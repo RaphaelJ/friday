@@ -10,9 +10,9 @@ import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck (Arbitrary (..), choose)
 
 import Vision.Image (
-      Image (..), Interpolable, FromFunction (..), Manifest (..), Delayed (..), Size (..)
-    , GreyImage, GreyPixel (..), RGBAImage, RGBAPixel (..), RGBADelayed, RGBImage, RGBDelayed, RGBPixel (..)
-    , InterpolMethod (..)
+      Image (..), Interpolable, FromFunction (..), Manifest (..), Delayed (..)
+    , Size (..), GreyImage, GreyPixel (..), RGBAImage, RGBAPixel (..)
+    , RGBADelayed, RGBImage, RGBDelayed, RGBPixel (..), InterpolMethod (..)
     , convert, resize, horizontalFlip, verticalFlip
     )
 
