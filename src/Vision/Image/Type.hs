@@ -117,7 +117,7 @@ instance Pixel p => FromFunction (Delayed p) where
 
 -- Conversion ------------------------------------------------------------------
 
-instance (Pixel p1, Pixel p2, Storable p1, Storable p2, Convertible p1 p2) 
+instance (Pixel p1, Pixel p2, Storable p1, Storable p2, Convertible p1 p2)
     => Convertible (Manifest p1) (Manifest p2) where
     safeConvert img = Right $
         fromFunction (getSize img) (convert . (img `getPixel`))

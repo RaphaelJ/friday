@@ -3,13 +3,30 @@ version:           0.0.1
 license:           GPL-3
 author:            Raphael Javaux <raphaeljavaux[at]gmail.com>
 maintainer:        Raphael Javaux <raphaeljavaux[at]gmail.com>
-synopsis:          Fast image IO and transformations based on repa arrays.
-description:       Fast image IO and transformations based on repa arrays.
+synopsis:          Fast image IO and transformations.
+description:       Friday provides high performance image manipulation
+                   functions.
+                   .
+                   The library uses FFI calls to the DevIL image library to
+                   read images from a wide variety of formats, including BMP,
+                   JPG, PNG, GIF, ICO and PSD.
+                   .
+                   .
+                   Images can be represented in two representations:
+                   .
+                   * the @Manifest@ representation stores images in Haskell
+                   Vectors ;
+                   .
+                   * the @Delayed@ representation uses functions to produce
+                   image. These can be combined to produce complex
+                   transformations. By some inlining, Haskell compilers are able
+                   to produce fast algorithms by removing intermediate
+                   structures.
+homepage:          https://github.com/RaphaelJ/friday
 category:          Machine Vision
 stability:         Experimental
 cabal-version:     >= 1.9.2
 build-type:        Simple
---homepage:          http://github.org/
 
 library
     exposed-modules:    Vision.Image
