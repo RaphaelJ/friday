@@ -8,7 +8,7 @@ module Vision.Histogram (
     -- * Types
       Histogram (..)
     -- * Histogram computations
-    , calcHist{-, cumulatHist, roundHist, equalizeHist
+    , calcHist, cumulatHist, roundHist, equalizeHist
     -- * Histogram comparisons
     , compareCorrel, compareChi, compareIntersect, compareLogLikelihood
     -- * Images processing
@@ -26,7 +26,7 @@ import Vision.Image (Image (..), Size (..), GreyImage, GreyPixel (..), Point (..
 newtype Histogram a = Histogram { histVector :: Vector a }
     deriving (Eq, Show)
 
--- | Computes an histogram from a grey scale image. The index range of the
+-- | Computes an histogram from a single channel image. The index range of the
 -- histogram is [0; 255].
 calcHist :: (Image i, Integral (ImagePixel i), Storable a, Num a)
          => i -> Histogram a
@@ -41,37 +41,37 @@ calcHist img =
 {-# SPECIALIZE calcHist :: GreyImage -> Histogram Double #-}
 {-# SPECIALIZE calcHist :: GreyImage -> Histogram Float #-}
 
--- -- | Computes the cumulative histogram of another histogram.
--- -- C(i) = SUM H(j) for each j in [0..i] where C is the cumulative histogram, and
--- -- H the original histogram.
--- cumulatHist :: (IArray UArray a, Num a) => Histogram a -> Histogram a
--- cumulatHist hist = listArray (bounds hist) $ scanl1 (+) $ elems hist
--- {-# SPECIALIZE cumulatHist :: Histogram Int32 -> Histogram Int32 #-}
--- {-# SPECIALIZE cumulatHist :: Histogram Double -> Histogram Double #-}
--- {-# SPECIALIZE cumulatHist :: Histogram Float -> Histogram Float #-}
--- 
--- -- | Rounds each values of the histogram to its nearest integer.
--- roundHist :: (IArray UArray a, RealFrac a, IArray UArray b, Integral b) =>
---              Histogram a -> Histogram b
--- roundHist hist = listArray (bounds hist) $ map round $ elems hist
--- {-# SPECIALIZE roundHist :: Histogram Double -> Histogram Int32 #-}
--- {-# SPECIALIZE roundHist :: Histogram Float -> Histogram Int32 #-}
--- 
--- -- | Normalizes the histogram so that the sum of histogram bins is equals to the
--- -- number of bins in the histogram.
--- -- See <http://en.wikipedia.org/wiki/Histogram_equalization>.
--- equalizeHist :: (IArray UArray a, Integral a, IArray UArray b, Fractional b) =>
---                 Histogram a -> Histogram b
--- equalizeHist hist =
---     let b = bounds hist
---         !maxIx = fromIntegral $ snd b
---         !n = fromIntegral $ sum $ elems hist
---         equalizeVal ix = fromIntegral (hist ! ix) / n * maxIx
---     in listArray b [ equalizeVal i | i <- range b ]
--- {-# SPECIALIZE equalizeHist :: Histogram Int32 -> Histogram Double #-}
--- {-# SPECIALIZE equalizeHist :: Histogram Int32 -> Histogram Float #-}
--- 
--- -- TODO: Comparison operator mus be applied on floating point histograms
+-- | Computes the cumulative histogram of another histogram.
+-- C(i) = SUM H(j) for each j in [0..i] where C is the cumulative histogram, and
+-- H the original histogram.
+cumulatHist :: (Storable a, Num a) => Histogram a -> Histogram a
+cumulatHist = V.scanl1' (+)
+{-# SPECIALIZE cumulatHist :: Histogram Int32  -> Histogram Int32 #-}
+{-# SPECIALIZE cumulatHist :: Histogram Double -> Histogram Double #-}
+{-# SPECIALIZE cumulatHist :: Histogram Float  -> Histogram Float #-}
+
+-- | Rounds each values of the histogram to its nearest integer.
+roundHist :: (Storable a, RealFrac a, Storable b, Integral b) =>
+             Histogram a -> Histogram b
+roundHist = V.map round
+{-# SPECIALIZE roundHist :: Histogram Double -> Histogram Int32 #-}
+{-# SPECIALIZE roundHist :: Histogram Float  -> Histogram Int32 #-}
+
+-- | Normalizes the histogram so that the sum of histogram bins is equals to the
+-- number of bins in the histogram.
+-- See <http://en.wikipedia.org/wiki/Histogram_equalization>.
+equalizeHist :: (IArray UArray a, Integral a, IArray UArray b, Fractional b) =>
+                Histogram a -> Histogram b
+equalizeHist !hist =
+    let !maxIx = V.length hist - 1
+        !n     = V.sum hist
+        !ratio = maxIx / n
+        equalizeVal !ix = (hist V.! ix) * ratio -- / n * maxIx
+    in V.map equalizeVal hist
+{-# SPECIALIZE equalizeHist :: Histogram Int32 -> Histogram Double #-}
+{-# SPECIALIZE equalizeHist :: Histogram Int32 -> Histogram Float #-}
+
+-- TODO: Comparison operator mus be applied on floating point histograms
 -- 
 -- -- | Computes the Pearson\'s correlation coefficient
 -- -- between each corresponding bins of the two histograms.
