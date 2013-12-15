@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+
 module Vision.Image.Primitive (
       Point (..), RPoint (..), Rect (..), Size (..)
     ) where

@@ -1,7 +1,9 @@
 {-# LANGUAGE BangPatterns, FlexibleContexts #-}
 import Criterion.Main
+import Data.Int
 
 import Vision.Image
+import Vision.Histogram
 
 path :: FilePath
 path = "bench/image.jpg"
@@ -11,6 +13,7 @@ main = do
     Right io <- load path
     let !rgb        = convert io  :: RGBImage
         !rgba       = convert rgb :: RGBAImage
+        !grey       = convert rgb :: GreyImage
         !(Size w h) = getSize rgb
 
     defaultMain [
@@ -54,6 +57,10 @@ main = do
                                         rgb
             , bench "vertical"   $ whnf (verticalFlip :: RGBImage -> RGBImage)
                                         rgb
+            ]
+        , bgroup "histogram" [
+              bench "calculate Int32 histogram" $
+                    whnf (calcHist :: GreyImage -> Histogram Int32) grey
             ]
         , bgroup "application" [
               bench "miniature 150x150" $ whnf miniature rgb

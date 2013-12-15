@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns, FlexibleContexts, FlexibleInstances
            , ForeignFunctionInterface, MultiParamTypeClasses #-}
+
 -- | Uses the DevIL C library to read and write images from and to files.
 --
 -- /Note:/ As the underlier DevIL library is *not* tread-safe, the user must

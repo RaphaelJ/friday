@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns, FlexibleContexts #-}
+
 -- | Provides a way to estimate the value of a pixel at rational coordinates
 -- using a linear interpolation.
 module Vision.Image.Interpolate (

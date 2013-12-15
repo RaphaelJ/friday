@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns, MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Vision.Image.RGBImage.Conversion () where
 
 import Data.Convertible (Convertible (..))

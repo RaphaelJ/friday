@@ -1,19 +1,20 @@
 {-# LANGUAGE BangPatterns, MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Vision.Image.GreyImage.Conversion () where
 
 import Data.Convertible (Convertible (..))
-import qualified Data.Vector.Unboxed as V
+import qualified Data.Vector.Storable as V
 import Data.Word
 
 import Vision.Image.GreyImage.Type (GreyPixel (..))
 import Vision.Image.RGBAImage.Type (RGBAPixel (..))
 import Vision.Image.RGBImage.Type (RGBPixel (..))
 
--- instance Convertible GreyPixel GreyPixel where
---     safeConvert = Right
---     {-# INLINE safeConvert #-}
--- 
+instance Convertible GreyPixel GreyPixel where
+    safeConvert = Right
+    {-# INLINE safeConvert #-}
+
 instance Convertible RGBAPixel GreyPixel where
     safeConvert !(RGBAPixel r g b a) =
         Right $ GreyPixel $ word8 $ int (rgbToGrey r g b) * int a `quot` 255
@@ -42,4 +43,3 @@ int :: Integral a => a -> Int
 int = fromIntegral
 word8 :: Integral a => a -> Word8
 word8 = fromIntegral
-

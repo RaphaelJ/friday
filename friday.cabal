@@ -29,7 +29,8 @@ cabal-version:     >= 1.9.2
 build-type:        Simple
 
 library
-    exposed-modules:    Vision.Image
+    exposed-modules:    Vision.Histogram
+                        Vision.Image
                         Vision.Image.GreyImage
                         Vision.Image.GreyImage.Type
                         Vision.Image.GreyImage.Conversion

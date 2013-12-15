@@ -10,7 +10,8 @@ import Vision.Image.Interpolate (Interpolable (..))
 import Vision.Image.Transform (horizontalFlip, verticalFlip)
 import Vision.Image.Type (Pixel (..), Manifest, Delayed)
 
-newtype GreyPixel = GreyPixel Word8 deriving (Eq, Show, Storable)
+newtype GreyPixel = GreyPixel Word8
+    deriving (Enum, Eq, Integral, Num, Ord, Real, Show, Storable)
 
 type GreyImage = Manifest GreyPixel
 

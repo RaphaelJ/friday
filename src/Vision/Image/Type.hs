@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns, FlexibleContexts, FlexibleInstances
            , MultiParamTypeClasses, TypeFamilies, UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Vision.Image.Type (
     -- * Classes
       Pixel (..), Image (..), ImageChannel, FromFunction (..)
@@ -13,7 +14,7 @@ module Vision.Image.Type (
     ) where
 
 import Data.Convertible (Convertible (..), convert)
-import Data.Vector.Storable (Vector, (!), create, enumFromN, forM_)
+import Data.Vector.Storable (Vector, (!), create, enumFromN, forM_, generate)
 import Data.Vector.Storable.Mutable (new, write)
 import Foreign.Storable (Storable)
 
@@ -23,19 +24,38 @@ import Vision.Image.Primitive (Point (..), Size (..))
 
 -- | Determines the number of channels and the type of each pixel of the image
 -- and how images are represented.
-class Pixel p where
+class Storable p => Pixel p where
     type PixelChannel p
 
     nChannels :: p -> Int
 
 -- | Provides an abstraction over the internal representation of the image.
 -- Origin of images is located in the lower left corner.
+-- Minimal definition is 'getSize' and ('getPixel' or 'getLinearPixel').
 class Pixel (ImagePixel i) => Image i where
     type ImagePixel i
 
     getSize :: i -> Size
 
     getPixel :: i -> Point -> ImagePixel i
+    getPixel img (Point x y) =
+        let Size w _ = getSize img
+        in img `getLinearPixel` (y * w + x)
+    {-# INLINE getPixel #-}
+
+    -- | Returns the pixel\'s value as if the image was a single dimension
+    -- vector (row-major representation).
+    getLinearPixel :: i -> Int -> ImagePixel i
+    getLinearPixel img ix =
+        let Size w _ = getSize img
+            (y, x)   = ix `quotRem` w
+        in img `getPixel` Point x y
+    {-# INLINE getLinearPixel #-}
+
+    getVector :: i -> Vector (ImagePixel i)
+    getVector img = let Size w h = getSize img
+                    in generate (w * h) (img `getLinearPixel`)
+    {-# INLINE getVector #-}
 
 type ImageChannel i = PixelChannel (ImagePixel i)
 
@@ -72,8 +92,11 @@ instance (Pixel p, Storable p) => Image (Manifest p) where
     getSize = manifestSize
     {-# INLINE getSize #-}
 
-    Manifest (Size w _) vec `getPixel` Point x y = vec ! (y * w + x)
-    {-# INLINE getPixel #-}
+    Manifest _ vec `getLinearPixel` ix = vec ! ix
+    {-# INLINE getLinearPixel #-}
+
+    getVector = manifestVector
+    {-# INLINE getVector #-}
 
 instance (Pixel p, Storable p) => FromFunction (Manifest p) where
     fromFunctionLine size@(Size w h) line pixel = Manifest size $ create $ do
