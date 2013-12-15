@@ -21,24 +21,12 @@ instance Convertible RGBAPixel RGBPixel where
     safeConvert !(RGBAPixel r g b a) =
         Right $ RGBPixel (withAlpha r) (withAlpha g) (withAlpha b)
       where
-        !a' = double a / 255
-        withAlpha !val = round $ double val * a'
+        !a' = int a
+        withAlpha !val = word8 $ int val * a' `quot` 255
         {-# INLINE withAlpha #-}
     {-# INLINE safeConvert #-}
 
-double :: Integral a => a -> Double
-double = fromIntegral
-
--- instance Convertible RGBAPixel RGBPixel where
---     safeConvert !(RGBAPixel r g b a) =
---         Right $ RGBPixel (withAlpha r) (withAlpha g) (withAlpha b)
---       where
---         !a' = int a
---         withAlpha !val = word8 $ int val * a' `quot` 255
---     {-# INLINE safeConvert #-}
--- 
--- int :: Integral a => a -> Int
--- int = fromIntegral
--- 
--- word8 :: Integral a => a -> Word8
--- word8 = fromIntegral
+int :: Integral a => a -> Int
+int = fromIntegral
+word8 :: Integral a => a -> Word8
+word8 = fromIntegral
