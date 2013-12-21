@@ -10,13 +10,14 @@ module Vision.Image.Type (
     -- * Delayed images
     , Delayed (..)
     -- * Functions
-    , delay, compute
+    , map, delay, compute
     ) where
 
 import Data.Convertible (Convertible (..), convert)
 import Data.Vector.Storable (Vector, (!), create, enumFromN, forM_, generate)
 import Data.Vector.Storable.Mutable (new, write)
 import Foreign.Storable (Storable)
+import Prelude hiding (map)
 
 import Vision.Image.Primitive (Point (..), Size (..))
 
@@ -100,6 +101,7 @@ instance (Pixel p, Storable p) => Image (Manifest p) where
 
 instance (Pixel p, Storable p) => FromFunction (Manifest p) where
     fromFunctionLine size@(Size w h) line pixel = Manifest size $ create $ do
+        -- Note: create is faster than unfoldrN.
         arr <- new (h * w)
 
         forM_ (enumFromN 0 h) $ \y -> do
@@ -138,40 +140,41 @@ instance Pixel p => FromFunction (Delayed p) where
     fromFunction = Delayed
     {-# INLINE fromFunction #-}
 
--- Conversion ------------------------------------------------------------------
-
-instance (Pixel p1, Pixel p2, Storable p1, Storable p2, Convertible p1 p2)
-    => Convertible (Manifest p1) (Manifest p2) where
-    safeConvert img = Right $
-        fromFunction (getSize img) (convert . (img `getPixel`))
-    {-# INLINE safeConvert #-}
-
-instance (Pixel p1, Pixel p2, Convertible p1 p2)
-    => Convertible (Delayed p1) (Delayed p2) where
-    safeConvert img = Right $
-        fromFunction (getSize img) (convert . (img `getPixel`))
-    {-# INLINE safeConvert #-}
-
-instance (Pixel p1, Pixel p2, Storable p2, Convertible p1 p2)
-    => Convertible (Delayed p1) (Manifest p2) where
-    safeConvert img = Right $
-        fromFunction (getSize img) (convert . (img `getPixel`))
-    {-# INLINE safeConvert #-}
-
-instance (Pixel p1, Pixel p2, Storable p1, Convertible p1 p2)
-    => Convertible (Manifest p1) (Delayed  p2) where
-    safeConvert img = Right $
-        fromFunction (getSize img) (convert . (img `getPixel`))
-    {-# INLINE safeConvert #-}
-
 -- Functions -------------------------------------------------------------------
+
+map :: (Image i1, FromFunction i2)
+    => (ImagePixel i1 -> ImagePixel i2) -> i1 -> i2
+map f img = fromFunction (getSize img) (f . (img `getPixel`))
+{-# INLINE map #-}
 
 -- | Delays an image in its delayed representation.
 delay :: Image i => i -> Delayed (ImagePixel i)
-delay img = fromFunction (getSize img) (img `getPixel`)
+delay = map id
 {-# INLINE delay #-}
 
 -- | Computes the value of an image into a manifest representation.
 compute :: (Image i, Storable (ImagePixel i)) => i -> Manifest (ImagePixel i)
-compute img = fromFunction (getSize img) (img `getPixel`)
+compute = map id
 {-# INLINE compute #-}
+
+-- Conversion ------------------------------------------------------------------
+
+instance (Pixel p1, Pixel p2, Storable p1, Storable p2, Convertible p1 p2)
+    => Convertible (Manifest p1) (Manifest p2) where
+    safeConvert = Right . map convert
+    {-# INLINE safeConvert #-}
+
+instance (Pixel p1, Pixel p2, Convertible p1 p2)
+    => Convertible (Delayed p1) (Delayed p2) where
+    safeConvert = Right . map convert
+    {-# INLINE safeConvert #-}
+
+instance (Pixel p1, Pixel p2, Storable p2, Convertible p1 p2)
+    => Convertible (Delayed p1) (Manifest p2) where
+    safeConvert = Right . map convert
+    {-# INLINE safeConvert #-}
+
+instance (Pixel p1, Pixel p2, Storable p1, Convertible p1 p2)
+    => Convertible (Manifest p1) (Delayed  p2) where
+    safeConvert = Right . map convert
+    {-# INLINE safeConvert #-}

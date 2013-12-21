@@ -64,4 +64,3 @@ instance Interpolable RGBPixel where
 {-# SPECIALIZE resize :: RGBImage -> InterpolMethod -> Size -> RGBImage #-}
 {-# SPECIALIZE horizontalFlip :: RGBImage -> RGBImage #-}
 {-# SPECIALIZE verticalFlip :: RGBImage -> RGBImage #-}
-

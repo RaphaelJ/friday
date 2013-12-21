@@ -1,27 +1,39 @@
 {-# LANGUAGE BangPatterns, FlexibleContexts, TypeFamilies #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- | Contains functions to compute and manipulate histograms as well as some
 -- images transformations which are histograms-based.
+-- 
 -- Every polymorphic function is specialised for histograms of 'Int32', 'Double'
--- and 'Float'.
+-- and 'Float'. Other types could be specialized as every polymorphic functions
+-- are declared @INLINABLE@.
 module Vision.Histogram (
     -- * Types
       Histogram (..)
     -- * Histogram computations
-    , calcHist, cumulatHist, roundHist, equalizeHist
-    -- * Histogram comparisons
-    , compareCorrel, compareChi, compareIntersect, compareLogLikelihood
+    , calcHist, cumulatHist, roundHist, normalizeHist
     -- * Images processing
-    , equalizeImage-}
+    , equalizeImage
+    -- * Histogram comparisons
+    , compareCorrel, compareChi, compareIntersect
     ) where
 
 import Data.Int
-import Data.Vector.Storable (Vector, (!), unsafeAccumulate_, create, enumFromN, forM_)
+import Data.Vector.Storable (Vector, (!))
 import qualified Data.Vector.Storable as V
-import qualified Data.Vector.Storable.Mutable as MV
 import Foreign.Storable (Storable)
 
-import Vision.Image (Image (..), Size (..), GreyImage, GreyPixel (..), Point (..))
+import Vision.Image (Image (..), FromFunction (..), Size (..), GreyImage)
+import qualified Vision.Image as I
+
+-- There is no rule to simplify the conversion from Int32 to Double and Float
+-- when using realToFrac. Both conversions are using a temporary yet useless
+-- Rational value.
+
+{-# RULES
+"realToFrac/Int32->Double" realToFrac = fromIntegral :: Int32 -> Double
+"realToFrac/Int32->Float"  realToFrac = fromIntegral :: Int32 -> Float
+  #-}
 
 newtype Histogram a = Histogram { histVector :: Vector a }
     deriving (Eq, Show)
@@ -37,125 +49,129 @@ calcHist img =
         ones     = V.replicate n 1
         pixVals  = V.map int (getVector img)
     in Histogram $ V.accumulate_ (+) zeros pixVals ones
-{-# SPECIALIZE calcHist :: GreyImage -> Histogram Int32 #-}
-{-# SPECIALIZE calcHist :: GreyImage -> Histogram Double #-}
-{-# SPECIALIZE calcHist :: GreyImage -> Histogram Float #-}
+{-# SPECIALIZE calcHist :: GreyImage -> Histogram Int32
+                        ,  GreyImage -> Histogram Double
+                        ,  GreyImage -> Histogram Float #-}
+{-# INLINABLE calcHist #-}
 
 -- | Computes the cumulative histogram of another histogram.
 -- C(i) = SUM H(j) for each j in [0..i] where C is the cumulative histogram, and
 -- H the original histogram.
 cumulatHist :: (Storable a, Num a) => Histogram a -> Histogram a
-cumulatHist = V.scanl1' (+)
-{-# SPECIALIZE cumulatHist :: Histogram Int32  -> Histogram Int32 #-}
-{-# SPECIALIZE cumulatHist :: Histogram Double -> Histogram Double #-}
-{-# SPECIALIZE cumulatHist :: Histogram Float  -> Histogram Float #-}
+cumulatHist = Histogram . V.scanl1' (+) . histVector
+{-# SPECIALIZE cumulatHist :: Histogram Int32  -> Histogram Int32
+                           ,  Histogram Double -> Histogram Double
+                           ,  Histogram Float  -> Histogram Float #-}
+{-# INLINABLE cumulatHist #-}
 
 -- | Rounds each values of the histogram to its nearest integer.
-roundHist :: (Storable a, RealFrac a, Storable b, Integral b) =>
-             Histogram a -> Histogram b
-roundHist = V.map round
-{-# SPECIALIZE roundHist :: Histogram Double -> Histogram Int32 #-}
-{-# SPECIALIZE roundHist :: Histogram Float  -> Histogram Int32 #-}
+roundHist :: (Storable a, RealFrac a, Storable b, Integral b)
+          => Histogram a -> Histogram b
+roundHist = Histogram . V.map round . histVector
+{-# SPECIALIZE roundHist :: Histogram Double -> Histogram Int32
+                         ,  Histogram Float  -> Histogram Int32 #-}
+{-# INLINABLE roundHist #-}
 
--- | Normalizes the histogram so that the sum of histogram bins is equals to the
--- number of bins in the histogram.
+-- | Normalizes the histogram so that the sum of histogram bins is equal to the
+-- number of bins in the histogram minus 1.
 -- See <http://en.wikipedia.org/wiki/Histogram_equalization>.
-equalizeHist :: (IArray UArray a, Integral a, IArray UArray b, Fractional b) =>
-                Histogram a -> Histogram b
-equalizeHist !hist =
-    let !maxIx = V.length hist - 1
-        !n     = V.sum hist
+normalizeHist :: (Storable a, Real a, Storable b, Fractional b)
+             => Histogram a -> Histogram b
+normalizeHist !(Histogram vec) =
+    let !maxIx = fromIntegral (V.length vec - 1)
+        !n     = realToFrac (V.sum vec)
         !ratio = maxIx / n
-        equalizeVal !ix = (hist V.! ix) * ratio -- / n * maxIx
-    in V.map equalizeVal hist
-{-# SPECIALIZE equalizeHist :: Histogram Int32 -> Histogram Double #-}
-{-# SPECIALIZE equalizeHist :: Histogram Int32 -> Histogram Float #-}
+        equalizeVal !val = realToFrac val * ratio
+        {-# INLINE equalizeVal #-}
+    in Histogram $ V.map equalizeVal vec
+{-# SPECIALIZE normalizeHist :: Histogram Int32  -> Histogram Double
+                             ,  Histogram Int32  -> Histogram Float
+                             ,  Histogram Double -> Histogram Double
+                             ,  Histogram Double -> Histogram Float
+                             ,  Histogram Float  -> Histogram Float
+                             ,  Histogram Float  -> Histogram Double #-}
+{-# INLINABLE normalizeHist #-}
 
--- TODO: Comparison operator mus be applied on floating point histograms
--- 
--- -- | Computes the Pearson\'s correlation coefficient
--- -- between each corresponding bins of the two histograms.
--- -- A value of 1 implies a perfect correlation, a value of -1 a perfect
--- -- opposition and a value of 0 no correlation at all.
--- -- See <http://en.wikipedia.org/wiki/Pearson_correlation_coefficient>.
--- compareCorrel :: (IArray UArray a, Integral a) =>
---                  Histogram a -> Histogram a -> Double
--- compareCorrel hist1 hist2 =
---     numerat / denominat
---   where
---     numerat = sum [
---           (double v1 - avg1) * (double v2 - avg2)
---         | v1 <- elems hist1 | v2 <- elems hist2
---         ]
---     denominat = sqrt $ sum [ (double v1 - avg1)**2 | v1 <- elems hist1 ] *
---                        sum [ (double v2 - avg2)**2 | v2 <- elems hist2 ]
---     (avg1, avg2) = (avg hist1, avg hist2)
--- 
---     avg hist = double (sum (elems hist)) / double (len hist)
---     len = rangeSize . bounds
--- {-# SPECIALIZE compareCorrel :: Histogram Int32 -> Histogram Int32 -> Double #-}
--- --{-# SPECIALIZE compareCorrel :: Histogram Int32 -> Histogram Int32 -> Float #-}
--- 
--- -- | Computes the Chi-squared distance between two histograms.
--- -- A value of 0 indicates a perfect match.
--- -- d(i) = (H1(i) - H2(i))^2 / (H1(i) + H2(i))
--- -- chi = SUM (i) for each indice i the histograms.
--- compareChi :: (IArray UArray a, Fractional a, Eq a) =>
---                Histogram a -> Histogram a -> a
--- compareChi hist1 hist2 = sum [
---       if v1 == v2 then 0 else square (v1 - v2) / (v1 + v2)
---     | v1 <- elems hist1 | v2 <- elems hist2
---     ]
---   where
---     square v = v * v
--- {-# SPECIALIZE compareChi :: Histogram Double -> Histogram Double -> Double #-}
--- {-# SPECIALIZE compareChi :: Histogram Float -> Histogram Float-> Float #-}
--- 
--- -- | Computes the intersection of the two histograms.
--- -- The higher the score is, the best the match is.
--- -- intersec = SUM min(H1(i), H2(i)) for each indice i the histograms.
--- compareIntersect :: (IArray UArray a, Num a, Ord a) =>
---                     Histogram a -> Histogram a -> a
--- compareIntersect hist1 hist2 =
---     sum [ min v1 v2 | v1 <- elems hist1 | v2 <- elems hist2 ]
--- {-# SPECIALIZE compareIntersect ::
---     Histogram Int32 -> Histogram Int32 -> Int32 #-}
--- {-# SPECIALIZE compareIntersect ::
---     Histogram Double -> Histogram Double -> Double #-}
--- {-# SPECIALIZE compareIntersect ::
---     Histogram Float -> Histogram Float -> Float #-}
--- 
--- -- | Computes the Log-likelihood distance between two histograms.
--- -- log-likelihood = SUM (H1(i) * log (H2(i)))
--- compareLogLikelihood :: (IArray UArray a, Integral a) =>
---                         Histogram a -> Histogram a -> Double
--- compareLogLikelihood hist1 hist2 = - sum [
---           (double v1) * log (double v2)
---         | v1 <- elems hist1 | v2 <- elems hist2
---         ]
--- {-# SPECIALIZE compareLogLikelihood ::
---     Histogram Int32 -> Histogram Int32 -> Double #-}
--- 
--- -- | Normalizes a grey scale image by equalising the histogram.
--- -- The algorithm normalizes the brightness and increases the contrast of the
--- -- image by mapping each pixels values to the value at the index of the
--- -- cumulative equalized histogram :
--- -- N(x, y) = H(I(x, y)) where N is the equalized image, I is the image and H the
--- -- cumulative equalized histogram.
--- equalizeImage :: GreyImage -> GreyImage
--- equalizeImage image =
---     fromFunction (getSize image) equalizePixel
---   where
---     hist :: Histogram Int32
---     hist = calcHist image
---     cumEqHist :: Histogram Double
---     cumEqHist = cumulatHist $! equalizeHist hist
---     roundedCumEqHist = roundHist cumEqHist
---     equalizePixel pt =
---         let val = image `unsafeGetPixel` pt
---         in roundedCumEqHist ! (int val)
+-- | Equalizes a grey scale image by equalising the histogram.
+-- The algorithm equalizes the brightness and increases the contrast of the
+-- image by mapping each pixels values to the value at the index of the
+-- cumulative norm histogram :
+-- N(x, y) = H(I(x, y)) where N is the equalized image, I is the image and H the
+-- cumulative normalized histogram.
+equalizeImage :: (Integral (ImagePixel i1), Image i1
+                 , Num (ImagePixel i2), FromFunction i2) => i1 -> i2
+equalizeImage img =
+    I.map equalizePixel img
+  where
+    hist          = calcHist img                     :: Histogram Int32
+    cumNormHist   = cumulatHist $ normalizeHist hist :: Histogram Double
+    !cumNormHist' = roundHist cumNormHist            :: Histogram Int32
+    equalizePixel !val = fromIntegral $ histVector cumNormHist' ! (int val)
+{-# SPECIALIZE equalizeImage :: GreyImage -> GreyImage #-}
+{-# INLINABLE equalizeImage #-}
 
-int:: Integral a => a -> Int
+-- | Computes the Pearson\'s correlation coefficient
+-- between each corresponding bins of the two histograms.
+-- A value of 1 implies a perfect correlation, a value of -1 a perfect
+-- opposition and a value of 0 no correlation at all.
+-- See <http://en.wikipedia.org/wiki/Pearson_correlation_coefficient>.
+compareCorrel :: (Storable a, Real a, Storable b, Eq b, Floating b)
+              => Histogram a -> Histogram a -> b
+compareCorrel (Histogram vec1) (Histogram vec2)
+    | denominat == 0 = 1
+    | otherwise      = numerat / denominat
+  where
+    numerat   = V.sum $ V.zipWith (*) diff1 diff2
+    denominat = sqrt $ V.sum (V.map square diff1) * V.sum (V.map square diff2)
+
+    !diff1 = V.map (\v1 -> realToFrac v1 - avg1) vec1
+    !diff2 = V.map (\v2 -> realToFrac v2 - avg2) vec2
+
+    (!avg1, !avg2) = (avg vec1, avg vec2)
+    avg vec = realToFrac (V.sum vec) / realToFrac (V.length vec)
+{-# SPECIALIZE compareCorrel :: Histogram Int32  -> Histogram Int32  -> Double
+                             ,  Histogram Int32  -> Histogram Int32  -> Float
+                             ,  Histogram Double -> Histogram Double -> Double
+                             ,  Histogram Double -> Histogram Double -> Float
+                             ,  Histogram Float  -> Histogram Float  -> Double
+                             ,  Histogram Float  -> Histogram Float  -> Float
+                             #-}
+{-# INLINABLE compareCorrel #-}
+
+-- | Computes the Chi-squared distance between two histograms.
+-- A value of 0 indicates a perfect match.
+-- d(i) = (H1(i) - H2(i))^2 / H1(i)
+-- chi = SUM (d(i)) for each indice i of the histograms.
+compareChi :: (Storable a, Real a, Storable b, Fractional b)
+           => Histogram a -> Histogram a -> b
+compareChi (Histogram vec1) (Histogram vec2) =
+    V.sum $ V.zipWith f vec1 vec2
+  where
+    f v1 v2 | v2 == 0   = 0
+            | otherwise = realToFrac (square (v1 - v2)) / realToFrac v1
+{-# SPECIALIZE compareChi :: Histogram Int32  -> Histogram Int32  -> Double
+                          ,  Histogram Int32  -> Histogram Int32  -> Float
+                          ,  Histogram Double -> Histogram Double -> Double
+                          ,  Histogram Double -> Histogram Double -> Float
+                          ,  Histogram Float  -> Histogram Float  -> Double
+                          ,  Histogram Float  -> Histogram Float  -> Float #-}
+{-# INLINABLE compareChi #-}
+
+-- | Computes the intersection of the two histograms.
+-- The higher the score is, the best the match is.
+-- intersec = SUM min(H1(i), H2(i)) for each indice i the histograms.
+compareIntersect :: (Storable a, Num a, Ord a) 
+                 => Histogram a -> Histogram a -> a
+compareIntersect (Histogram vec1) (Histogram vec2) =
+    V.sum $ V.zipWith min vec1 vec2
+{-# SPECIALIZE compareIntersect ::
+       Histogram Int32  -> Histogram Int32  -> Int32
+    ,  Histogram Double -> Histogram Double -> Double
+    ,  Histogram Float  -> Histogram Float  -> Float #-}
+{-# INLINABLE compareIntersect #-}
+
+square :: Num a => a -> a
+square a = a * a
+
+int :: Integral a => a -> Int
 int = fromIntegral
-double :: Integral a => a -> Double
-double = fromIntegral

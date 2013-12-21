@@ -10,15 +10,16 @@ path = "bench/image.jpg"
 
 main :: IO ()
 main = do
-    Right io <- load path
-    let !rgb        = convert io  :: RGBImage
-        !rgba       = convert rgb :: RGBAImage
-        !grey       = convert rgb :: GreyImage
+    Right io <- load path Nothing
+    let !rgb        = convert io    :: RGBImage
+        !rgba       = convert rgb   :: RGBAImage
+        !grey       = convert rgb   :: GreyImage
+        !hist       = calcHist grey :: Histogram Int32
         !(Size w h) = getSize rgb
 
     defaultMain [
           bgroup "IO" [
-              bench "load" $ whnfIO $ load path
+              bench "load" $ whnfIO $ load path Nothing
             ]
         , bgroup "conversion" [
               bench "RGB to grey" $
@@ -60,7 +61,28 @@ main = do
             ]
         , bgroup "histogram" [
               bench "calculate Int32 histogram" $
-                    whnf (calcHist :: GreyImage -> Histogram Int32) grey
+                    whnf (calcHist :: GreyImage -> Histogram Int32)  grey
+            , bench "calculate Double histogram" $
+                    whnf (calcHist :: GreyImage -> Histogram Double) grey
+            , bench "cumulative Int32 histogram" $
+                    whnf (cumulatHist :: Histogram Int32 -> Histogram Int32)
+                         hist
+
+            , bench "normalize histogram" $
+                    whnf (normalizeHist :: Histogram Int32 -> Histogram Double)
+                         hist
+            , bench "equalize grey image" $
+                    whnf (equalizeImage :: GreyImage -> GreyImage) grey
+
+            , bench "correlation comparison" $
+                    whnf (compareCorrel hist :: Histogram Int32 -> Double)
+                         hist
+            , bench "chi-square comparison" $
+                    whnf (compareChi hist :: Histogram Int32 -> Double)
+                         hist
+            , bench "intersection comparison" $
+                    whnf (compareIntersect hist :: Histogram Int32 -> Int32)
+                         hist
             ]
         , bgroup "application" [
               bench "miniature 150x150" $ whnf miniature rgb

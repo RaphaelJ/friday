@@ -7,13 +7,15 @@
 -- ensures that two instances of the 'load' or/and 'save' functions can't be
 -- called by two concurrent threads at the same time.
 module Vision.Image.Storage (
-      StorageImage (..), StorageError (..), load, save
+      StorageImage (..), StorageError (..), load, loadBS, save
     ) where
 
 import Control.Applicative ((<$>))
 import Control.Monad (when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Error (Error (..), ErrorT, runErrorT, throwError)
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Unsafe as BS
 import Data.Convertible (Convertible (..), convert)
 import Data.Int
 import Data.Vector.Storable (unsafeFromForeignPtr0, unsafeWith)
@@ -34,16 +36,33 @@ import Vision.Image.Type (Pixel (..), Manifest (..))
 data StorageImage = GreyStorage GreyImage
                   | RGBAStorage RGBAImage | RGBStorage RGBImage
 
-data StorageError = FailedToInit    -- ^ Failed to initialise the DevIL library.
-                  | FailedToLoad    -- ^ Failed to load the file as an image or
-                                    -- the file can't be accessed.
-                  | FailedToConvert -- ^ Failed to convert the loaded image to
-                                    -- its Haskell representation.
-                  | FailedToDevil   -- ^ Failed to write the image content
-                                    -- through the inner DevIL library.
-                  | FailedToSave    -- ^ Failed to save the image to the
-                                    -- specified file.
+data ImageType = BMP | CUT
+               | DDS         -- ^ DirectDraw Surface (.dds).
+               | Doom        -- ^ Doom texture.
+               | DoomFlat    -- ^ Doom flat texture (floor).
+               | GIF | ICO | JPG
+               | LIF         -- ^ Homeworld (.lif).
+               | MNG | PCD | PCX | PIC | PNG 
+               | PNM         -- ^ Portable AnyMap (.pbm, .pgm or .ppm).
+               | PSD | PSP | SGI | TGA | TIFF
+               | RAW         -- Raw data with a 13-byte header.
+    deriving (Eq, Show)
+
+data StorageError = FailedToInit     -- ^ Failed to initialise the library.
+                  | FailedToOpenFile -- ^ Failed to open the given file.
+                  | InvalidType      -- ^ The file could not be loaded based
+                                     -- on extension or header.
+                  | OutOfMemory      -- ^ Could not allocate memory for the new
+                                     -- image data.
+                  | FailedToLoad     -- ^ Failed to load the image, invalid
+                                     -- format.
+                  | FailedToHaskell  -- ^ Failed to convert the loaded image to
+                                     -- its Haskell representation.
+                  | FailedToDevil    -- ^ Failed to write the image content
+                                     -- through the inner DevIL library.
+                  | FailedToSave     -- ^ Could not open the file for writing.
                   | UnknownError (Maybe String)
+    deriving (Eq)
 
 type StorageMonad = ErrorT StorageError IO
 
@@ -80,32 +99,88 @@ instance Error StorageError where
 
 instance Show StorageError where
     show FailedToInit     = "Failed to initialise the DevIL library."
-    show FailedToLoad     =
-        "Failed to load the file as an image or the file can't be accessed."
-    show FailedToConvert  =
+    show FailedToOpenFile = "Failed to open the given file."
+    show InvalidType      =
+        "The file could not be loaded based on extension or header."
+    show OutOfMemory      = "Could not allocate memory for the new image data."
+    show FailedToLoad     = "Failed to load the image."
+    show FailedToHaskell  =
         "Failed to convert the loaded image to its Haskell representation."
-    show FailedToDevil    =
+    show FailedToDevil    = 
         "Failed to write the image content through the inner DevIL library."
-    show FailedToSave     = "Failed to save the image to the specified file."
-    show (UnknownError e) = case e of Just msg -> msg
-                                      Nothing  -> "Unknown error."
+    show FailedToSave     = "Could not open the file for writing."
+    show (UnknownError (Just msg)) = msg
+    show (UnknownError Nothing   ) = "Unknown error."
 
--- | Reads an image into a manifest vector by calling the DevIL C library.
--- It uses directly the C array without copying.
+-- | Reads an image into a manifest vector from a file.
 -- 
--- /Note:/ The image input type is determined by the filename extension.
-load :: FilePath -> IO (Either StorageError StorageImage)
-load path = runErrorT $ do
+-- If no image type is given, type will be determined automatically.
+load :: FilePath -> Maybe ImageType -> IO (Either StorageError StorageImage)
+load path mType =
+    bindAndLoad $
+        withCString path $ \cPath ->
+            ilLoadC (toIlType mType) cPath
+
+-- | Reads an image into a manifest vector from a strict 'ByteString'.
+-- 
+-- If no image type is given, type will be determined automatically.
+-- TIFF images are not supported.
+loadBS :: BS.ByteString -> Maybe ImageType
+       -> IO (Either StorageError StorageImage)
+loadBS _  (Just TIFF) = return $ Left FailedToLoad
+loadBS bs mType       =
+    bindAndLoad $
+        BS.unsafeUseAsCStringLen bs $ \(ptr, len) ->
+            ilLoadLC (toIlType mType) ptr (fromIntegral len)
+
+-- | Allocates a new image name, executes the given action to load the image
+-- and then converts it into its Haskell representation.
+bindAndLoad :: IO ILboolean ->  IO (Either StorageError StorageImage)
+bindAndLoad action = runErrorT $ do
     ilInit
     name <- ilGenImageName
     ilBindImage name
 
-    ilLoadImage path
+    res <- lift action
+    when (res == 0) $ do
+        err <- lift ilGetErrorC
+        throwError $ case err of
+            (#const IL_COULD_NOT_OPEN_FILE) -> FailedToOpenFile
+            (#const IL_INVALID_EXTENSION)   -> InvalidType
+            (#const IL_INVALID_FILE_HEADER) -> InvalidType
+            (#const IL_OUT_OF_MEMORY)       -> OutOfMemory
+            _                               -> FailedToLoad
+
     fromDevil name
+
+toIlType :: Maybe ImageType -> ILenum
+toIlType (Just BMP)      = (#const IL_BMP)
+toIlType (Just CUT)      = (#const IL_CUT)
+toIlType (Just DDS)      = (#const IL_DDS)
+toIlType (Just Doom)     = (#const IL_DOOM)
+toIlType (Just DoomFlat) = (#const IL_DOOM_FLAT)
+toIlType (Just GIF)      = (#const IL_GIF)
+toIlType (Just ICO)      = (#const IL_ICO)
+toIlType (Just JPG)      = (#const IL_JPG)
+toIlType (Just LIF)      = (#const IL_LIF)
+toIlType (Just MNG)      = (#const IL_MNG)
+toIlType (Just PCD)      = (#const IL_PCD)
+toIlType (Just PCX)      = (#const IL_PCX)
+toIlType (Just PIC)      = (#const IL_PIC)
+toIlType (Just PNG)      = (#const IL_PNG)
+toIlType (Just PNM)      = (#const IL_PNM)
+toIlType (Just PSD)      = (#const IL_PSD)
+toIlType (Just PSP)      = (#const IL_PSP)
+toIlType (Just SGI)      = (#const IL_SGI)
+toIlType (Just TGA)      = (#const IL_TGA)
+toIlType (Just TIFF)     = (#const IL_TIF)
+toIlType (Just RAW)      = (#const IL_RAW)
+toIlType Nothing         = (#const IL_TYPE_UNKNOWN)
 
 -- | Saves the image to the given file.
 -- 
 -- /Note:/ The image type is determined by the filename extension.
+-- Will fail if the file already exists.
 save :: (Convertible i StorageImage) => FilePath -> i -> IO (Maybe StorageError)
 save path img = do
     res <- runErrorT $ do
@@ -137,9 +212,25 @@ newtype ImageName = ImageName ILuint
     deriving (Show)
 
 foreign import ccall unsafe "ilInit" ilInitC :: IO ()
+foreign import ccall unsafe "ilGetError" ilGetErrorC :: IO ILenum
 foreign import ccall unsafe "ilOriginFunc" ilOriginFuncC
     :: ILenum -> IO ILboolean
 foreign import ccall unsafe "ilEnable" ilEnableC :: ILenum -> IO ILboolean
+
+il_RGB, il_RGBA, il_LUMINANCE :: ILenum
+il_RGB = (#const IL_RGB)
+il_RGBA = (#const IL_RGBA)
+il_LUMINANCE = (#const IL_LUMINANCE)
+
+il_IMAGE_HEIGHT, il_IMAGE_WIDTH :: ILenum
+il_IMAGE_FORMAT, il_IMAGE_TYPE :: ILenum
+il_IMAGE_HEIGHT = (#const IL_IMAGE_HEIGHT)
+il_IMAGE_WIDTH  = (#const IL_IMAGE_WIDTH)
+il_IMAGE_FORMAT = (#const IL_IMAGE_FORMAT)
+il_IMAGE_TYPE   = (#const IL_IMAGE_TYPE)
+
+il_UNSIGNED_BYTE :: ILenum
+il_UNSIGNED_BYTE = (#const IL_UNSIGNED_BYTE)
 
 -- | Initialize the library.
 ilInit :: StorageMonad ()
@@ -167,26 +258,10 @@ foreign import ccall unsafe "ilBindImage" ilBindImageC :: ILuint -> IO ()
 ilBindImage :: ImageName -> StorageMonad ()
 ilBindImage (ImageName name) = lift $ ilBindImageC name
 
-foreign import ccall unsafe "ilLoadImage" ilLoadImageC
-    :: CString -> IO ILboolean
-
--- | Loads the image as the current DevIL image name.
-ilLoadImage :: FilePath -> StorageMonad ()
-ilLoadImage path = withCString path ilLoadImageC <?> FailedToLoad
-
-il_RGB, il_RGBA, il_LUMINANCE :: ILenum
-il_RGB = (#const IL_RGB)
-il_RGBA = (#const IL_RGBA)
-il_LUMINANCE = (#const IL_LUMINANCE)
-
-il_IMAGE_HEIGHT, il_IMAGE_WIDTH :: ILenum
-il_IMAGE_FORMAT, il_IMAGE_TYPE :: ILenum
-il_UNSIGNED_BYTE :: ILenum
-il_IMAGE_HEIGHT = (#const IL_IMAGE_HEIGHT)
-il_IMAGE_WIDTH = (#const IL_IMAGE_WIDTH)
-il_IMAGE_FORMAT = (#const IL_IMAGE_FORMAT)
-il_IMAGE_TYPE = (#const IL_IMAGE_TYPE)
-il_UNSIGNED_BYTE = (#const IL_UNSIGNED_BYTE)
+foreign import ccall unsafe "ilLoad" ilLoadC :: ILenum -> CString
+                                             -> IO ILboolean
+foreign import ccall unsafe "ilLoadL" ilLoadLC :: ILenum -> CString -> ILuint
+                                               -> IO ILboolean
 
 foreign import ccall unsafe "ilGetInteger" ilGetIntegerC :: ILenum -> IO ILint
 foreign import ccall unsafe "ilConvertImage" ilConvertImageC
@@ -233,7 +308,7 @@ fromDevil (ImageName name) = do
     ilGetInteger mode = lift $ fromIntegral <$> ilGetIntegerC mode
 
     ilConvertImage format pixelType = do
-        ilConvertImageC format pixelType <?> FailedToConvert
+        ilConvertImageC format pixelType <?> FailedToHaskell
 
 -- | Removes the image and any allocated memory.
 ilDeleteImage :: ImageName -> StorageMonad ()

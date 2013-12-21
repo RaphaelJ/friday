@@ -34,26 +34,28 @@ resize :: (Image i1, Interpolable (ImagePixel i1), FromFunction i2
 resize img !method !size'@(Size w' h') =
     case method of
         TruncateInteger ->
-            -- Interpolates the index of the middle of the corresponding pixel
-            -- in the source image.
             let !widthRatio   = double w / double w'
                 !widthMiddle  = (widthRatio - 1) / 2
                 !heightRatio  = double h / double h'
                 !heightMiddle = (heightRatio - 1) / 2
-                line y' = truncate $ double y' * heightRatio + heightMiddle
-                pixel y (Point x' _) =
+                line !y' = truncate $ double y' * heightRatio + heightMiddle
+                {-# INLINE line #-}
+                pixel !y !(Point x' _) =
                     let !x = truncate $ double x' * widthRatio + widthMiddle
                     in img `getPixel` Point x y
+                {-# INLINE pixel #-}
             in fromFunctionLine size' line pixel
         NearestNeighbor ->
             let !widthRatio   = double w / double w'
                 !widthMiddle  = (widthRatio - 1) / 2
                 !heightRatio  = double h / double h'
                 !heightMiddle = (heightRatio - 1) / 2
-                line y' = round $ double y' * heightRatio + heightMiddle
-                pixel y (Point x' _) =
+                line !y' = round $ double y' * heightRatio + heightMiddle
+                {-# INLINE line #-}
+                pixel !y !(Point x' _) =
                     let !x = round $ double x' * widthRatio + widthMiddle
                     in img `getPixel` Point x y
+                {-# INLINE pixel #-}
             in fromFunctionLine size' line pixel
         Bilinear ->
             let !widthRatio  = w % w'
@@ -64,13 +66,15 @@ resize img !method !size'@(Size w' h') =
                 !maxHeight = ratio (h - 1)
                 -- Limits the interpolation to inner pixel as first and last
                 -- pixels can have out of bound coordinates.
-                bound limit = min limit . max 0
-                line y' = bound maxHeight $   ratio y' * heightRatio
-                                            + heightMiddle
-                pixel y (Point x' _) =
+                bound !limit = min limit . max 0
+                line !y' = bound maxHeight $   ratio y' * heightRatio
+                                             + heightMiddle
+                {-# INLINE line #-}
+                pixel !y !(Point x' _) =
                     let !x = bound maxWidth $   ratio x' * widthRatio
                                               + widthMiddle
                     in img `bilinearInterpol` RPoint x y
+                {-# INLINE pixel #-}
             in fromFunctionLine size' line pixel
   where
     !(Size w h) = getSize img

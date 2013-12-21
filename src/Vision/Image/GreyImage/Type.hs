@@ -7,7 +7,10 @@ import Data.Word
 import Foreign.Storable (Storable)
 
 import Vision.Image.Interpolate (Interpolable (..))
-import Vision.Image.Transform (horizontalFlip, verticalFlip)
+import Vision.Image.Primitive (Rect, Size)
+import Vision.Image.Transform (
+      InterpolMethod, crop, resize, horizontalFlip, verticalFlip
+    )
 import Vision.Image.Type (Pixel (..), Manifest, Delayed)
 
 newtype GreyPixel = GreyPixel Word8
@@ -27,5 +30,7 @@ instance Interpolable GreyPixel where
     interpol f (GreyPixel a) (GreyPixel b) = GreyPixel $ f a b
     {-# INLINE interpol #-}
 
+{-# SPECIALIZE crop :: GreyImage -> Rect -> GreyImage #-}
+{-# SPECIALIZE resize :: GreyImage -> InterpolMethod -> Size -> GreyImage #-}
 {-# SPECIALIZE horizontalFlip :: GreyImage -> GreyImage #-}
 {-# SPECIALIZE verticalFlip :: GreyImage -> GreyImage #-}

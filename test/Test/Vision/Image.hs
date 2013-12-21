@@ -12,7 +12,7 @@ import Test.QuickCheck (Arbitrary (..), choose)
 import Vision.Image (
       Image (..), Interpolable, FromFunction (..), Manifest (..), Delayed (..)
     , Size (..), GreyImage, GreyPixel (..), RGBAImage, RGBAPixel (..)
-    , RGBADelayed, RGBImage, RGBDelayed, RGBPixel (..), InterpolMethod (..)
+    , RGBADelayed, RGBImage, RGBPixel (..), InterpolMethod (..)
     , convert, resize, horizontalFlip, verticalFlip
     )
 
@@ -22,8 +22,8 @@ maxImageSize = 100
 instance (Arbitrary p, Storable p) => Arbitrary (Manifest p) where
     arbitrary = do
         size <- Size <$> choose (1, maxImageSize) <*> choose (1, maxImageSize)
-        vect <- replicateM (sWidth size * sHeight size) arbitrary
-        return $ Manifest size vect
+        vec  <- replicateM (sWidth size * sHeight size) arbitrary
+        return $ Manifest size vec
 
 instance Arbitrary GreyPixel where
     arbitrary = GreyPixel <$> arbitrary
@@ -37,10 +37,8 @@ instance Arbitrary RGBPixel where
 
 tests :: [Test]
 tests = [
-      testGroup "Conversions" [
-          testProperty "Grey to/from RGBA" $ propGreyRGBA
-        , testProperty "Grey to/from RGB" $ propGreyRGB
-        , testProperty "RGB to/from RGBA" $ propRGBRGBA
+      testGroup "Conversions identities" [
+          testProperty "RGB to/from RGBA" $ propRGBRGBA
         ]
     , testGroup "Nearest-neighbor resize" [
           testProperty "Grey"
@@ -50,7 +48,7 @@ tests = [
         , testProperty "RGB"
             (propImageResize :: RGBImage -> Bool)
         ]
-    , testGroup "Horizontal flip" [
+    , testGroup "Horizontal flip is symetric" [
           testProperty "Grey"
             (propHorizontalFlip :: GreyImage -> Bool)
         , testProperty "RGBA"
@@ -58,7 +56,7 @@ tests = [
         , testProperty "RGB"
             (propHorizontalFlip :: RGBImage -> Bool)
         ]
-    , testGroup "Vertical flip" [
+    , testGroup "Vertical flip is symetric" [
           testProperty "Grey"
             (propVerticalFlip :: GreyImage -> Bool)
         , testProperty "RGBA"
@@ -67,20 +65,6 @@ tests = [
             (propVerticalFlip :: RGBImage -> Bool)
         ]
     ]
-
--- | Tests if the conversions between greyscale and RGBA images give the same
--- images.
-propGreyRGBA :: GreyImage -> Bool
-propGreyRGBA img =
-    let img' = convert (convert img :: RGBADelayed) :: GreyImage
-    in img == img'
-
--- | Tests if the conversions between greyscale and RGBA images give the same
--- images.
-propGreyRGB :: GreyImage -> Bool
-propGreyRGB img =
-    let img' = convert (convert img :: RGBDelayed) :: GreyImage
-    in img == img'
 
 -- | Tests if the conversions between RGB and RGBA images give the same images.
 propRGBRGBA :: RGBImage -> Bool
