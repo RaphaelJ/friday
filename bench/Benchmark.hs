@@ -83,6 +83,9 @@ main = do
             , bench "intersection comparison" $
                     whnf (compareIntersect hist :: Histogram Int32 -> Int32)
                          hist
+            , bench "match comparison" $
+                    whnf (compareMatch hist :: Histogram Int32 -> Int32)
+                         hist
             ]
         , bgroup "application" [
               bench "miniature 150x150" $ whnf miniature rgb

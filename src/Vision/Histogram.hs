@@ -15,7 +15,7 @@ module Vision.Histogram (
     -- * Images processing
     , equalizeImage
     -- * Histogram comparisons
-    , compareCorrel, compareChi, compareIntersect
+    , compareCorrel, compareChi, compareIntersect, compareMatch
     ) where
 
 import Data.Int
@@ -73,7 +73,7 @@ roundHist = Histogram . V.map round . histVector
 {-# INLINABLE roundHist #-}
 
 -- | Normalizes the histogram so that the sum of histogram bins is equal to the
--- number of bins in the histogram minus 1.
+-- number of bins in the histogram, minus 1.
 -- See <http://en.wikipedia.org/wiki/Histogram_equalization>.
 normalizeHist :: (Storable a, Real a, Storable b, Fractional b)
              => Histogram a -> Histogram b
@@ -140,15 +140,15 @@ compareCorrel (Histogram vec1) (Histogram vec2)
 
 -- | Computes the Chi-squared distance between two histograms.
 -- A value of 0 indicates a perfect match.
--- d(i) = (H1(i) - H2(i))^2 / H1(i)
+-- d(i) = (H1(i) - H2(i))^2 / ((H1(i) + H2(i)) / 2)
 -- chi = SUM (d(i)) for each indice i of the histograms.
 compareChi :: (Storable a, Real a, Storable b, Fractional b)
            => Histogram a -> Histogram a -> b
 compareChi (Histogram vec1) (Histogram vec2) =
-    V.sum $ V.zipWith f vec1 vec2
+    (V.sum $ V.zipWith f vec1 vec2) / 2
   where
     f v1 v2 | v2 == 0   = 0
-            | otherwise = realToFrac (square (v1 - v2)) / realToFrac v1
+            | otherwise = realToFrac (square (v1 - v2)) / realToFrac (v1 + v2)
 {-# SPECIALIZE compareChi :: Histogram Int32  -> Histogram Int32  -> Double
                           ,  Histogram Int32  -> Histogram Int32  -> Float
                           ,  Histogram Double -> Histogram Double -> Double
@@ -169,6 +169,16 @@ compareIntersect (Histogram vec1) (Histogram vec2) =
     ,  Histogram Double -> Histogram Double -> Double
     ,  Histogram Float  -> Histogram Float  -> Float #-}
 {-# INLINABLE compareIntersect #-}
+
+compareMatch hist1 hist2 =
+    let Histogram vec1 = cumulatHist hist1
+        Histogram vec2 = cumulatHist hist2
+    in V.sum $ V.zipWith (\v1 v2 -> abs (v1 - v2)) vec1 vec2
+{-# SPECIALIZE compareMatch ::
+       Histogram Int32  -> Histogram Int32  -> Int32
+    ,  Histogram Double -> Histogram Double -> Double
+    ,  Histogram Float  -> Histogram Float  -> Float #-}
+{-# INLINABLE compareMatch #-}
 
 square :: Num a => a -> a
 square a = a * a
