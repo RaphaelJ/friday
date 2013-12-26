@@ -10,7 +10,7 @@ module Vision.Image.Type (
     -- * Delayed images
     , Delayed (..)
     -- * Functions
-    , map, delay, compute
+    , nChannels, map, delay, compute, pixel
     ) where
 
 import Data.Convertible (Convertible (..), convert)
@@ -19,44 +19,48 @@ import Data.Vector.Storable.Mutable (new, write)
 import Foreign.Storable (Storable)
 import Prelude hiding (map)
 
-import Vision.Image.Primitive (Point (..), Size (..))
+import Vision.Primitive (
+      Z (..), (:.) (..), Shape, Point, Size
+    , ix2, fromLinearIndex, toLinearIndex, shapeLength
+    )
 
 -- Classes ---------------------------------------------------------------------
 
 -- | Determines the number of channels and the type of each pixel of the image
 -- and how images are represented.
-class Storable p => Pixel p where
+class (Storable p, Storable (PixelChannel p)) => Pixel p where
     type PixelChannel p
 
-    nChannels :: p -> Int
+    -- | Returns the number of channels of the pixel.
+    -- Shouldn't consume 'p' (could be 'undefined').
+    pixNChannels :: p -> Int
+
+    pixIndex :: p -> Int -> PixelChannel p
 
 -- | Provides an abstraction over the internal representation of the image.
 -- Origin of images is located in the lower left corner.
--- Minimal definition is 'getSize' and ('getPixel' or 'getLinearPixel').
+-- Minimal definition is 'shape' and ('index' or 'linearIndex').
 class Pixel (ImagePixel i) => Image i where
     type ImagePixel i
 
-    getSize :: i -> Size
+    shape :: i -> Size
 
-    getPixel :: i -> Point -> ImagePixel i
-    getPixel img (Point x y) =
-        let Size w _ = getSize img
-        in img `getLinearPixel` (y * w + x)
-    {-# INLINE getPixel #-}
+    -- | Returns the pixel\'s value at 'Z :. y :. x'.
+    index :: i -> Point -> ImagePixel i
+    index img = (img `linearIndex`) . toLinearIndex (shape img)
+    {-# INLINE index #-}
 
     -- | Returns the pixel\'s value as if the image was a single dimension
     -- vector (row-major representation).
-    getLinearPixel :: i -> Int -> ImagePixel i
-    getLinearPixel img ix =
-        let Size w _ = getSize img
-            (y, x)   = ix `quotRem` w
-        in img `getPixel` Point x y
-    {-# INLINE getLinearPixel #-}
+    linearIndex :: i -> Int -> ImagePixel i
+    linearIndex img = (img `index`) . fromLinearIndex (shape img)
+    {-# INLINE linearIndex #-}
 
-    getVector :: i -> Vector (ImagePixel i)
-    getVector img = let Size w h = getSize img
-                    in generate (w * h) (img `getLinearPixel`)
-    {-# INLINE getVector #-}
+    -- | Returns every pixel values as if the image was a single dimension
+    -- vector (row-major representation).
+    vector :: i -> Vector (ImagePixel i)
+    vector img = generate (shapeLength $ shape img) (img `linearIndex`)
+    {-# INLINE vector #-}
 
 type ImageChannel i = PixelChannel (ImagePixel i)
 
@@ -67,16 +71,16 @@ type ImageChannel i = PixelChannel (ImagePixel i)
 class (Pixel (ImagePixel i), Image i) => FromFunction i where
     -- | Calls the given function for each pixel of the constructed image.
     fromFunction :: Size -> (Point -> ImagePixel i) -> i
-    fromFunction size pixel =
-        fromFunctionLine size (const ()) (\_ pt -> pixel pt)
+    fromFunction size f =
+        fromFunctionLine size (const ()) (\_ pt -> f pt)
     {-# INLINE fromFunction #-}
 
     -- | Calls the first function at each line of the image then calls the
     -- second function for each pixel of the constructed image, giving the
     -- value which has been computed at each line.
     fromFunctionLine :: Size -> (Int -> a) -> (a -> Point -> ImagePixel i) -> i
-    fromFunctionLine size line pixel =
-        fromFunction size (\pt@(Point _ y) -> pixel (line y) pt)
+    fromFunctionLine size line f =
+        fromFunction size (\pt@(Z :. y :. _) -> f (line y) pt)
     {-# INLINE fromFunctionLine #-}
 
 -- Manifest images -------------------------------------------------------------
@@ -90,17 +94,17 @@ data Manifest p = Manifest {
 instance (Pixel p, Storable p) => Image (Manifest p) where
     type ImagePixel (Manifest p) = p
 
-    getSize = manifestSize
-    {-# INLINE getSize #-}
+    shape = manifestSize
+    {-# INLINE shape #-}
 
-    Manifest _ vec `getLinearPixel` ix = vec ! ix
-    {-# INLINE getLinearPixel #-}
+    Manifest _ vec `linearIndex` ix = vec ! ix
+    {-# INLINE linearIndex #-}
 
-    getVector = manifestVector
-    {-# INLINE getVector #-}
+    vector = manifestVector
+    {-# INLINE vector #-}
 
 instance (Pixel p, Storable p) => FromFunction (Manifest p) where
-    fromFunctionLine size@(Size w h) line pixel = Manifest size $ create $ do
+    fromFunctionLine size@(Z :. h :. w) line f = Manifest size $ create $ do
         -- Note: create is faster than unfoldrN.
         arr <- new (h * w)
 
@@ -109,7 +113,7 @@ instance (Pixel p, Storable p) => FromFunction (Manifest p) where
                 !lineOffset = y * w
             forM_ (enumFromN 0 w) $ \x -> do
                 let !offset = lineOffset + x
-                    !val    = pixel lineVal (Point x y)
+                    !val    = f lineVal (ix2 y x)
                 write arr offset val
 
         return arr
@@ -130,11 +134,11 @@ data Delayed p = Delayed {
 instance Pixel p => Image (Delayed p) where
     type ImagePixel (Delayed p) = p
 
-    getSize = delayedSize
-    {-# INLINE getSize #-}
+    shape = delayedSize
+    {-# INLINE shape #-}
 
-    getPixel = delayedFun
-    {-# INLINE getPixel #-}
+    index = delayedFun
+    {-# INLINE index #-}
 
 instance Pixel p => FromFunction (Delayed p) where
     fromFunction = Delayed
@@ -142,9 +146,14 @@ instance Pixel p => FromFunction (Delayed p) where
 
 -- Functions -------------------------------------------------------------------
 
+-- | Returns the number of channels of an image.
+nChannels :: Image i => i -> Int
+nChannels img = pixNChannels (pixel img)
+{-# INLINE nChannels #-}
+
 map :: (Image i1, FromFunction i2)
     => (ImagePixel i1 -> ImagePixel i2) -> i1 -> i2
-map f img = fromFunction (getSize img) (f . (img `getPixel`))
+map f img = fromFunction (shape img) (f . (img `index`))
 {-# INLINE map #-}
 
 -- | Delays an image in its delayed representation.
@@ -156,6 +165,13 @@ delay = map id
 compute :: (Image i, Storable (ImagePixel i)) => i -> Manifest (ImagePixel i)
 compute = map id
 {-# INLINE compute #-}
+
+-- | Returns an 'undefined' instance of a pixel of the image. This is sometime
+-- useful to satisfy the type checker as in a call to 'pixNChannels' :
+-- 
+-- > nChannels img = pixNChannels (pixel img)
+pixel :: Image i => i -> ImagePixel i
+pixel _ = undefined
 
 -- Conversion ------------------------------------------------------------------
 

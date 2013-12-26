@@ -1,4 +1,5 @@
-{-# LANGUAGE RecordWildCards, TypeFamilies #-}
+{-# LANGUAGE BangPatterns, RecordWildCards, TypeFamilies, TypeOperators #-}
+
 module Vision.Image.RGBAImage.Type (
       RGBAPixel (..), RGBAImage, RGBADelayed
     ) where
@@ -9,11 +10,11 @@ import Foreign.Storable (Storable (..))
 import Foreign.Ptr (castPtr, plusPtr)
 
 import Vision.Image.Interpolate (Interpolable (..))
-import Vision.Image.Primitive (Rect, Size)
 import Vision.Image.Transform (
       InterpolMethod, crop, resize, horizontalFlip, verticalFlip
     )
 import Vision.Image.Type (Pixel (..), Manifest, Delayed)
+import Vision.Primitive (Rect, Size)
 
 data RGBAPixel = RGBAPixel {
       rgbaRed   :: {-# UNPACK #-} !Word8, rgbaGreen :: {-# UNPACK #-} !Word8
@@ -31,14 +32,14 @@ instance Storable RGBAPixel where
     alignment _ = alignment (undefined :: Word8)
     {-# INLINE alignment #-}
 
-    peek ptr =
-        let ptr' = castPtr ptr
+    peek !ptr =
+        let !ptr' = castPtr ptr
         in RGBAPixel <$> peek ptr'               <*> peek (ptr' `plusPtr` 1)
                      <*> peek (ptr' `plusPtr` 2) <*> peek (ptr' `plusPtr` 3)
     {-# INLINE peek #-}
 
-    poke ptr RGBAPixel { .. } =
-        let ptr' = castPtr ptr
+    poke !ptr RGBAPixel { .. } =
+        let !ptr' = castPtr ptr
         in poke ptr'               rgbaRed   >>
            poke (ptr' `plusPtr` 1) rgbaGreen >>
            poke (ptr' `plusPtr` 2) rgbaBlue  >>
@@ -46,10 +47,16 @@ instance Storable RGBAPixel where
     {-# INLINE poke #-}
 
 instance Pixel RGBAPixel where
-    type PixelChannel RGBAPixel = Word8
+    type PixelChannel RGBAPixel    = Word8
 
-    nChannels _ = 4
-    {-# INLINE nChannels #-}
+    pixNChannels _ = 4
+    {-# INLINE pixNChannels #-}
+
+    pixIndex !(RGBAPixel r _ _ _) 0 = r
+    pixIndex !(RGBAPixel _ g _ _) 1 = g
+    pixIndex !(RGBAPixel _ _ b _) 2 = b
+    pixIndex !(RGBAPixel _ _ _ a) _ = a
+    {-# INLINE pixIndex #-}
 
 instance Interpolable RGBAPixel where
     interpol f a b =

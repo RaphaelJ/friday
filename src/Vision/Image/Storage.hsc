@@ -28,10 +28,10 @@ import Foreign.Ptr (Ptr, castPtr)
 import Foreign.Storable (Storable, peek)
 
 import Vision.Image.GreyImage (GreyImage, GreyPixel)
-import Vision.Image.Primitive (Size (..))
 import Vision.Image.RGBAImage (RGBAImage, RGBAPixel)
 import Vision.Image.RGBImage (RGBImage, RGBPixel)
-import Vision.Image.Type (Pixel (..), Manifest (..))
+import Vision.Image.Type (Manifest (..), nChannels)
+import Vision.Primitive (Z (..), (:.) (..), ix2)
 
 data StorageImage = GreyStorage GreyImage
                   | RGBAStorage RGBAImage | RGBStorage RGBImage
@@ -276,7 +276,7 @@ fromDevil (ImageName name) = do
     format <- ilGetInteger il_IMAGE_FORMAT
     w      <- ilGetInteger il_IMAGE_WIDTH
     h      <- ilGetInteger il_IMAGE_HEIGHT
-    let !size = Size w h
+    let !size = ix2 h w
 
     case format of
         _ | format == il_RGB -> do
@@ -300,7 +300,7 @@ fromDevil (ImageName name) = do
 
     -- Converts the C vector of unsigned bytes to a garbage collected 'Vector'
     -- inside a 'Manifest' image.
-    toManifest size@(Size w h) = lift $ do
+    toManifest size@(Z :. h :. w) = lift $ do
         pixels        <- castPtr <$> ilGetDataC
         managedPixels <- newForeignPtr pixels (with name (ilDeleteImagesC 1))
         return $! Manifest size (unsafeFromForeignPtr0 managedPixels (w * h))
@@ -327,16 +327,12 @@ toDevil storImg =
                     RGBAStorage img -> writeManifest img il_RGBA
                     RGBStorage  img -> writeManifest img il_RGB
   where
-    writeManifest img@(Manifest (Size w h) vec) format =
+    writeManifest img@(Manifest (Z :. h :. w) vec) format =
         (unsafeWith vec $ \p ->
             ilTexImageC (fromIntegral w) (fromIntegral h) 1
-                        (fromIntegral $ nChannels (undefined `isPixelOf` img))
+                        (fromIntegral $ nChannels img)
                         format il_UNSIGNED_BYTE (castPtr p)
         ) <?> FailedToDevil
-
-    -- Constraint for the type inferer.
-    isPixelOf :: Pixel p => p -> Manifest p -> p
-    p `isPixelOf` _ = p
 
 foreign import ccall unsafe "ilSaveImage" ilSaveImageC
     :: CString -> IO ILboolean

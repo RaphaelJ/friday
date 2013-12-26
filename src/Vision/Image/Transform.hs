@@ -8,8 +8,8 @@ module Vision.Image.Transform (
 import Data.RatioInt (RatioInt, (%))
 
 import Vision.Image.Interpolate (Interpolable, bilinearInterpol)
-import Vision.Image.Primitive (Point (..), RPoint (..), Rect (..), Size (..))
 import Vision.Image.Type (Image (..), FromFunction (..))
+import Vision.Primitive (Z (..), (:.) (..), RPoint (..), Rect (..), Size, ix2)
 
 -- | Defines the set of possible methods for pixel interpolations when looking
 -- for a pixel at floating point coordinates.
@@ -23,15 +23,15 @@ data InterpolMethod =
 crop :: (Image i1, FromFunction i2, ImagePixel i1 ~ ImagePixel i2)
      => i1 -> Rect -> i2
 crop !img !(Rect rx ry rw rh) =
-    fromFunction (Size rw rh) $ \(Point x y) ->
-        img `getPixel` Point (rx + x) (ry + y)
+    fromFunction (Z :. rh :. rw) $ \(Z :. y :. x) ->
+        img `index` ix2 (ry + y) (rx + x)
 {-# INLINABLE crop #-}
 
 -- | Resizes the 'Image' using the given interpolation method.
 resize :: (Image i1, Interpolable (ImagePixel i1), FromFunction i2
           , ImagePixel i1 ~ ImagePixel i2)
        => i1 -> InterpolMethod -> Size -> i2
-resize img !method !size'@(Size w' h') =
+resize img !method !size'@(Z :. h' :. w') =
     case method of
         TruncateInteger ->
             let !widthRatio   = double w / double w'
@@ -40,11 +40,11 @@ resize img !method !size'@(Size w' h') =
                 !heightMiddle = (heightRatio - 1) / 2
                 line !y' = truncate $ double y' * heightRatio + heightMiddle
                 {-# INLINE line #-}
-                pixel !y !(Point x' _) =
+                f !y !(Z :. _ :. x') =
                     let !x = truncate $ double x' * widthRatio + widthMiddle
-                    in img `getPixel` Point x y
-                {-# INLINE pixel #-}
-            in fromFunctionLine size' line pixel
+                    in img `index` ix2 y x
+                {-# INLINE f #-}
+            in fromFunctionLine size' line f
         NearestNeighbor ->
             let !widthRatio   = double w / double w'
                 !widthMiddle  = (widthRatio - 1) / 2
@@ -52,11 +52,11 @@ resize img !method !size'@(Size w' h') =
                 !heightMiddle = (heightRatio - 1) / 2
                 line !y' = round $ double y' * heightRatio + heightMiddle
                 {-# INLINE line #-}
-                pixel !y !(Point x' _) =
+                f !y !(Z :. _ :. x') =
                     let !x = round $ double x' * widthRatio + widthMiddle
-                    in img `getPixel` Point x y
-                {-# INLINE pixel #-}
-            in fromFunctionLine size' line pixel
+                    in img `index` ix2 y x
+                {-# INLINE f #-}
+            in fromFunctionLine size' line f
         Bilinear ->
             let !widthRatio  = w % w'
                 !widthMiddle = (widthRatio - 1) / 2
@@ -70,25 +70,25 @@ resize img !method !size'@(Size w' h') =
                 line !y' = bound maxHeight $   ratio y' * heightRatio
                                              + heightMiddle
                 {-# INLINE line #-}
-                pixel !y !(Point x' _) =
+                f !y !(Z :. _ :. x') =
                     let !x = bound maxWidth $   ratio x' * widthRatio
                                               + widthMiddle
                     in img `bilinearInterpol` RPoint x y
-                {-# INLINE pixel #-}
-            in fromFunctionLine size' line pixel
+                {-# INLINE f #-}
+            in fromFunctionLine size' line f
   where
-    !(Size w h) = getSize img
+    !(Z :. h :. w) = shape img
 {-# INLINABLE resize #-}
 
 -- | Reverses the image horizontally.
 horizontalFlip :: (Image i1, FromFunction i2, ImagePixel i1 ~ ImagePixel i2)
                => i1 -> i2
 horizontalFlip !img =
-    fromFunction size $ \(Point x' y) ->
+    fromFunction size $ \(Z :. y :. x') ->
         let !x = maxX - x'
-        in img `getPixel` Point x y
+        in img `index` ix2 y x
   where
-    !size@(Size w _) = getSize img
+    !size@(Z :. _ :. w) = shape img
     !maxX = w - 1
 {-# INLINABLE horizontalFlip #-}
 
@@ -96,11 +96,11 @@ horizontalFlip !img =
 verticalFlip :: (Image i1, FromFunction i2, ImagePixel i1 ~ ImagePixel i2)
              => i1 -> i2
 verticalFlip !img =
-    let line y' = maxY - y'
-        pixel y (Point x _) = img `getPixel` Point x y
-    in fromFunctionLine size line pixel
+    let line !y' = maxY - y'
+        f !y !(Z :. _ :. x) = img `index` ix2 y x
+    in fromFunctionLine size line f
   where
-    !size@(Size _ h) = getSize img
+    !size@(Z :. h :. _) = shape img
     !maxY = h - 1
 {-# INLINABLE verticalFlip #-}
 

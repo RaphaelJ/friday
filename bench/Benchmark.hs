@@ -2,90 +2,99 @@
 import Criterion.Main
 import Data.Int
 
-import Vision.Image
-import Vision.Histogram
+import Vision.Image (
+      GreyImage, HSVImage, RGBAImage, RGBImage, RGBDelayed, InterpolMethod
+    )
+import qualified Vision.Image as I
+import Vision.Histogram (Histogram)
+import qualified Vision.Histogram as H
+import Vision.Primitive
 
 path :: FilePath
 path = "bench/image.jpg"
 
 main :: IO ()
 main = do
-    Right io <- load path Nothing
-    let !rgb        = convert io    :: RGBImage
-        !rgba       = convert rgb   :: RGBAImage
-        !grey       = convert rgb   :: GreyImage
-        !hist       = calcHist grey :: Histogram Int32
-        !(Size w h) = getSize rgb
+    Right io <- I.load path Nothing
+    let !rgb           = I.convert io             :: RGBImage
+        !rgba          = I.convert rgb            :: RGBAImage
+        !grey          = I.convert rgb            :: GreyImage
+        !hist          = H.histogram grey Nothing :: H.Histogram DIM1 Int32
+        !(Z :. h :. w) = I.shape rgb
 
     defaultMain [
           bgroup "IO" [
-              bench "load" $ whnfIO $ load path Nothing
+              bench "load" $ whnfIO $ I.load path Nothing
             ]
         , bgroup "conversion" [
               bench "RGB to grey" $
-                whnf (convert :: RGBImage -> GreyImage) rgb
+                whnf (I.convert :: RGBImage  -> GreyImage) rgb
             , bench "RGBA to grey" $
-                whnf (convert :: RGBAImage -> GreyImage) rgba
-            , bench "RGB to RGBA" $
-                whnf (convert :: RGBImage -> RGBAImage) rgb
+                whnf (I.convert :: RGBAImage -> GreyImage) rgba
             , bench "RGBA to RGB" $
-                whnf (convert :: RGBAImage -> RGBImage) rgba
+                whnf (I.convert :: RGBAImage -> RGBImage)  rgba
+            , bench "RGB to RGBA" $
+                whnf (I.convert :: RGBImage  -> RGBAImage) rgb
+            , bench "RGB to HSV" $
+                whnf (I.convert :: RGBImage  -> HSVImage)  rgb
             ]
         , bgroup "crop" [
               bench "RGB" $
-                whnf (crop rgb :: Rect -> RGBImage)
+                whnf (I.crop rgb :: Rect -> RGBImage)
                      (Rect (w `quot` 2) (h `quot` 2) (w `quot` 2) (h `quot` 2))
             ]
         , bgroup "resize" [
               bench "truncate-integer 50%" $
-                whnf (resize' rgb TruncateInteger)
-                     (Size (w `quot` 2) (h `quot` 2))
+                whnf (resize' rgb I.TruncateInteger)
+                     (Z :. (h `quot` 2) :. (w `quot` 2))
             , bench "truncate-integer 200%" $
-                whnf (resize' rgb TruncateInteger) (Size (w * 2) (h * 2))
+                whnf (resize' rgb I.TruncateInteger) (Z :. (h * 2) :. (w * 2))
             , bench "nearest-neighbor 50%" $
-                whnf (resize' rgb NearestNeighbor)
-                     (Size (w `quot` 2) (h `quot` 2))
+                whnf (resize' rgb I.NearestNeighbor)
+                     (Z :. (h `quot` 2) :. (w `quot` 2))
             , bench "nearest-neighbor 200%" $
-                whnf (resize' rgb NearestNeighbor) (Size (w * 2) (h * 2))
+                whnf (resize' rgb I.NearestNeighbor) (Z :. (h * 2) :. (w * 2))
             , bench "bilinear 50%" $
-                whnf (resize' rgb Bilinear)
-                     (Size (w `quot` 2) (h `quot` 2))
+                whnf (resize' rgb I.Bilinear)
+                     (Z :. (h `quot` 2) :. (w `quot` 2))
             , bench "bilinear 200%" $
-                whnf (resize' rgb Bilinear) (Size (w * 2) (h * 2))
+                whnf (resize' rgb I.Bilinear) (Z :. (h * 2) :. (w * 2))
             ]
         , bgroup "flip" [
-              bench "horizontal" $ whnf (horizontalFlip :: RGBImage -> RGBImage)
-                                        rgb
-            , bench "vertical"   $ whnf (verticalFlip :: RGBImage -> RGBImage)
-                                        rgb
+              bench "horizontal" $
+                whnf (I.horizontalFlip :: RGBImage -> RGBImage) rgb
+            , bench "vertical"   $
+                whnf (I.verticalFlip :: RGBImage -> RGBImage)   rgb
             ]
         , bgroup "histogram" [
-              bench "calculate Int32 histogram" $
-                    whnf (calcHist :: GreyImage -> Histogram Int32)  grey
-            , bench "calculate Double histogram" $
-                    whnf (calcHist :: GreyImage -> Histogram Double) grey
-            , bench "cumulative Int32 histogram" $
-                    whnf (cumulatHist :: Histogram Int32 -> Histogram Int32)
-                         hist
+              bench "calculate 1D histogram of a grey image" $
+                whnf (\img -> H.histogram img Nothing :: Histogram DIM1 Int32)
+                     grey
+            , bench "calculate 3D histogram of a RGB image" $
+                whnf (\img -> H.histogram img Nothing :: Histogram DIM3 Int32)
+                     rgb
+            , bench "calculate 3D histogram (4 regions) of a grey image" $
+                whnf (\img -> H.histogram2D img (Z :. 256 :. 2 :. 2)
+                              :: Histogram DIM3 Int32)
+                     grey
+
+            , bench "cumulative Int32 histogram" $ whnf H.cumulative hist
 
             , bench "normalize histogram" $
-                    whnf (normalizeHist :: Histogram Int32 -> Histogram Double)
-                         hist
+                whnf (\hist' -> H.normalize hist' 1 :: Histogram DIM1 Double)
+                     hist
             , bench "equalize grey image" $
-                    whnf (equalizeImage :: GreyImage -> GreyImage) grey
+                whnf (H.equalizeImage :: GreyImage -> GreyImage) grey
 
             , bench "correlation comparison" $
-                    whnf (compareCorrel hist :: Histogram Int32 -> Double)
-                         hist
+                whnf (H.compareCorrel hist :: Histogram DIM1 Int32 -> Double)
+                     hist
             , bench "chi-square comparison" $
-                    whnf (compareChi hist :: Histogram Int32 -> Double)
-                         hist
+                whnf (H.compareChi hist :: Histogram DIM1 Int32 -> Double) hist
             , bench "intersection comparison" $
-                    whnf (compareIntersect hist :: Histogram Int32 -> Int32)
-                         hist
-            , bench "match comparison" $
-                    whnf (compareMatch hist :: Histogram Int32 -> Int32)
-                         hist
+                whnf (H.compareIntersect hist :: Histogram DIM1 Int32 -> Int32)
+                     hist
+            , bench "EMD comparison" $ whnf (H.compareEMD hist) hist
             ]
         , bgroup "application" [
               bench "miniature 150x150" $ whnf miniature rgb
@@ -93,13 +102,14 @@ main = do
         ]
   where
     resize' :: RGBImage -> InterpolMethod -> Size -> RGBImage
-    resize' = resize
+    resize' = I.resize
     {-# INLINE resize' #-}
 
     miniature !rgb =
-        let Size w h = getSize rgb
-        in if w > h then resizeSquare $ crop rgb (Rect ((w - h) `quot` 2) 0 h h)
-                    else resizeSquare $ crop rgb (Rect 0 ((h - w) `quot` 2) w w)
+        let Z :. h :. w = I.shape rgb
+        in if w > h
+              then resizeSquare $ I.crop rgb (Rect ((w - h) `quot` 2) 0 h h)
+              else resizeSquare $ I.crop rgb (Rect 0 ((h - w) `quot` 2) w w)
 
     resizeSquare :: RGBDelayed -> RGBImage
-    resizeSquare !rgb = resize rgb Bilinear (Size 150 150)
+    resizeSquare !rgb = I.resize rgb I.Bilinear (Z :. 150 :. 150)

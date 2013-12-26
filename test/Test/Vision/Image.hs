@@ -11,19 +11,21 @@ import Test.QuickCheck (Arbitrary (..), choose)
 
 import Vision.Image (
       Image (..), Interpolable, FromFunction (..), Manifest (..), Delayed (..)
-    , Size (..), GreyImage, GreyPixel (..), RGBAImage, RGBAPixel (..)
+    , GreyImage, GreyPixel (..), RGBAImage, RGBAPixel (..)
     , RGBADelayed, RGBImage, RGBPixel (..), InterpolMethod (..)
     , convert, resize, horizontalFlip, verticalFlip
     )
+import Vision.Primitive (Z (..), (:.) (..), Size)
 
 maxImageSize :: Int
 maxImageSize = 100
 
 instance (Arbitrary p, Storable p) => Arbitrary (Manifest p) where
     arbitrary = do
-        size <- Size <$> choose (1, maxImageSize) <*> choose (1, maxImageSize)
-        vec  <- replicateM (sWidth size * sHeight size) arbitrary
-        return $ Manifest size vec
+        w <- choose (1, maxImageSize)
+        h <- choose (1, maxImageSize)
+        vec  <- replicateM (w * h) arbitrary
+        return $ Manifest (Z :. h :. w) vec
 
 instance Arbitrary GreyPixel where
     arbitrary = GreyPixel <$> arbitrary
@@ -77,9 +79,9 @@ propRGBRGBA img =
 propImageResize :: (FromFunction i, Interpolable (ImagePixel i), Eq i)
                 => i -> Bool
 propImageResize img =
-    img == resize' (resize' img (Size (w * 2) (h * 2))) size
+    img == resize' (resize' img (Z :. (h * 2) :. (w * 2))) size
   where
-    size@(Size w h) = getSize img
+    size@(Z :. h :. w) = shape img
 
     resize' :: (FromFunction i, Interpolable (ImagePixel i)) => i -> Size -> i
     resize' img' = resize img' NearestNeighbor

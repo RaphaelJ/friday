@@ -8,8 +8,8 @@ module Vision.Image.Interpolate (
 
 import Data.RatioInt (RatioInt, denominator, numerator)
 
-import Vision.Image.Primitive (Point (..), RPoint (..))
 import Vision.Image.Type (Pixel (..), Image (..))
+import Vision.Primitive (RPoint (..), ix2)
 
 -- | Provides a way to apply the interpolation to every component of a pixel.
 class Integral (PixelChannel p) => Interpolable p where
@@ -39,10 +39,10 @@ img `bilinearInterpol` RPoint x y
             (!y1, !deltaY1) = properFraction y
             !x2 = x1 + 1
             !y2 = y1 + 1
-            !a = img `getPixel` Point x1 y1
-            !b = img `getPixel` Point x2 y1
-            !c = img `getPixel` Point x1 y2
-            !d = img `getPixel` Point x2 y2
+            !a = img `index` ix2 y1 x1
+            !b = img `index` ix2 y1 x2
+            !c = img `index` ix2 y2 x1
+            !d = img `index` ix2 y2 x2
 
             -- Computes the relative distance to the four points.
             !deltaX2 = compl deltaX1
@@ -55,19 +55,19 @@ img `bilinearInterpol` RPoint x y
         let (!x1, !deltaX1) = properFraction x
             !y1     = truncate y
             !x2     = x1 + 1
-            !a = img `getPixel` Point x1 y1
-            !b = img `getPixel` Point x2 y1
+            !a = img `index` ix2 y1 x1
+            !b = img `index` ix2 y1 x2
             !deltaX2 = compl deltaX1
         in interpol (interpolChannel deltaX1 deltaX2) a b
     | not integralY =
         let !x1     = truncate x
             (!y1, !deltaY1) = properFraction y
             !y2     = y1 + 1
-            !a      = img `getPixel` Point x1 y1
-            !c      = img `getPixel` Point x1 y2
+            !a      = img `index` ix2 y1 x1
+            !c      = img `index` ix2 y2 x1
             !deltaY2 = compl deltaY1
         in interpol (interpolChannel deltaY1 deltaY2) a c
-    | otherwise = img `getPixel` Point (numerator x) (numerator y)
+    | otherwise = img `index` ix2 (numerator y) (numerator x)
 --     | x1 >= 0 && y1 >= 0 && (Z :. y2 :. x2) `inImage` img =
 --         error "Invalid index"
   where

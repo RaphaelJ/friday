@@ -32,19 +32,23 @@ library
     exposed-modules:    Vision.Histogram
                         Vision.Image
                         Vision.Image.GreyImage
-                        Vision.Image.GreyImage.Type
                         Vision.Image.GreyImage.Conversion
+                        Vision.Image.GreyImage.Type
+                        Vision.Image.HSVImage
+                        Vision.Image.HSVImage.Conversion
+                        Vision.Image.HSVImage.Type
                         Vision.Image.Interpolate
-                        Vision.Image.Primitive
                         Vision.Image.RGBAImage
-                        Vision.Image.RGBAImage.Type
                         Vision.Image.RGBAImage.Conversion
+                        Vision.Image.RGBAImage.Type
                         Vision.Image.RGBImage
-                        Vision.Image.RGBImage.Type
                         Vision.Image.RGBImage.Conversion
+                        Vision.Image.RGBImage.Type
                         Vision.Image.Storage
                         Vision.Image.Transform
                         Vision.Image.Type
+                        Vision.Primitive
+                        Vision.Primitive.Shape
 
     ghc-options:        -Wall -O2
     hs-source-dirs:     src/

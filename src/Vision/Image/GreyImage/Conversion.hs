@@ -33,9 +33,9 @@ rgbToGrey !r !g !b =   (redLookupTable   V.! int r)
 {-# INLINE rgbToGrey #-}
 
 redLookupTable, greenLookupTable, blueLookupTable :: V.Vector Word8
-redLookupTable   = V.generate 256 (\val -> round $ double val * 0.30)
-greenLookupTable = V.generate 256 (\val -> round $ double val * 0.59)
-blueLookupTable  = V.generate 256 (\val -> round $ double val * 0.11)
+redLookupTable   = V.generate 256 (\val -> round $ double val * 0.299)
+greenLookupTable = V.generate 256 (\val -> round $ double val * 0.587)
+blueLookupTable  = V.generate 256 (\val -> round $ double val * 0.114)
 
 double :: Integral a => a -> Double
 double = fromIntegral
