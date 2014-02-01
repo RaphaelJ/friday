@@ -3,14 +3,14 @@
 
 -- | Uses the DevIL C library to read and write images from and to files.
 --
--- /Note:/ As the underlier DevIL library is *not* tread-safe, the user must
--- ensures that two instances of the 'load' or/and 'save' functions can't be
--- called by two concurrent threads at the same time.
+-- /Note:/ As the underlier DevIL library is *not* tread-safe, there is a global
+-- lock which will prevent two load/save calls to be performed at the same time.
 module Vision.Image.Storage (
       StorageImage (..), StorageError (..), load, loadBS, save
     ) where
 
 import Control.Applicative ((<$>))
+import Control.Concurrent.MVar (MVar, newMVar, takeMVar, putMVar)
 import Control.Monad (when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Error (Error (..), ErrorT, runErrorT, throwError)
@@ -26,6 +26,7 @@ import Foreign.Marshal.Alloc (alloca)
 import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr, castPtr)
 import Foreign.Storable (Storable, peek)
+import System.IO.Unsafe (unsafePerformIO)
 
 import Vision.Image.GreyImage (GreyImage, GreyPixel)
 import Vision.Image.RGBAImage (RGBAImage, RGBAPixel)
@@ -117,9 +118,10 @@ instance Show StorageError where
 -- If no image type is given, type will be determined automatically.
 load :: FilePath -> Maybe ImageType -> IO (Either StorageError StorageImage)
 load path mType =
-    bindAndLoad $
-        withCString path $ \cPath ->
-            ilLoadC (toIlType mType) cPath
+    lockDevil $
+        bindAndLoad $
+            withCString path $ \cPath ->
+                ilLoadC (toIlType mType) cPath
 
 -- | Reads an image into a manifest vector from a strict 'ByteString'.
 -- 
@@ -129,9 +131,44 @@ loadBS :: BS.ByteString -> Maybe ImageType
        -> IO (Either StorageError StorageImage)
 loadBS _  (Just TIFF) = return $ Left FailedToLoad
 loadBS bs mType       =
-    bindAndLoad $
-        BS.unsafeUseAsCStringLen bs $ \(ptr, len) ->
-            ilLoadLC (toIlType mType) ptr (fromIntegral len)
+    lockDevil $
+        bindAndLoad $
+            BS.unsafeUseAsCStringLen bs $ \(ptr, len) ->
+                ilLoadLC (toIlType mType) ptr (fromIntegral len)
+
+-- | Saves the image to the given file.
+-- 
+-- /Note:/ The image type is determined by the filename extension.
+-- Will fail if the file already exists.
+save :: (Convertible i StorageImage) => FilePath -> i -> IO (Maybe StorageError)
+save path img = lockDevil $ do
+    res <- runErrorT $ do
+        ilInit
+        name <- ilGenImageName
+        ilBindImage name
+
+        toDevil $ convert img
+        ilSaveImage path
+
+        ilDeleteImage name
+
+    return $ case res of Right () -> Nothing
+                         Left err -> Just err
+
+-- C wrappers and helpers ------------------------------------------------------
+
+devilLock :: MVar ()
+devilLock = unsafePerformIO $ newMVar ()
+{-# NOINLINE devilLock #-}
+
+-- | Uses a global lock ('devilLock') to prevent two threads to call the 
+-- library at the same time.
+lockDevil :: IO a -> IO a
+lockDevil action = do
+    takeMVar devilLock
+    ret <- action
+    putMVar devilLock ()
+    return ret
 
 -- | Allocates a new image name, executes the given action to load the image
 -- and then converts it into its Haskell representation.
@@ -176,27 +213,6 @@ toIlType (Just TGA)      = (#const IL_TGA)
 toIlType (Just TIFF)     = (#const IL_TIF)
 toIlType (Just RAW)      = (#const IL_RAW)
 toIlType Nothing         = (#const IL_TYPE_UNKNOWN)
-
--- | Saves the image to the given file.
--- 
--- /Note:/ The image type is determined by the filename extension.
--- Will fail if the file already exists.
-save :: (Convertible i StorageImage) => FilePath -> i -> IO (Maybe StorageError)
-save path img = do
-    res <- runErrorT $ do
-        ilInit
-        name <- ilGenImageName
-        ilBindImage name
-
-        toDevil $ convert img
-        ilSaveImage path
-
-        ilDeleteImage name
-
-    return $ case res of Right () -> Nothing
-                         Left err -> Just err
-
--- C wrappers and helpers ------------------------------------------------------
 
 #include "IL/il.h"
 

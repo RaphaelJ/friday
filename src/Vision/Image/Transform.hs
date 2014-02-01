@@ -31,7 +31,7 @@ crop !img !(Rect rx ry rw rh) =
 resize :: (Image i1, Interpolable (ImagePixel i1), FromFunction i2
           , ImagePixel i1 ~ ImagePixel i2)
        => i1 -> InterpolMethod -> Size -> i2
-resize img !method !size'@(Z :. h' :. w') =
+resize !img !method !size'@(Z :. h' :. w') =
     case method of
         TruncateInteger ->
             let !widthRatio   = double w / double w'
