@@ -6,7 +6,7 @@
 -- /Note:/ As the underlier DevIL library is *not* tread-safe, there is a global
 -- lock which will prevent two load/save calls to be performed at the same time.
 module Vision.Image.Storage (
-      StorageImage (..), StorageError (..), load, loadBS, save
+      ImageType (..), StorageImage (..), StorageError (..), load, loadBS, save
     ) where
 
 import Control.Applicative ((<$>))
@@ -43,7 +43,7 @@ data ImageType = BMP | CUT
                | DoomFlat    -- ^ Doom flat texture (floor).
                | GIF | ICO | JPG
                | LIF         -- ^ Homeworld (.lif).
-               | MNG | PCD | PCX | PIC | PNG 
+               | MNG | PCD | PCX | PIC | PNG
                | PNM         -- ^ Portable AnyMap (.pbm, .pgm or .ppm).
                | PSD | PSP | SGI | TGA | TIFF
                | RAW         -- Raw data with a 13-byte header.
@@ -107,14 +107,14 @@ instance Show StorageError where
     show FailedToLoad     = "Failed to load the image."
     show FailedToHaskell  =
         "Failed to convert the loaded image to its Haskell representation."
-    show FailedToDevil    = 
+    show FailedToDevil    =
         "Failed to write the image content through the inner DevIL library."
     show FailedToSave     = "Could not open the file for writing."
     show (UnknownError (Just msg)) = msg
     show (UnknownError Nothing   ) = "Unknown error."
 
 -- | Reads an image into a manifest vector from a file.
--- 
+--
 -- If no image type is given, type will be determined automatically.
 load :: FilePath -> Maybe ImageType -> IO (Either StorageError StorageImage)
 load path mType =
@@ -124,7 +124,7 @@ load path mType =
                 ilLoadC (toIlType mType) cPath
 
 -- | Reads an image into a manifest vector from a strict 'ByteString'.
--- 
+--
 -- If no image type is given, type will be determined automatically.
 -- TIFF images are not supported.
 loadBS :: BS.ByteString -> Maybe ImageType
@@ -137,7 +137,7 @@ loadBS bs mType       =
                 ilLoadLC (toIlType mType) ptr (fromIntegral len)
 
 -- | Saves the image to the given file.
--- 
+--
 -- /Note:/ The image type is determined by the filename extension.
 -- Will fail if the file already exists.
 save :: (Convertible i StorageImage) => FilePath -> i -> IO (Maybe StorageError)
@@ -161,7 +161,7 @@ devilLock :: MVar ()
 devilLock = unsafePerformIO $ newMVar ()
 {-# NOINLINE devilLock #-}
 
--- | Uses a global lock ('devilLock') to prevent two threads to call the 
+-- | Uses a global lock ('devilLock') to prevent two threads to call the
 -- library at the same time.
 lockDevil :: IO a -> IO a
 lockDevil action = do
