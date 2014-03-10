@@ -16,12 +16,14 @@ path = "bench/image.jpg"
 main :: IO ()
 main = do
     Right io <- I.load path Nothing
-    let !rgb           = I.convert io             :: RGBImage
+    let !(Z :. h :. w) = I.shape rgb
+        !rgb           = I.convert io             :: RGBImage
         !rgba          = I.convert rgb            :: RGBAImage
         !grey          = I.convert rgb            :: GreyImage
         !hsv           = I.convert rgb            :: HSVImage
         !hist          = H.histogram grey Nothing :: H.Histogram DIM1 Int32
-        !(Z :. h :. w) = I.shape rgb
+        !hist2D        = H.histogram2D grey (ix3 256 3 3)
+                                                  :: H.Histogram DIM3 Int32
 
     defaultMain [
           bgroup "IO" [
@@ -76,10 +78,12 @@ main = do
             , bench "calculate 3D histogram of a RGB image" $
                 whnf (\img -> H.histogram img Nothing :: Histogram DIM3 Int32)
                      rgb
-            , bench "calculate 3D histogram (4 regions) of a grey image" $
-                whnf (\img -> H.histogram2D img (Z :. 256 :. 2 :. 2)
+            , bench "calculate 3D histogram (9 regions) of a grey image" $
+                whnf (\img -> H.histogram2D img (Z :. 256 :. 3 :. 3)
                               :: Histogram DIM3 Int32)
                      grey
+
+            , bench "reduce an Int32 histogram" $ whnf H.reduce hist2D
 
             , bench "cumulative Int32 histogram" $ whnf H.cumulative hist
 

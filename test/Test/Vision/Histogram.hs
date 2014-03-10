@@ -13,7 +13,7 @@ import Test.QuickCheck (Arbitrary (..), Positive, getPositive)
 import Vision.Histogram
 import Vision.Image (GreyImage)
 import qualified Vision.Image as I
-import Vision.Primitive (Z (..), (:.) (..), DIM1)
+import Vision.Primitive (Z (..), (:.) (..), DIM1, ix3)
 import Test.Vision.Image ()
 
 instance (Arbitrary (Positive p), Bounded p, Integral p, V.Storable p)
@@ -26,6 +26,10 @@ instance (Arbitrary (Positive p), Bounded p, Integral p, V.Storable p)
 tests :: [Test]
 tests = [
       testProperty "Sum of bins equals the number of pixels" propCalcHist
+
+    , testProperty "The reduction of a 2D histogram gives the linear one."
+                   propReduceHist
+
     , testProperty "Cumulative histogram last bin equals original's sum"
                    propCumulatHist
 
@@ -50,6 +54,14 @@ propCalcHist img =
     let Z :. h :. w     = I.shape img
         Histogram _ vec = histogram img Nothing
     in V.sum vec == w * h
+
+-- | Checks the identity @histogram == reduce . histogram2D@.
+propReduceHist :: GreyImage -> Bool
+propReduceHist img =
+    let Z :. h :. w = I.shape img
+        hist1 = histogram img Nothing :: Histogram DIM1 Int32
+        hist2 = reduce (histogram2D img (ix3 256 h w))
+    in hist1 == hist2
 
 -- | Checks if the last bin of the cumulative histogram equals the sum of the
 -- values of the original histogram.
