@@ -11,7 +11,7 @@ import Test.QuickCheck (Arbitrary (..), choose)
 
 import Vision.Image (
       Image (..), Interpolable, FromFunction (..), Manifest (..), Delayed (..)
-    , GreyImage, GreyPixel (..), RGBAImage, RGBAPixel (..)
+    , GreyImage, GreyPixel (..), HSVPixel, RGBAImage, RGBAPixel (..)
     , RGBADelayed, RGBImage, RGBPixel (..), InterpolMethod (..)
     , convert, resize, horizontalFlip, verticalFlip
     )
@@ -41,6 +41,7 @@ tests :: [Test]
 tests = [
       testGroup "Conversions identities" [
           testProperty "RGB to/from RGBA" $ propRGBRGBA
+        , testProperty "RGB to/from HSV"  $ propRGBHSV
         ]
     , testGroup "Nearest-neighbor resize" [
           testProperty "Grey"
@@ -73,6 +74,18 @@ propRGBRGBA :: RGBImage -> Bool
 propRGBRGBA img =
     let img' = convert (convert img :: RGBADelayed) :: RGBImage
     in img == img'
+
+-- | Tests if the conversions between RGB and HSV images give the same images.
+propRGBHSV :: RGBPixel -> Bool
+propRGBHSV pix =
+    same pix pix'
+  where
+    pix' = convert (convert pix :: HSVPixel) :: RGBPixel
+
+    err = 9
+
+    same (RGBPixel r g b) (RGBPixel r' g' b') =
+        abs (r - r') + abs (g - g') + abs (b - b') <= err
 
 -- | Tests if by increasing the size of the image by a factor of two and then
 -- reducing by a factor of two give the original image.

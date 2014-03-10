@@ -19,6 +19,7 @@ main = do
     let !rgb           = I.convert io             :: RGBImage
         !rgba          = I.convert rgb            :: RGBAImage
         !grey          = I.convert rgb            :: GreyImage
+        !hsv           = I.convert rgb            :: HSVImage
         !hist          = H.histogram grey Nothing :: H.Histogram DIM1 Int32
         !(Z :. h :. w) = I.shape rgb
 
@@ -37,6 +38,8 @@ main = do
                 whnf (I.convert :: RGBImage  -> RGBAImage) rgb
             , bench "RGB to HSV" $
                 whnf (I.convert :: RGBImage  -> HSVImage)  rgb
+            , bench "HSV to RGB" $
+                whnf (I.convert :: HSVImage  -> RGBImage)  hsv
             ]
         , bgroup "crop" [
               bench "RGB" $

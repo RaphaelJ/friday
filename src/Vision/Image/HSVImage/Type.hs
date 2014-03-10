@@ -22,13 +22,13 @@ data HSVPixel = HSVPixel {
     } deriving (Eq, Show)
 
 -- | 24 bits (3 * 8 bits) HSV image.
--- The Hue value is in [0; 179], Saturation in [0; 255] and value in [0; 255].
+-- The Hue value is in [0..179], Saturation in [0..255] and Value in [0..255].
 --
 -- This image type is more respectful to human eye perception of colors and can
--- be converted (using 'converted') from 'RGBImage's.
+-- be converted (using 'convert') from 'RGBImage's.
 -- Uses
--- <http://docs.opencv.org/modules/imgproc/doc/miscellaneous_transformations.html>
--- to convert from RGB.
+-- <http://en.wikipedia.org/wiki/HSL_and_HSV>
+-- to convert from and to RGB.
 type HSVImage = Manifest HSVPixel
 
 type HSVDelayed = Delayed HSVPixel
