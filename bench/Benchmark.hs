@@ -84,6 +84,8 @@ main = do
                      grey
 
             , bench "reduce an Int32 histogram" $ whnf H.reduce hist2D
+            , bench "resize an Int32 histogram" $ whnf (H.resize hist)
+                                                       (Z :. 128)
 
             , bench "cumulative Int32 histogram" $ whnf H.cumulative hist
 
@@ -101,12 +103,18 @@ main = do
             , bench "intersection comparison" $
                 whnf (H.compareIntersect hist :: Histogram DIM1 Int32 -> Int32)
                      hist
-            , bench "chi-square comparison 2D" $
-                whnf (H.compareChi hist2D :: Histogram DIM3 Int32 -> Double) hist2D
-            , bench "intersection comparison 2D" $
-                whnf (H.compareIntersect hist2D :: Histogram DIM3 Int32 -> Int32)
-                     hist2D
             , bench "EMD comparison" $ whnf (H.compareEMD hist) hist
+
+            , bench "2D correlation comparison" $
+                whnf (H.compareCorrel hist2D :: Histogram DIM3 Int32 -> Double)
+                     hist2D
+            , bench "2D chi-square comparison 2D" $
+                whnf (H.compareChi hist2D :: Histogram DIM3 Int32 -> Double)
+                     hist2D
+            , bench "2D intersection comparison 2D" $
+                whnf (H.compareIntersect hist2D
+                                            :: Histogram DIM3 Int32 -> Int32)
+                     hist2D
             ]
         , bgroup "application" [
               bench "miniature 150x150" $ whnf miniature rgb
