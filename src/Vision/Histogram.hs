@@ -20,7 +20,6 @@ module Vision.Histogram (
     , compareCorrel, compareChi, compareIntersect, compareEMD
     ) where
 
-import Control.Arrow (first)
 import Data.Int
 import Data.Vector.Storable (Vector, (!))
 import qualified Data.Vector.Storable as V
@@ -224,11 +223,12 @@ histogram2D img size =
 -- > histogram == reduce . histogram2D
 reduce :: (HistogramShape sh, Storable a, Num a)
        => Histogram (sh :. Int :. Int) a -> Histogram sh a
-reduce (Histogram sh vec) =
-    let sh' :. h :. w = sh
+reduce !(Histogram sh vec) =
+    let !(sh' :. h :. w) = sh
         !len2D = h * w
-        vec' = V.unfoldrN (shapeLength sh') step vec
-        step = Just . first V.sum . V.splitAt len2D
+        !vec' = V.unfoldrN (shapeLength sh') step vec
+        step !rest = let (!channels, !rest') = V.splitAt len2D rest
+                     in Just (V.sum channels, rest')
     in Histogram sh' vec'
 {-# SPECIALIZE reduce :: Histogram DIM5 Int32  -> Histogram DIM3 Int32
                       ,  Histogram DIM5 Double -> Histogram DIM3 Double
