@@ -13,7 +13,7 @@ import Test.QuickCheck (Arbitrary (..), Positive, getPositive)
 import Vision.Histogram
 import Vision.Image (GreyImage)
 import qualified Vision.Image as I
-import Vision.Primitive (Z (..), (:.) (..), DIM1, ix3)
+import Vision.Primitive (Z (..), (:.) (..), DIM1, ix1, ix3)
 import Test.Vision.Image ()
 
 instance (Arbitrary (Positive p), Bounded p, Integral p, V.Storable p)
@@ -30,6 +30,10 @@ tests = [
     , testProperty "The reduction of a 2D histogram gives the linear one."
                    propReduceHist
 
+    , testProperty "Resizing an histogram equals the computation of the \
+                   \smallest one."
+                   propResizeHist
+
     , testProperty "Cumulative histogram last bin equals original's sum"
                    propCumulatHist
 
@@ -40,7 +44,7 @@ tests = [
                    propCorrelation
     , testProperty "Comparing the same histogram returns a 0 chi-square value"
                    propChiSquare
-    , testProperty "Comparing the same histogram returns an intersection value\
+    , testProperty "Comparing the same histogram returns an intersection value \
                    \equals to the sum of the values of the histogram"
                    propIntersec
     , testProperty "Comparing the same histogram returns a 0 EMD value"
@@ -60,6 +64,14 @@ propReduceHist :: GreyImage -> Bool
 propReduceHist img =
     let hist1 = histogram img Nothing :: Histogram DIM1 Int32
         hist2 = reduce (histogram2D img (ix3 256 3 3))
+    in hist1 == hist2
+
+-- | Checks the resizing of an histogram equals the direct computation of the
+-- smallest one.
+propResizeHist :: GreyImage -> Bool
+propResizeHist img =
+    let hist1 = histogram img (Just (ix1 128)) :: Histogram DIM1 Int32
+        hist2 = resize (histogram img (Just (ix1 256))) (ix1 128)
     in hist1 == hist2
 
 -- | Checks if the last bin of the cumulative histogram equals the sum of the

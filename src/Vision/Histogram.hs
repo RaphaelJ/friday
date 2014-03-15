@@ -13,14 +13,13 @@ module Vision.Histogram (
       Histogram (..), HistogramShape (..), ToHistogram (..)
     , index, linearIndex, map
     -- * Histogram computations
-    , histogram,  histogram2D, reduce, cumulative, normalize
+    , histogram,  histogram2D, reduce, resize, cumulative, normalize
     -- * Images processing
     , equalizeImage
     -- * Histogram comparisons
     , compareCorrel, compareChi, compareIntersect, compareEMD
     ) where
 
-import Control.Arrow (first)
 import Data.Int
 import Data.Vector.Storable (Vector, (!))
 import qualified Data.Vector.Storable as V
@@ -54,13 +53,13 @@ data Histogram sh a = Histogram {
     , vector :: !(Vector a) -- ^ Values of the histogram in row-major order.
     } deriving (Eq, Show)
 
--- | Subclass of 'Shape' which defines how to reduce a shape so it will fit
--- inside a reduced histogram.
+-- | Subclass of 'Shape' which defines how to resize a shape so it will fit
+-- inside a resized histogram.
 class Shape sh => HistogramShape sh where
     -- | Given a number of bins, reduces an index value so it will be mapped to
     -- a bin.
     toBin :: sh -- ^ The number of bins we are mapping to.
-          -> sh -- ^ The number of possible values of the index.
+          -> sh -- ^ The number of possible values of the original index.
           -> sh -- ^ The original index.
           -> sh -- ^ The index of the bin in the histogram.
 
@@ -162,7 +161,7 @@ histogram img mSize =
     !nBins = shapeLength size
 
     toIndex !p = toLinearIndex size $!
-        case mSize of Just _  -> toBin size maxSize $! pixToIndex p 
+        case mSize of Just _  -> toBin size maxSize $! pixToIndex p
                       Nothing -> pixToIndex p
     {-# INLINE toIndex #-}
 {-# SPECIALIZE histogram :: GreyImage -> Maybe DIM1 -> Histogram DIM1 Int32
@@ -220,15 +219,19 @@ histogram2D img size =
                            ,  RGBImage  -> DIM5 -> Histogram DIM5 Float  #-}
 {-# INLINABLE histogram2D #-}
 
--- | Reduces a 2D histogram to its linear representation.
+-- Reshaping -------------------------------------------------------------------
+
+-- | Reduces a 2D histogram to its linear representation. See 'resize' for a
+-- reduction of the number of bins of an histogram.
 -- > histogram == reduce . histogram2D
 reduce :: (HistogramShape sh, Storable a, Num a)
        => Histogram (sh :. Int :. Int) a -> Histogram sh a
-reduce (Histogram sh vec) =
-    let sh' :. h :. w = sh
+reduce !(Histogram sh vec) =
+    let !(sh' :. h :. w) = sh
         !len2D = h * w
-        vec' = V.unfoldrN (shapeLength sh') step vec
-        step = Just . first V.sum . V.splitAt len2D
+        !vec' = V.unfoldrN (shapeLength sh') step vec
+        step !rest = let (!channels, !rest') = V.splitAt len2D rest
+                     in Just (V.sum channels, rest')
     in Histogram sh' vec'
 {-# SPECIALIZE reduce :: Histogram DIM5 Int32  -> Histogram DIM3 Int32
                       ,  Histogram DIM5 Double -> Histogram DIM3 Double
@@ -237,6 +240,21 @@ reduce (Histogram sh vec) =
                       ,  Histogram DIM3 Double -> Histogram DIM1 Double
                       ,  Histogram DIM3 Float  -> Histogram DIM1 Float #-}
 {-# INLINABLE reduce #-}
+
+-- | Resizes an histogram to another index shape. See 'reduce' for a reduction
+-- of the number of dimensions of an histogram.
+resize :: (HistogramShape sh, Storable a, Num a)
+       => Histogram sh a -> sh -> Histogram sh a
+resize !(Histogram sh vec) !sh' =
+    let initial = V.replicate (shapeLength sh') 0
+        -- TODO: In this scheme, indexes are computed for each bin of the
+        -- original histogram. It's sub-optimal as some parts of those indexes
+        -- (lower dimensions) don't change at each bin.
+        reIndex = toLinearIndex sh' . toBin sh' sh . fromLinearIndex sh
+        ixs = V.map reIndex $ V.enumFromN 0 (shapeLength sh)
+    in Histogram sh' (V.accumulate_ (+) initial ixs vec)
+
+-- Normalisation ---------------------------------------------------------------
 
 -- | Computes the cumulative histogram of another single dimension histogram.
 -- @C(i) = SUM H(j)@ for each @j@ in @[0..i]@ where @C@ is the cumulative
