@@ -58,9 +58,8 @@ propCalcHist img =
 -- | Checks the identity @histogram == reduce . histogram2D@.
 propReduceHist :: GreyImage -> Bool
 propReduceHist img =
-    let Z :. h :. w = I.shape img
-        hist1 = histogram img Nothing :: Histogram DIM1 Int32
-        hist2 = reduce (histogram2D img (ix3 256 h w))
+    let hist1 = histogram img Nothing :: Histogram DIM1 Int32
+        hist2 = reduce (histogram2D img (ix3 256 3 3))
     in hist1 == hist2
 
 -- | Checks if the last bin of the cumulative histogram equals the sum of the
