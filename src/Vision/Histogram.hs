@@ -11,7 +11,7 @@
 module Vision.Histogram (
     -- * Types & helpers
       Histogram (..), HistogramShape (..), ToHistogram (..)
-    , index, linearIndex, map
+    , index, linearIndex, map, assocs
     -- * Histogram computations
     , histogram,  histogram2D, reduce, resize, cumulative, normalize
     -- * Images processing
@@ -23,6 +23,7 @@ module Vision.Histogram (
 import Data.Int
 import Data.Vector.Storable (Vector, (!))
 import qualified Data.Vector.Storable as V
+import qualified Data.Vector.Unboxed as UV
 import Foreign.Storable (Storable)
 import Prelude hiding (map)
 
@@ -125,18 +126,24 @@ instance ToHistogram HSVPixel where
 -- Functions -------------------------------------------------------------------
 
 index :: (Shape sh, Storable a) => Histogram sh a -> sh -> a
-index hist = linearIndex hist . toLinearIndex (shape hist)
+index !hist = linearIndex hist . toLinearIndex (shape hist)
 {-# INLINE index #-}
 
 -- | Returns the value at the index as if the histogram was a single dimension
 -- vector (row-major representation).
 linearIndex :: (Shape sh, Storable a) => Histogram sh a -> Int -> a
-linearIndex hist = (!) (vector hist)
+linearIndex !hist = (!) (vector hist)
 {-# INLINE linearIndex #-}
 
 map :: (Storable a, Storable b) => (a -> b) -> Histogram sh a -> Histogram sh b
-map f (Histogram sh vec) = Histogram sh (V.map f vec)
+map f !(Histogram sh vec) = Histogram sh (V.map f vec)
 {-# INLINE map #-}
+
+-- | Returns all index/value pairs from the histogram.
+assocs :: Unbox (sh, a) => Histogram sh a -> [(sh, a)]
+assocs !(Histogram sh vec) = [ (ix, v) | ix <- shapeList sh
+                                       | v <- V.toList vec ]
+{-# INLINE assocs #-}
 
 -- | Computes an histogram from a (possibly) multi-channel image.
 -- If the size of the histogram is not given, there will be as many bins as the
