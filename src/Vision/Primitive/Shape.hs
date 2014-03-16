@@ -8,6 +8,7 @@ module Vision.Primitive.Shape (
     ,ix1, ix2, ix3, ix4, ix5, ix6, ix7, ix8, ix9
 ) where
 
+import Control.Applicative
 import Data.Word
 import Foreign.Storable (Storable (..))
 import Foreign.Ptr (castPtr, plusPtr)
@@ -137,15 +138,12 @@ instance Storable sh => Storable (sh :. Int) where
 
     peek !ptr = do
         let !ptr' = castPtr ptr
-        n  <- peek ptr'
-        sh <- peek $! castPtr $! ptr' `plusPtr` 1
-        return $! sh :. n
+        (:.) <$> peek (castPtr $! ptr' `plusPtr` 1) <*> peek ptr'
     {-# INLINE peek #-}
 
     poke !ptr (sh :. n) = do
         let !ptr' = castPtr ptr
-        poke ptr'                          n
-        poke (castPtr $! ptr' `plusPtr` 1) sh
+        poke (castPtr $! ptr' `plusPtr` 1) sh >> poke ptr' n
     {-# INLINE poke #-}
 
 -- | Helper for index construction.
