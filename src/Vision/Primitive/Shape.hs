@@ -87,6 +87,9 @@ instance Shape Z where
     fromLinearIndex Z _ = Z
     {-# INLINE fromLinearIndex #-}
 
+    -- | Returns every shape in ascending order
+    --
+    -- > shapeList sh = map fromLinearIndex [1..shapeLength sh - 1]
     shapeList Z = [Z]
     {-# INLINE shapeList #-}
 
@@ -133,7 +136,7 @@ instance Shape sh => Shape (sh :. Int) where
                               in fromLinearIndex sh q :. r
     {-# INLINE fromLinearIndex #-}
 
-    shapeList (sh :. i) = [ sh' :. i | sh' <- shapeList sh, i <- [0..n-1] ]
+    shapeList (sh :. n) = [ sh' :. i | sh' <- shapeList sh, i <- [0..n-1] ]
     {-# INLINE shapeList #-}
 
     inShape (sh :. n) (sh' :. ix) = word ix < word n && inShape sh sh'

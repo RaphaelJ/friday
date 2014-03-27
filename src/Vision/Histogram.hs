@@ -1,5 +1,5 @@
-{-# LANGUAGE BangPatterns, FlexibleContexts, FlexibleInstances, TypeFamilies
-           , TypeOperators #-}
+{-# LANGUAGE BangPatterns, FlexibleContexts, FlexibleInstances
+           , ParallelListComp, TypeFamilies, TypeOperators #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- | Contains functions to compute and manipulate histograms as well as some
@@ -23,7 +23,7 @@ module Vision.Histogram (
 import Data.Int
 import Data.Vector.Storable (Vector, (!))
 import qualified Data.Vector.Storable as V
-import qualified Data.Vector.Unboxed as UV
+import Data.Vector.Unboxed (Unbox)
 import Foreign.Storable (Storable)
 import Prelude hiding (map)
 
@@ -52,7 +52,7 @@ import Vision.Primitive (
 data Histogram sh a = Histogram {
       shape  :: !sh
     , vector :: !(Vector a) -- ^ Values of the histogram in row-major order.
-    } deriving (Eq, Show)
+    } deriving (Eq, Ord, Show)
 
 -- | Subclass of 'Shape' which defines how to resize a shape so it will fit
 -- inside a resized histogram.
@@ -140,7 +140,7 @@ map f !(Histogram sh vec) = Histogram sh (V.map f vec)
 {-# INLINE map #-}
 
 -- | Returns all index/value pairs from the histogram.
-assocs :: Unbox (sh, a) => Histogram sh a -> [(sh, a)]
+assocs :: (Shape sh, Storable a, Unbox (sh, a)) => Histogram sh a -> [(sh, a)]
 assocs !(Histogram sh vec) = [ (ix, v) | ix <- shapeList sh
                                        | v <- V.toList vec ]
 {-# INLINE assocs #-}

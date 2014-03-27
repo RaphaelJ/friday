@@ -89,7 +89,7 @@ class (Pixel (ImagePixel i), Image i) => FromFunction i where
 data Manifest p = Manifest {
       manifestSize   :: !Size
     , manifestVector :: !(Vector p)
-    } deriving (Eq, Show)
+    } deriving (Eq, Ord, Show)
 
 instance (Pixel p, Storable p) => Image (Manifest p) where
     type ImagePixel (Manifest p) = p
