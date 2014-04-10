@@ -38,7 +38,8 @@ class (Storable p, Storable (PixelChannel p)) => Pixel p where
     pixIndex :: p -> Int -> PixelChannel p
 
 -- | Provides an abstraction over the internal representation of the image.
--- Origin of images is located in the lower left corner.
+-- Image origin is located in the lower left corner.
+--
 -- Minimal definition is 'shape' and ('index' or 'linearIndex').
 class Pixel (ImagePixel i) => Image i where
     type ImagePixel i
@@ -168,7 +169,7 @@ compute = map id
 
 -- | Returns an 'undefined' instance of a pixel of the image. This is sometime
 -- useful to satisfy the type checker as in a call to 'pixNChannels' :
--- 
+--
 -- > nChannels img = pixNChannels (pixel img)
 pixel :: Image i => i -> ImagePixel i
 pixel _ = undefined

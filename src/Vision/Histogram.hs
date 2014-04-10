@@ -140,7 +140,7 @@ map f !(Histogram sh vec) = Histogram sh (V.map f vec)
 {-# INLINE map #-}
 
 -- | Returns all index/value pairs from the histogram.
-assocs :: (Shape sh, Storable a, Unbox (sh, a)) => Histogram sh a -> [(sh, a)]
+assocs :: (Shape sh, Storable a) => Histogram sh a -> [(sh, a)]
 assocs !(Histogram sh vec) = [ (ix, v) | ix <- shapeList sh
                                        | v <- V.toList vec ]
 {-# INLINE assocs #-}
