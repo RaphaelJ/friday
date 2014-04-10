@@ -14,6 +14,7 @@ module Vision.Image.Type (
     ) where
 
 import Data.Convertible (Convertible (..), convert)
+import qualified Data.Vector as V
 import Data.Vector.Storable (Vector, (!), create, enumFromN, forM_, generate)
 import Data.Vector.Storable.Mutable (new, write)
 import Foreign.Storable (Storable)
@@ -65,24 +66,54 @@ class Pixel (ImagePixel i) => Image i where
 
 type ImageChannel i = PixelChannel (ImagePixel i)
 
--- | Provides a way to construct an image from a function.
--- Minimal definition is 'fromFunction' or 'fromFunctionLine', the second one
--- being faster with some transformations and representations by memorising some
--- line invariants.
+-- | Provides ways to construct an image from a function.
+-- Minimal definition is 'fromFunction'.
 class (Pixel (ImagePixel i), Image i) => FromFunction i where
-    -- | Calls the given function for each pixel of the constructed image.
+    -- | Generates an image by calling the given function for each pixel of the
+    -- constructed image.
     fromFunction :: Size -> (Point -> ImagePixel i) -> i
-    fromFunction size f =
-        fromFunctionLine size (const ()) (\_ pt -> f pt)
-    {-# INLINE fromFunction #-}
 
-    -- | Calls the first function at each line of the image then calls the
-    -- second function for each pixel of the constructed image, giving the
-    -- value which has been computed at each line.
+    -- | Generates an image by calling the last function for each pixel of the
+    -- constructed image.
+    -- The first function is called for each line, generating a line invariant
+    -- value.
+    -- This function is faster for some image representations as some recurring
+    -- computation can be cached.
     fromFunctionLine :: Size -> (Int -> a) -> (a -> Point -> ImagePixel i) -> i
     fromFunctionLine size line f =
         fromFunction size (\pt@(Z :. y :. _) -> f (line y) pt)
     {-# INLINE fromFunctionLine #-}
+
+    -- | Generates an image by calling the last function for each pixel of the
+    -- constructed image.
+    -- The first function is called for each column, generating a column
+    -- invariant value.
+    -- This function *can* be faster for some image representations as some
+    -- recurring computation can be cached. However, it may requires a vector
+    -- allocation for these values. If the column invariant is cheap to
+    -- compute, prefer 'fromFunction'.
+    fromFunctionCol :: Storable b => Size -> (Int -> b)
+                    -> (b -> Point -> ImagePixel i) -> i
+    fromFunctionCol size col f =
+        fromFunction size (\pt@(Z :. _ :. x) -> f (col x) pt)
+    {-# INLINE fromFunctionCol #-}
+
+    -- | Generates an image by calling the last function for each pixel of the
+    -- constructed image.
+    -- The two first functions are called for each line and for each column,
+    -- respectively, generating common line and column invariant values.
+    -- This function is faster for some image representations as some recurring
+    -- computation can be cached. However, it may requires a vector
+    -- allocation for column values. If the column invariant is cheap to
+    -- compute, prefer 'fromFunctionLine'.
+    fromFunctionCached :: Storable b => Size
+                       -> (Int -> a)                        -- ^ Line function
+                       -> (Int -> b)                        -- ^ Column function
+                       -> (a -> b -> Point -> ImagePixel i) -- ^ Pixel function
+                       -> i
+    fromFunctionCached size line col f =
+        fromFunction size (\pt@(Z :. y :. x) -> f (line y) (col x) pt)
+    {-# INLINE fromFunctionCached #-}
 
 -- Manifest images -------------------------------------------------------------
 
@@ -105,20 +136,70 @@ instance (Pixel p, Storable p) => Image (Manifest p) where
     {-# INLINE vector #-}
 
 instance (Pixel p, Storable p) => FromFunction (Manifest p) where
-    fromFunctionLine size@(Z :. h :. w) line f = Manifest size $ create $ do
-        -- Note: create is faster than unfoldrN.
-        arr <- new (h * w)
+    fromFunction !size@(Z :. h :. w) f =
+        Manifest size $ create $ do
+            arr <- new (h * w)
 
-        forM_ (enumFromN 0 h) $ \y -> do
-            let !lineVal    = line y
-                !lineOffset = y * w
-            forM_ (enumFromN 0 w) $ \x -> do
-                let !offset = lineOffset + x
-                    !val    = f lineVal (ix2 y x)
-                write arr offset val
+            forM_ (enumFromN 0 h) $ \y -> do
+                let !lineOffset = y * w
+                forM_ (enumFromN 0 w) $ \x -> do
+                    let !offset = lineOffset + x
+                        !val    = f (ix2 y x)
+                    write arr offset val
 
-        return arr
+            return arr
+    {-# INLINE fromFunction #-}
+
+    fromFunctionLine !size@(Z :. h :. w) line f =
+        Manifest size $ create $ do
+            -- Note: create is faster than unfoldrN.
+            arr <- new (h * w)
+
+            forM_ (enumFromN 0 h) $ \y -> do
+                let !lineVal    = line y
+                    !lineOffset = y * w
+                forM_ (enumFromN 0 w) $ \x -> do
+                    let !offset = lineOffset + x
+                        !val    = f lineVal (ix2 y x)
+                    write arr offset val
+
+            return arr
     {-# INLINE fromFunctionLine #-}
+
+    fromFunctionCol !size@(Z :. h :. w) col f =
+        Manifest size $ create $ do
+            -- Note: create is faster than unfoldrN.
+            arr <- new (h * w)
+
+            forM_ (enumFromN 0 h) $ \y -> do
+                let !lineOffset = y * w
+                forM_ (enumFromN 0 w) $ \x -> do
+                    let !offset = lineOffset + x
+                        !val    = f (cols V.! x) (ix2 y x)
+                    write arr offset val
+
+            return arr
+      where
+        !cols = V.generate w col
+    {-# INLINE fromFunctionCol #-}
+
+    fromFunctionCached !size@(Z :. h :. w) line col f =
+        Manifest size $ create $ do
+            -- Note: create is faster than unfoldrN.
+            arr <- new (h * w)
+
+            forM_ (enumFromN 0 h) $ \y -> do
+                let !lineVal    = line y
+                    !lineOffset = y * w
+                forM_ (enumFromN 0 w) $ \x -> do
+                    let !offset = lineOffset + x
+                        !val    = f lineVal (cols V.! x) (ix2 y x)
+                    write arr offset val
+
+            return arr
+      where
+        !cols = V.generate w col
+    {-# INLINE fromFunctionCached #-}
 
 -- Delayed images --------------------------------------------------------------
 
