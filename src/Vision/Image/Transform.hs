@@ -20,7 +20,7 @@ data InterpolMethod =
                       -- surrounding points (slow).
 
 -- | Maps the content of the image\'s rectangle in a new image.
-crop :: (Image i1, FromFunction i2, ImagePixel i1 ~ ImagePixel i2)
+crop :: (Image i1, FromFunction i2, ImagePixel i1 ~ FromFunctionPixel i2)
      => i1 -> Rect -> i2
 crop !img !(Rect rx ry rw rh) =
     fromFunction (Z :. rh :. rw) $ \(Z :. y :. x) ->
@@ -29,7 +29,7 @@ crop !img !(Rect rx ry rw rh) =
 
 -- | Resizes the 'Image' using the given interpolation method.
 resize :: (Image i1, Interpolable (ImagePixel i1), FromFunction i2
-          , ImagePixel i1 ~ ImagePixel i2)
+          , ImagePixel i1 ~ FromFunctionPixel i2)
        => i1 -> InterpolMethod -> Size -> i2
 resize !img !method !size'@(Z :. h' :. w') =
     case method of
@@ -84,7 +84,8 @@ resize !img !method !size'@(Z :. h' :. w') =
 {-# INLINABLE resize #-}
 
 -- | Reverses the image horizontally.
-horizontalFlip :: (Image i1, FromFunction i2, ImagePixel i1 ~ ImagePixel i2)
+horizontalFlip :: (Image i1, FromFunction i2,
+                   ImagePixel i1 ~ FromFunctionPixel i2)
                => i1 -> i2
 horizontalFlip !img =
     let f !(Z :. y :. x') = let !x = maxX - x'
@@ -97,7 +98,8 @@ horizontalFlip !img =
 {-# INLINABLE horizontalFlip #-}
 
 -- | Reverses the image vertically.
-verticalFlip :: (Image i1, FromFunction i2, ImagePixel i1 ~ ImagePixel i2)
+verticalFlip :: (Image i1, FromFunction i2,
+                 ImagePixel i1 ~ FromFunctionPixel i2)
              => i1 -> i2
 verticalFlip !img =
     let line !y' = maxY - y'

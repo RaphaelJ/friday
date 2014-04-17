@@ -30,7 +30,7 @@
 -- Notice as 'crop' returns a 'Delayed' image and thus doesn't allocate an
 -- intermediate image.
 module Vision.Image (
-      module Data.Convertible
+      module Vision.Image.Function
     , module Vision.Image.GreyImage
     , module Vision.Image.HSVImage
     , module Vision.Image.Interpolate
@@ -41,7 +41,7 @@ module Vision.Image (
     , module Vision.Image.Type
     ) where
 
-import Data.Convertible
+import Vision.Image.Function
 import Vision.Image.GreyImage
 import Vision.Image.HSVImage
 import Vision.Image.Interpolate

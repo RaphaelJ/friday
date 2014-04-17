@@ -31,6 +31,7 @@ build-type:        Simple
 library
     exposed-modules:    Vision.Histogram
                         Vision.Image
+                        Vision.Image.Function
                         Vision.Image.GreyImage
                         Vision.Image.GreyImage.Conversion
                         Vision.Image.GreyImage.Type
@@ -38,6 +39,7 @@ library
                         Vision.Image.HSVImage.Conversion
                         Vision.Image.HSVImage.Type
                         Vision.Image.Interpolate
+                        Vision.Image.Mask
                         Vision.Image.RGBAImage
                         Vision.Image.RGBAImage.Conversion
                         Vision.Image.RGBAImage.Type

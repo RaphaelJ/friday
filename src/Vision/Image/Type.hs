@@ -9,8 +9,8 @@ module Vision.Image.Type (
     , Manifest (..)
     -- * Delayed images
     , Delayed (..)
-    -- * Functions
-    , nChannels, map, delay, compute, pixel
+    -- * Conversion
+    , convert, delay, compute, map
     ) where
 
 import Data.Convertible (Convertible (..), convert)
@@ -68,10 +68,12 @@ type ImageChannel i = PixelChannel (ImagePixel i)
 
 -- | Provides ways to construct an image from a function.
 -- Minimal definition is 'fromFunction'.
-class (Pixel (ImagePixel i), Image i) => FromFunction i where
+class FromFunction i where
+    type FromFunctionPixel i
+
     -- | Generates an image by calling the given function for each pixel of the
     -- constructed image.
-    fromFunction :: Size -> (Point -> ImagePixel i) -> i
+    fromFunction :: Size -> (Point -> FromFunctionPixel i) -> i
 
     -- | Generates an image by calling the last function for each pixel of the
     -- constructed image.
@@ -79,7 +81,8 @@ class (Pixel (ImagePixel i), Image i) => FromFunction i where
     -- value.
     -- This function is faster for some image representations as some recurring
     -- computation can be cached.
-    fromFunctionLine :: Size -> (Int -> a) -> (a -> Point -> ImagePixel i) -> i
+    fromFunctionLine :: Size -> (Int -> a)
+                     -> (a -> Point -> FromFunctionPixel i) -> i
     fromFunctionLine size line f =
         fromFunction size (\pt@(Z :. y :. _) -> f (line y) pt)
     {-# INLINE fromFunctionLine #-}
@@ -93,7 +96,7 @@ class (Pixel (ImagePixel i), Image i) => FromFunction i where
     -- allocation for these values. If the column invariant is cheap to
     -- compute, prefer 'fromFunction'.
     fromFunctionCol :: Storable b => Size -> (Int -> b)
-                    -> (b -> Point -> ImagePixel i) -> i
+                    -> (b -> Point -> FromFunctionPixel i) -> i
     fromFunctionCol size col f =
         fromFunction size (\pt@(Z :. _ :. x) -> f (col x) pt)
     {-# INLINE fromFunctionCol #-}
@@ -107,9 +110,10 @@ class (Pixel (ImagePixel i), Image i) => FromFunction i where
     -- allocation for column values. If the column invariant is cheap to
     -- compute, prefer 'fromFunctionLine'.
     fromFunctionCached :: Storable b => Size
-                       -> (Int -> a)                        -- ^ Line function
-                       -> (Int -> b)                        -- ^ Column function
-                       -> (a -> b -> Point -> ImagePixel i) -- ^ Pixel function
+                       -> (Int -> a)               -- ^ Line function
+                       -> (Int -> b)               -- ^ Column function
+                       -> (a -> b -> Point
+                           -> FromFunctionPixel i) -- ^ Pixel function
                        -> i
     fromFunctionCached size line col f =
         fromFunction size (\pt@(Z :. y :. x) -> f (line y) (col x) pt)
@@ -123,7 +127,7 @@ data Manifest p = Manifest {
     , manifestVector :: !(Vector p)
     } deriving (Eq, Ord, Show)
 
-instance (Pixel p, Storable p) => Image (Manifest p) where
+instance Pixel p => Image (Manifest p) where
     type ImagePixel (Manifest p) = p
 
     shape = manifestSize
@@ -135,7 +139,9 @@ instance (Pixel p, Storable p) => Image (Manifest p) where
     vector = manifestVector
     {-# INLINE vector #-}
 
-instance (Pixel p, Storable p) => FromFunction (Manifest p) where
+instance Storable p => FromFunction (Manifest p) where
+    type FromFunctionPixel (Manifest p) = p
+
     fromFunction !size@(Z :. h :. w) f =
         Manifest size $ create $ do
             arr <- new (h * w)
@@ -222,21 +228,13 @@ instance Pixel p => Image (Delayed p) where
     index = delayedFun
     {-# INLINE index #-}
 
-instance Pixel p => FromFunction (Delayed p) where
+instance FromFunction (Delayed p) where
+    type FromFunctionPixel (Delayed p) = p
+
     fromFunction = Delayed
     {-# INLINE fromFunction #-}
 
--- Functions -------------------------------------------------------------------
-
--- | Returns the number of channels of an image.
-nChannels :: Image i => i -> Int
-nChannels img = pixNChannels (pixel img)
-{-# INLINE nChannels #-}
-
-map :: (Image i1, FromFunction i2)
-    => (ImagePixel i1 -> ImagePixel i2) -> i1 -> i2
-map f img = fromFunction (shape img) (f . (img `index`))
-{-# INLINE map #-}
+-- Conversion ------------------------------------------------------------------
 
 -- | Delays an image in its delayed representation.
 delay :: Image i => i -> Delayed (ImagePixel i)
@@ -248,14 +246,10 @@ compute :: (Image i, Storable (ImagePixel i)) => i -> Manifest (ImagePixel i)
 compute = map id
 {-# INLINE compute #-}
 
--- | Returns an 'undefined' instance of a pixel of the image. This is sometime
--- useful to satisfy the type checker as in a call to 'pixNChannels' :
---
--- > nChannels img = pixNChannels (pixel img)
-pixel :: Image i => i -> ImagePixel i
-pixel _ = undefined
-
--- Conversion ------------------------------------------------------------------
+map :: (Image i1, FromFunction i2)
+    => (ImagePixel i1 -> FromFunctionPixel i2) -> i1 -> i2
+map f img = fromFunction (shape img) (f . (img `index`))
+{-# INLINE map #-}
 
 instance (Pixel p1, Pixel p2, Storable p1, Storable p2, Convertible p1 p2)
     => Convertible (Manifest p1) (Manifest p2) where
