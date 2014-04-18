@@ -1,21 +1,27 @@
 {-# LANGUAGE BangPatterns, FlexibleContexts, FlexibleInstances
-           , MultiParamTypeClasses, TypeFamilies, UndecidableInstances #-}
+           , MultiParamTypeClasses, PatternGuards, TypeFamilies
+           , UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Vision.Image.Type (
     -- * Classes
-      Pixel (..), Image (..), ImageChannel, FromFunction (..)
+      Pixel (..), MaskedImage (..), Image (..), ImageChannel, FromFunction (..)
     -- * Manifest images
     , Manifest (..)
     -- * Delayed images
     , Delayed (..)
+    -- * Functions
+    , nChannels, pixel, map, mapMasked
     -- * Conversion
-    , convert, delay, compute, map
+    , convert, delay, compute
     ) where
 
+import Control.Applicative ((<$>))
 import Data.Convertible (Convertible (..), convert)
 import qualified Data.Vector as V
-import Data.Vector.Storable (Vector, (!), create, enumFromN, forM_, generate)
+import Data.Vector.Storable (
+      Vector, (!), create, enumFromN, forM_, generate, unfoldr
+    )
 import Data.Vector.Storable.Mutable (new, write)
 import Foreign.Storable (Storable)
 import Prelude hiding (map)
@@ -38,15 +44,46 @@ class (Storable p, Storable (PixelChannel p)) => Pixel p where
 
     pixIndex :: p -> Int -> PixelChannel p
 
--- | Provides an abstraction over the internal representation of the image.
--- Image origin is located in the lower left corner.
+-- | Provides an abstraction for images which are not defined for each of their
+-- pixels. The interface is similar to 'Image' except that indexing functions
+-- don't always return.
 --
--- Minimal definition is 'shape' and ('index' or 'linearIndex').
-class Pixel (ImagePixel i) => Image i where
+-- Minimal definition is 'shape' and ('maskedIndex' or 'maskedLinearIndex').
+class Pixel (ImagePixel i) => MaskedImage i where
     type ImagePixel i
 
     shape :: i -> Size
 
+    -- | Returns the pixel\'s value at 'Z :. y, :. x'.
+    maskedIndex :: i -> Point -> Maybe (ImagePixel i)
+    maskedIndex img = (img `maskedLinearIndex`) . toLinearIndex (shape img)
+    {-# INLINE maskedIndex #-}
+
+    -- | Returns the pixel\'s value as if the image was a single dimension
+    -- vector (row-major representation).
+    maskedLinearIndex :: i -> Int -> Maybe (ImagePixel i)
+    maskedLinearIndex img = (img `maskedIndex`) . fromLinearIndex (shape img)
+    {-# INLINE maskedLinearIndex #-}
+
+    -- | Returns the non-masked values of the image.
+    values :: i -> Vector (ImagePixel i)
+    values !img =
+        unfoldr step 0
+      where
+        !n = shapeLength (shape img)
+
+        step !i | i >= n                              = Nothing
+                | Just p <- img `maskedLinearIndex` i = Just (p, i)
+                | otherwise                           = step (i+1)
+    {-# INLINE values #-}
+
+type ImageChannel i = PixelChannel (ImagePixel i)
+
+-- | Provides an abstraction over the internal representation of the image.
+-- Image origin is located in the lower left corner.
+--
+-- Minimal definition is 'index' or 'linearIndex'.
+class MaskedImage i => Image i where
     -- | Returns the pixel\'s value at 'Z :. y :. x'.
     index :: i -> Point -> ImagePixel i
     index img = (img `linearIndex`) . toLinearIndex (shape img)
@@ -63,8 +100,6 @@ class Pixel (ImagePixel i) => Image i where
     vector :: i -> Vector (ImagePixel i)
     vector img = generate (shapeLength $ shape img) (img `linearIndex`)
     {-# INLINE vector #-}
-
-type ImageChannel i = PixelChannel (ImagePixel i)
 
 -- | Provides ways to construct an image from a function.
 -- Minimal definition is 'fromFunction'.
@@ -119,6 +154,13 @@ class FromFunction i where
         fromFunction size (\pt@(Z :. y :. x) -> f (line y) (col x) pt)
     {-# INLINE fromFunctionCached #-}
 
+class MapableImage i where
+    type SourcePixel i
+    type ResultPixel i
+
+    map :: (SourcePixel i -> ResultPixel i) -> i (SourcePixel i)
+        -> i (ResultPixel i)
+
 -- Manifest images -------------------------------------------------------------
 
 -- | Stores the image\'s content in a 'Vector'.
@@ -127,12 +169,19 @@ data Manifest p = Manifest {
     , manifestVector :: !(Vector p)
     } deriving (Eq, Ord, Show)
 
-instance Pixel p => Image (Manifest p) where
+instance Pixel p => MaskedImage (Manifest p) where
     type ImagePixel (Manifest p) = p
 
     shape = manifestSize
     {-# INLINE shape #-}
 
+    Manifest _ vec `maskedLinearIndex` ix = Just $! vec ! ix
+    {-# INLINE maskedLinearIndex #-}
+
+    values = manifestVector
+    {-# INLINE values #-}
+
+instance Pixel p => Image (Manifest p) where
     Manifest _ vec `linearIndex` ix = vec ! ix
     {-# INLINE linearIndex #-}
 
@@ -219,12 +268,16 @@ data Delayed p = Delayed {
     , delayedFun  :: (Point -> p)
     }
 
-instance Pixel p => Image (Delayed p) where
+instance Pixel p => MaskedImage (Delayed p) where
     type ImagePixel (Delayed p) = p
 
     shape = delayedSize
     {-# INLINE shape #-}
 
+    maskedIndex img = Just . delayedFun img
+    {-# INLINE maskedIndex #-}
+
+instance Pixel p => Image (Delayed p) where
     index = delayedFun
     {-# INLINE index #-}
 
@@ -233,6 +286,54 @@ instance FromFunction (Delayed p) where
 
     fromFunction = Delayed
     {-# INLINE fromFunction #-}
+
+instance 
+
+-- Masked delayed images -------------------------------------------------------
+
+data DelayedMask p = DelayedMask {
+      delayedMaskSize :: !Size
+    , delayedMaskFun  :: Point -> Maybe p
+    }
+
+instance Pixel p => MaskedImage (DelayedMask p) where
+    type ImagePixel (DelayedMask p) = p
+
+    shape = delayedMaskSize
+    {-# INLINE shape #-}
+
+    maskedIndex = delayedMaskFun
+    {-# INLINE maskedIndex #-}
+
+instance Pixel p => FromFunction (DelayedMask p) where
+    type FromFunctionPixel (DelayedMask p) = Maybe p
+
+    fromFunction = DelayedMask
+    {-# INLINE fromFunction #-}
+
+-- Functions -------------------------------------------------------------------
+
+-- | Returns the number of channels of an image.
+nChannels :: MaskedImage i => i -> Int
+nChannels img = pixNChannels (pixel img)
+{-# INLINE nChannels #-}
+
+-- | Returns an 'undefined' instance of a pixel of the image. This is sometime
+-- useful to satisfy the type checker as in a call to 'pixNChannels' :
+--
+-- > nChannels img = pixNChannels (pixel img)
+pixel :: MaskedImage i => i -> ImagePixel i
+pixel _ = undefined
+
+map :: (Image i1, FromFunction i2)
+    => (ImagePixel i1 -> FromFunctionPixel i2) -> i1 -> i2
+map f img = fromFunction (shape img) (f . (img `index`))
+{-# INLINE map #-}
+
+mapMasked :: (MaskedImage i1, FromFunction i2, Maybe p ~ FromFunctionPixel i2)
+          => (ImagePixel i1 -> p) -> i1 -> i2
+mapMasked f img = fromFunction (shape img) (\pt -> f <$> img `maskedIndex` pt)
+{-# INLINE mapMasked #-}
 
 -- Conversion ------------------------------------------------------------------
 
@@ -245,11 +346,6 @@ delay = map id
 compute :: (Image i, Storable (ImagePixel i)) => i -> Manifest (ImagePixel i)
 compute = map id
 {-# INLINE compute #-}
-
-map :: (Image i1, FromFunction i2)
-    => (ImagePixel i1 -> FromFunctionPixel i2) -> i1 -> i2
-map f img = fromFunction (shape img) (f . (img `index`))
-{-# INLINE map #-}
 
 instance (Pixel p1, Pixel p2, Storable p1, Storable p2, Convertible p1 p2)
     => Convertible (Manifest p1) (Manifest p2) where

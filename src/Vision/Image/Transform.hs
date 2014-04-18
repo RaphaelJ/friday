@@ -8,7 +8,7 @@ module Vision.Image.Transform (
 import Data.RatioInt (RatioInt, (%))
 
 import Vision.Image.Interpolate (Interpolable, bilinearInterpol)
-import Vision.Image.Type (Image (..), FromFunction (..))
+import Vision.Image.Type (MaskedImage (..), Image (..), FromFunction (..))
 import Vision.Primitive (Z (..), (:.) (..), RPoint (..), Rect (..), Size, ix2)
 
 -- | Defines the set of possible methods for pixel interpolations when looking

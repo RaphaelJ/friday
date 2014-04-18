@@ -28,11 +28,10 @@ import Foreign.Ptr (Ptr, castPtr)
 import Foreign.Storable (Storable, peek)
 import System.IO.Unsafe (unsafePerformIO)
 
-import Vision.Image.Function (nChannels)
 import Vision.Image.GreyImage (GreyImage, GreyPixel)
 import Vision.Image.RGBAImage (RGBAImage, RGBAPixel)
 import Vision.Image.RGBImage (RGBImage, RGBPixel)
-import Vision.Image.Type (Manifest (..))
+import Vision.Image.Type (Manifest (..), nChannels)
 import Vision.Primitive (Z (..), (:.) (..), ix2)
 
 data StorageImage = GreyStorage GreyImage

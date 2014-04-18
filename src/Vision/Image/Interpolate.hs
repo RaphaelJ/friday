@@ -8,7 +8,7 @@ module Vision.Image.Interpolate (
 
 import Data.RatioInt (RatioInt, denominator, numerator)
 
-import Vision.Image.Type (Pixel (..), Image (..))
+import Vision.Image.Type (Pixel (..), Image (..), ImagePixel)
 import Vision.Primitive (RPoint (..), ix2)
 
 -- | Provides a way to apply the interpolation to every component of a pixel.

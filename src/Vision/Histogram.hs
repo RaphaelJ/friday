@@ -20,6 +20,7 @@ module Vision.Histogram (
     , compareCorrel, compareChi, compareIntersect, compareEMD
     ) where
 
+import Control.Applicative ((<$>))
 import Data.Int
 import Data.Vector.Storable (Vector, (!))
 import qualified Data.Vector.Storable as V
@@ -28,13 +29,11 @@ import Foreign.Storable (Storable)
 import Prelude hiding (map)
 
 import Vision.Image (
-      Image, Pixel, ImagePixel, FromFunction
+      Pixel, MaskedImage, Image, ImagePixel, FromFunction
     , GreyImage, GreyPixel (..), HSVImage, HSVPixel (..)
     , RGBAImage, RGBAPixel (..), RGBImage, RGBPixel (..)
     )
 import qualified Vision.Image as I
-import Vision.Image.Mask (MaskedImage, MaskedPixel)
-import qualified Vision.Image.Mask as M
 import Vision.Primitive (
       Z (..), (:.) (..), Shape (..), DIM1, DIM3, DIM4, DIM5, DIM6
     , ix1, ix3, ix4
@@ -152,21 +151,21 @@ assocs !(Histogram sh vec) = [ (ix, v) | ix <- shapeList sh
 -- range of values of pixels of the original image (see 'domainSize').
 -- If the size of the histogram is specified, every bin of a given dimension
 -- will be of the same size (uniform histogram).
-histogram :: (MaskedImage i, ToHistogram (MaskedPixel i), Storable a, Num a
-            , HistogramShape (PixelValueSpace (MaskedPixel i)))
-         => i -> Maybe (PixelValueSpace (MaskedPixel i))
-         -> Histogram (PixelValueSpace (MaskedPixel i)) a
+histogram :: (MaskedImage i, ToHistogram (ImagePixel i), Storable a, Num a
+            , HistogramShape (PixelValueSpace (ImagePixel i)))
+         => i -> Maybe (PixelValueSpace (ImagePixel i))
+         -> Histogram (PixelValueSpace (ImagePixel i)) a
 histogram img mSize =
     let initial = V.replicate nBins 0
         ones    = V.replicate nPixs 1
-        ixs     = V.map toIndex (M.values img)
+        ixs     = V.map toIndex (I.values img)
     in Histogram size (V.accumulate_ (+) initial ixs ones)
   where
     !size = case mSize of Just s  -> s
                           Nothing -> maxSize
     !maxSize = domainSize (I.pixel img)
     !nChans = I.nChannels img
-    !nPixs = shapeLength (M.shape img) * nChans
+    !nPixs = shapeLength (I.shape img) * nChans
     !nBins = shapeLength size
 
     toIndex !p = toLinearIndex size $!
@@ -307,7 +306,7 @@ equalizeImage :: (FromFunction i, Integral (ImagePixel i)
                  , ToHistogram (ImagePixel i)
                  , PixelValueSpace (ImagePixel i) ~ DIM1) => i -> i
 equalizeImage img =
-    I.map equalizePixel img
+    equalizePixel <$> img
   where
     hist            = histogram img Nothing             :: Histogram DIM1 Int32
     Z :. nBins      = shape hist
