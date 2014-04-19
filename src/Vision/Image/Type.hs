@@ -6,6 +6,7 @@
 module Vision.Image.Type (
     -- * Classes
       Pixel (..), MaskedImage (..), Image (..), ImageChannel, FromFunction (..)
+    , FunctorImage (..)
     -- * Manifest images
     , Manifest (..)
     -- * Delayed images
@@ -35,7 +36,7 @@ import Vision.Primitive (
 
 -- | Determines the number of channels and the type of each pixel of the image
 -- and how images are represented.
-class (Storable p, Storable (PixelChannel p)) => Pixel p where
+class Storable p => Pixel p where
     type PixelChannel p
 
     -- | Returns the number of channels of the pixel.
@@ -154,17 +155,35 @@ class FromFunction i where
         fromFunction size (\pt@(Z :. y :. x) -> f (line y) (col x) pt)
     {-# INLINE fromFunctionCached #-}
 
-class MapableImage i where
-    type SourcePixel i
-    type ResultPixel i
+-- | Defines a class for images on which a function can be applied. The class is
+-- different from 'Functor' as there could be some constraints on the pixel and
+-- image types.
+class FunctorImage i1 i2 where
+    type SourcePixel i1
+    type ResultPixel i2
 
-    map :: (SourcePixel i -> ResultPixel i) -> i (SourcePixel i)
-        -> i (ResultPixel i)
+    map :: (SourcePixel i1 -> ResultPixel i2) -> i1 (SourcePixel i1)
+        -> i2 (ResultPixel i2)
+
+-- | Traditional images are functors.
+instance (Image i1, FromFunction i2, FromFunctionPixel i2 ~  (ResultPixel i2)))
+        => FunctorImage i1 i2 where
+    type SourcePixel i1 = ImagePixel i1
+    type ResultPixel i2 = FromFunctionPixel i2
+
+    map f img = fromFunction (shape img) (f . (img `index`))
+    {-# INLINE map #-}
+
+-- | Masked images are functors.
+instance (MaskedImage i1, FromFunction i2 )
+         => FunctorImage Manifest src dst where
+    map f i = fromFunction (shape img) (\pt -> f <$> img `maskedIndex` pt)
+    {-# INLINE map #-}
 
 -- Manifest images -------------------------------------------------------------
 
 -- | Stores the image\'s content in a 'Vector'.
-data Manifest p = Manifest {
+data Storable p => Manifest p = Manifest {
       manifestSize   :: !Size
     , manifestVector :: !(Vector p)
     } deriving (Eq, Ord, Show)
@@ -188,7 +207,7 @@ instance Pixel p => Image (Manifest p) where
     vector = manifestVector
     {-# INLINE vector #-}
 
-instance Storable p => FromFunction (Manifest p) where
+instance FromFunction (Manifest p) where
     type FromFunctionPixel (Manifest p) = p
 
     fromFunction !size@(Z :. h :. w) f =
@@ -265,7 +284,7 @@ instance Storable p => FromFunction (Manifest p) where
 -- resulting image when only a portion of its pixels will be accessed.
 data Delayed p = Delayed {
       delayedSize :: !Size
-    , delayedFun  :: (Point -> p)
+    , delayedFun  :: !(Point -> p)
     }
 
 instance Pixel p => MaskedImage (Delayed p) where
@@ -287,13 +306,11 @@ instance FromFunction (Delayed p) where
     fromFunction = Delayed
     {-# INLINE fromFunction #-}
 
-instance 
-
 -- Masked delayed images -------------------------------------------------------
 
 data DelayedMask p = DelayedMask {
       delayedMaskSize :: !Size
-    , delayedMaskFun  :: Point -> Maybe p
+    , delayedMaskFun  :: !(Point -> Maybe p)
     }
 
 instance Pixel p => MaskedImage (DelayedMask p) where
@@ -327,8 +344,7 @@ pixel _ = undefined
 
 map :: (Image i1, FromFunction i2)
     => (ImagePixel i1 -> FromFunctionPixel i2) -> i1 -> i2
-map f img = fromFunction (shape img) (f . (img `index`))
-{-# INLINE map #-}
+map f img = 
 
 mapMasked :: (MaskedImage i1, FromFunction i2, Maybe p ~ FromFunctionPixel i2)
           => (ImagePixel i1 -> p) -> i1 -> i2
