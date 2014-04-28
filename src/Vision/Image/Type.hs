@@ -12,7 +12,7 @@ module Vision.Image.Type (
     -- * Delayed images
     , Delayed (..)
     -- * Functions
-    , nChannels, pixel, map, mapMasked
+    , nChannels, pixel
     -- * Conversion
     , convert, delay, compute
     ) where
@@ -162,22 +162,22 @@ class FunctorImage i1 i2 where
     type SourcePixel i1
     type ResultPixel i2
 
-    map :: (SourcePixel i1 -> ResultPixel i2) -> i1 (SourcePixel i1)
-        -> i2 (ResultPixel i2)
+    map :: (SourcePixel i1 -> ResultPixel i2) -> i1 -> i2
 
 -- | Traditional images are functors.
-instance (Image i1, FromFunction i2, FromFunctionPixel i2 ~  (ResultPixel i2)))
-        => FunctorImage i1 i2 where
+instance (Image i1, FromFunction (i2 a), FromFunctionPixel (i2 a) ~ a) => FunctorImage i1 (i2 a) where
     type SourcePixel i1 = ImagePixel i1
-    type ResultPixel i2 = FromFunctionPixel i2
+    type ResultPixel (i2 a) = a
 
     map f img = fromFunction (shape img) (f . (img `index`))
     {-# INLINE map #-}
 
 -- | Masked images are functors.
-instance (MaskedImage i1, FromFunction i2 )
-         => FunctorImage Manifest src dst where
-    map f i = fromFunction (shape img) (\pt -> f <$> img `maskedIndex` pt)
+instance (MaskedImage i1, FromFunction (i2 a), FromFunctionPixel (i2 a) ~ Maybe a) => FunctorImage i1 (i2 a) where
+    type SourcePixel i1     = ImagePixel i1
+    type ResultPixel (i2 a) = a
+
+    map f img = fromFunction (shape img) (\pt -> f <$> (img `maskedIndex` pt))
     {-# INLINE map #-}
 
 -- Manifest images -------------------------------------------------------------
@@ -207,7 +207,7 @@ instance Pixel p => Image (Manifest p) where
     vector = manifestVector
     {-# INLINE vector #-}
 
-instance FromFunction (Manifest p) where
+instance Storable p => FromFunction (Manifest p) where
     type FromFunctionPixel (Manifest p) = p
 
     fromFunction !size@(Z :. h :. w) f =
@@ -341,15 +341,6 @@ nChannels img = pixNChannels (pixel img)
 -- > nChannels img = pixNChannels (pixel img)
 pixel :: MaskedImage i => i -> ImagePixel i
 pixel _ = undefined
-
-map :: (Image i1, FromFunction i2)
-    => (ImagePixel i1 -> FromFunctionPixel i2) -> i1 -> i2
-map f img = 
-
-mapMasked :: (MaskedImage i1, FromFunction i2, Maybe p ~ FromFunctionPixel i2)
-          => (ImagePixel i1 -> p) -> i1 -> i2
-mapMasked f img = fromFunction (shape img) (\pt -> f <$> img `maskedIndex` pt)
-{-# INLINE mapMasked #-}
 
 -- Conversion ------------------------------------------------------------------
 
