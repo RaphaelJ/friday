@@ -19,7 +19,6 @@ module Vision.Image.Type (
 
 import Control.Applicative ((<$>))
 import Data.Convertible (Convertible (..), convert)
-import qualified Data.Vector as V
 import Data.Vector.Storable (
       Vector, (!), create, enumFromN, forM_, generate, unfoldr
     )
@@ -230,12 +229,12 @@ instance Storable p => FromFunction (Manifest p) where
                 let !lineOffset = y * w
                 forM_ (enumFromN 0 w) $ \x -> do
                     let !offset = lineOffset + x
-                        !val    = f (cols V.! x) (ix2 y x)
+                        !val    = f (cols ! x) (ix2 y x)
                     write arr offset val
 
             return arr
       where
-        !cols = V.generate w col
+        !cols = generate w col
     {-# INLINE fromFunctionCol #-}
 
     fromFunctionCached !size@(Z :. h :. w) line col f =
@@ -248,12 +247,12 @@ instance Storable p => FromFunction (Manifest p) where
                     !lineOffset = y * w
                 forM_ (enumFromN 0 w) $ \x -> do
                     let !offset = lineOffset + x
-                        !val    = f lineVal (cols V.! x) (ix2 y x)
+                        !val    = f lineVal (cols ! x) (ix2 y x)
                     write arr offset val
 
             return arr
       where
-        !cols = V.generate w col
+        !cols = generate w col
     {-# INLINE fromFunctionCached #-}
 
 instance (Image src, Pixel p) => FunctorImage src (Manifest p) where
