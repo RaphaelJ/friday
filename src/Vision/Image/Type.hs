@@ -158,27 +158,8 @@ class FromFunction i where
 -- | Defines a class for images on which a function can be applied. The class is
 -- different from 'Functor' as there could be some constraints on the pixel and
 -- image types.
-class FunctorImage i1 i2 where
-    type SourcePixel i1
-    type ResultPixel i2
-
-    map :: (SourcePixel i1 -> ResultPixel i2) -> i1 -> i2
-
--- | Traditional images are functors.
-instance (Image i1, FromFunction (i2 a), FromFunctionPixel (i2 a) ~ a) => FunctorImage i1 (i2 a) where
-    type SourcePixel i1 = ImagePixel i1
-    type ResultPixel (i2 a) = a
-
-    map f img = fromFunction (shape img) (f . (img `index`))
-    {-# INLINE map #-}
-
--- | Masked images are functors.
-instance (MaskedImage i1, FromFunction (i2 a), FromFunctionPixel (i2 a) ~ Maybe a) => FunctorImage i1 (i2 a) where
-    type SourcePixel i1     = ImagePixel i1
-    type ResultPixel (i2 a) = a
-
-    map f img = fromFunction (shape img) (\pt -> f <$> (img `maskedIndex` pt))
-    {-# INLINE map #-}
+class (MaskedImage src, MaskedImage dst) => FunctorImage src dst where
+    map :: (ImagePixel src -> ImagePixel dst) -> src -> dst
 
 -- Manifest images -------------------------------------------------------------
 
@@ -275,6 +256,10 @@ instance Storable p => FromFunction (Manifest p) where
         !cols = V.generate w col
     {-# INLINE fromFunctionCached #-}
 
+instance (Image src, Pixel p) => FunctorImage src (Manifest p) where
+    map f img = fromFunction (shape img) (f . (img `index`))
+    {-# INLINE map #-}
+
 -- Delayed images --------------------------------------------------------------
 
 -- | A delayed image is an image which is constructed using a function.
@@ -306,6 +291,10 @@ instance FromFunction (Delayed p) where
     fromFunction = Delayed
     {-# INLINE fromFunction #-}
 
+instance (Image src, Pixel p) => FunctorImage src (Delayed p) where
+    map f img = fromFunction (shape img) (f . (img `index`))
+    {-# INLINE map #-}
+
 -- Masked delayed images -------------------------------------------------------
 
 data DelayedMask p = DelayedMask {
@@ -327,6 +316,10 @@ instance Pixel p => FromFunction (DelayedMask p) where
 
     fromFunction = DelayedMask
     {-# INLINE fromFunction #-}
+
+instance (MaskedImage src, Pixel p) => FunctorImage src (DelayedMask p) where
+    map f img = fromFunction (shape img) (\pt -> f <$> (img `maskedIndex` pt))
+    {-# INLINE map #-}
 
 -- Functions -------------------------------------------------------------------
 

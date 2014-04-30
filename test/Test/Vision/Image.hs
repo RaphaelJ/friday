@@ -10,7 +10,7 @@ import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck (Arbitrary (..), choose)
 
 import Vision.Image (
-      Image (..), Interpolable, FromFunction (..), Manifest (..), Delayed (..)
+      MaskedImage (..), Image (..), Interpolable, FromFunction (..), Manifest (..), Delayed (..)
     , GreyImage, GreyPixel (..), HSVPixel, RGBAImage, RGBAPixel (..)
     , RGBADelayed, RGBImage, RGBPixel (..), InterpolMethod (..)
     , convert, resize, horizontalFlip, verticalFlip
@@ -89,18 +89,22 @@ propRGBHSV pix =
 
 -- | Tests if by increasing the size of the image by a factor of two and then
 -- reducing by a factor of two give the original image.
-propImageResize :: (FromFunction i, Interpolable (ImagePixel i), Eq i)
+propImageResize :: (Image i, FromFunction i, FromFunctionPixel i ~ ImagePixel i
+                   , Interpolable (ImagePixel i), Eq i)
                 => i -> Bool
 propImageResize img =
     img == resize' (resize' img (Z :. (h * 2) :. (w * 2))) size
   where
     size@(Z :. h :. w) = shape img
 
-    resize' :: (FromFunction i, Interpolable (ImagePixel i)) => i -> Size -> i
+    resize' :: (Image i, FromFunction i, FromFunctionPixel i ~ ImagePixel i
+               , Interpolable (ImagePixel i))
+            => i -> Size -> i
     resize' img' = resize img' NearestNeighbor
 
 -- | Tests if applying the horizontal flip twice gives the original image.
-propHorizontalFlip :: (FromFunction i, Eq i) => i -> Bool
+propHorizontalFlip :: (Image i, FromFunction i
+                      , FromFunctionPixel i ~ ImagePixel i, Eq i) => i -> Bool
 propHorizontalFlip img =
     img == horizontalFlip (delayedFlip img)
   where
@@ -108,7 +112,8 @@ propHorizontalFlip img =
     delayedFlip = horizontalFlip
 
 -- | Tests if applying the vertical flip twice gives the original image.
-propVerticalFlip :: (FromFunction i, Eq i) => i -> Bool
+propVerticalFlip :: (Image i, FromFunction i
+                      , FromFunctionPixel i ~ ImagePixel i, Eq i) => i -> Bool
 propVerticalFlip img =
     img == verticalFlip (delayedFlip img)
   where

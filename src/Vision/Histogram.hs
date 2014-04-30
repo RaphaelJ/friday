@@ -20,16 +20,14 @@ module Vision.Histogram (
     , compareCorrel, compareChi, compareIntersect, compareEMD
     ) where
 
-import Control.Applicative ((<$>))
 import Data.Int
 import Data.Vector.Storable (Vector, (!))
 import qualified Data.Vector.Storable as V
-import Data.Vector.Unboxed (Unbox)
 import Foreign.Storable (Storable)
 import Prelude hiding (map)
 
 import Vision.Image (
-      Pixel, MaskedImage, Image, ImagePixel, FromFunction
+      Pixel, MaskedImage, Image, ImagePixel, FunctorImage
     , GreyImage, GreyPixel (..), HSVImage, HSVPixel (..)
     , RGBAImage, RGBAPixel (..), RGBImage, RGBPixel (..)
     )
@@ -302,11 +300,11 @@ normalize !hist@(Histogram _ vec) norm =
 -- @H@ the cumulative of the histogram normalized over a @L1@ norm equals to the
 -- index range of the image (@255@ for a greyscale image).
 -- See <https://en.wikipedia.org/wiki/Histogram_equalization>
-equalizeImage :: (FromFunction i, Integral (ImagePixel i)
+equalizeImage :: (FunctorImage i i, Integral (ImagePixel i)
                  , ToHistogram (ImagePixel i)
                  , PixelValueSpace (ImagePixel i) ~ DIM1) => i -> i
 equalizeImage img =
-    equalizePixel <$> img
+    I.map equalizePixel img
   where
     hist            = histogram img Nothing             :: Histogram DIM1 Int32
     Z :. nBins      = shape hist

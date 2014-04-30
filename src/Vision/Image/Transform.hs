@@ -84,8 +84,8 @@ resize !img !method !size'@(Z :. h' :. w') =
 {-# INLINABLE resize #-}
 
 -- | Reverses the image horizontally.
-horizontalFlip :: (Image i1, FromFunction i2,
-                   ImagePixel i1 ~ FromFunctionPixel i2)
+horizontalFlip :: (Image i1, FromFunction i2
+                  , ImagePixel i1 ~ FromFunctionPixel i2)
                => i1 -> i2
 horizontalFlip !img =
     let f !(Z :. y :. x') = let !x = maxX - x'
@@ -98,8 +98,8 @@ horizontalFlip !img =
 {-# INLINABLE horizontalFlip #-}
 
 -- | Reverses the image vertically.
-verticalFlip :: (Image i1, FromFunction i2,
-                 ImagePixel i1 ~ FromFunctionPixel i2)
+verticalFlip :: (Image i1, FromFunction i2
+                , ImagePixel i1 ~ FromFunctionPixel i2)
              => i1 -> i2
 verticalFlip !img =
     let line !y' = maxY - y'
