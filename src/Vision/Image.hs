@@ -31,6 +31,7 @@
 -- intermediate image.
 module Vision.Image (
       module Vision.Image.GreyImage
+    , module Vision.Image.Filter
     , module Vision.Image.HSVImage
     , module Vision.Image.Interpolate
     , module Vision.Image.RGBImage
@@ -41,6 +42,7 @@ module Vision.Image (
     ) where
 
 import Vision.Image.GreyImage
+import Vision.Image.Filter
 import Vision.Image.HSVImage
 import Vision.Image.Interpolate
 import Vision.Image.RGBImage

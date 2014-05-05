@@ -6,7 +6,7 @@ module Vision.Image.Interpolate (
       Interpolable (..), bilinearInterpol
     ) where
 
-import Data.RatioInt (RatioInt, denominator, numerator)
+import Data.RatioInt (denominator, numerator)
 
 import Vision.Image.Type (Pixel (..), Image (..), ImagePixel)
 import Vision.Primitive (RPoint (..), ix2)

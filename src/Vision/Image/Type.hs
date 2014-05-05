@@ -27,7 +27,7 @@ import Foreign.Storable (Storable)
 import Prelude hiding (map)
 
 import Vision.Primitive (
-      Z (..), (:.) (..), Shape, Point, Size
+      Z (..), (:.) (..), Point, Size
     , ix2, fromLinearIndex, toLinearIndex, shapeLength
     )
 

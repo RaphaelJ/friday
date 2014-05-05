@@ -1,6 +1,6 @@
 {-# LANGUAGE BangPatterns, FlexibleContexts, TypeFamilies #-}
 
--- | Provides high level functions to manipulate images.
+-- | Provides high level functions to do geometric transformations on images.
 module Vision.Image.Transform (
       InterpolMethod (..), crop, resize, horizontalFlip, verticalFlip
     ) where

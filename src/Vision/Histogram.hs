@@ -312,8 +312,8 @@ equalizeImage img =
     !cumNormalized' = map round cumNormalized           :: Histogram DIM1 Int32
     equalizePixel !val = fromIntegral $ cumNormalized' `index` ix1 (int val)
     {-# INLINE equalizePixel #-}
--- FIXME: GHC 7.6.3 fails to specialize
-{-# SPECIALIZE equalizeImage :: GreyImage -> GreyImage #-} 
+-- FIXME: GHC 7.8.2 fails to specialize
+{-# SPECIALIZE equalizeImage :: GreyImage -> GreyImage #-}
 {-# INLINABLE equalizeImage #-}
 
 -- Comparisons -----------------------------------------------------------------

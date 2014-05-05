@@ -34,6 +34,7 @@ library
                         Vision.Image.GreyImage
                         Vision.Image.GreyImage.Conversion
                         Vision.Image.GreyImage.Type
+                        Vision.Image.Filter
                         Vision.Image.HSVImage
                         Vision.Image.HSVImage.Conversion
                         Vision.Image.HSVImage.Type
