@@ -28,17 +28,38 @@ data FilterFold input acc where
     FilterFold  :: acc -> FilterFold input acc
     FilterFold1 ::        FilterFold input input
 
+data BorderInterpolate a = BorderReplicate
+                         | BorderReflect
+                         | BorderWrap
+                         | BorderConstant a
+
+class FiltrableImage i where
+    type AccumulatorImage i
+
 apply :: (Image src, FromFunction dst)
       => src
       -> Filter (ImagePixel src) acc (FromFunctionPixel dst)
+      -> BorderInterpolate (ImagePixel src)
       -> dst
 apply = undefined
--- apply img (Filter size center (Kernel f) fold post) =
+apply img (Filter size center (Kernel kernel) fold post) =
+    
+apply img (Filter size center (SeparableKernel f) fold post) =
 --     fromFunction (shape img) $ \(Z :. y :. x) ->
 --         post 
 -- 
 --   where
 --     center' | 
+
+borderInterpolate :: BorderInterpolate a -> (Int -> a) -> Int -> Int -> a
+borderInterpolate interpol get maxIx ix | word ix < word maxIx = get ix
+                                        | otherwise            =
+    case interpol of
+        BorderReplicate  ->
+        BorderReflect    ->
+        BorderWrap       ->
+        BorderConstant i -> i
+{-# INLINE borderInterpolate #-}
 
 erode :: Ord input => Filter input input input
 erode = Filter (ix2 3 3) KernelAnchorCenter
