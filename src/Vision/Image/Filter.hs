@@ -9,12 +9,13 @@ import Vision.Image.Interpolate (Interpolable, bilinearInterpol)
 import Vision.Image.Type (MaskedImage (..), Image (..), FromFunction (..))
 import Vision.Primitive (Z (..), (:.) (..), RPoint (..), Rect (..), Size, DIM1, DIM2, ix2)
 
-data Filter input acc output = Filter {
+data Filter src acc dst = Filter {
       fKernelSize   :: !DIM2
     , fKernelCenter :: !KernelAnchor
-    , fKernel       :: !(Kernel     input acc)
-    , fFold         :: !(FilterFold input acc)
-    , fPost         :: !(acc -> output)
+    , fKernel       :: !(Kernel     src acc)
+    , fInit         :: !(FilterInit src acc)
+    , fPost         :: !(acc -> dst)
+    , fInterpol     :: !(BorderInterpolate src)
     }
 
 -- | Defines how to center the kernel.
@@ -24,13 +25,13 @@ data KernelAnchor = KernelAnchor !DIM2
 -- | Function which will be applied to every pixel.
 -- Some kernels can be factorized in two uni-dimensional kernels (horizontal and
 -- vertical). See <http://http://en.wikipedia.org/wiki/Separable_filter>.
-data Kernel input acc = Kernel !(DIM2 -> input -> acc -> acc)
-                      | SeparableKernel !(DIM1 -> input -> acc -> acc)
-                                        !(DIM1 -> acc   -> acc -> acc)
+data Kernel src acc = Kernel !(DIM2 -> src -> acc -> acc)
+                    | SeparableKernel !(DIM1 -> src -> acc -> acc)
+                                      !(DIM1 -> acc -> acc -> acc)
 
-data FilterFold input acc where
-    FilterFold  :: acc -> FilterFold input acc
-    FilterFold1 ::        FilterFold input input
+data FilterInit src acc where
+    FilterFold  :: acc -> FilterFold src acc
+    FilterFold1 ::        FilterFold src src
 
 -- | Defines how image boundaries are extrapolated by the algorithms.
 -- '|' characters in examples are image borders.
@@ -51,7 +52,7 @@ data BorderInterpolate a =
 -- | Defines what image will be used as accumulator when filtering using a
 -- separable kernel.
 class (acc ~ AccumulatorImage src dst, Image acc, FromFunction acc)
-    => FiltrableImage src dst p where
+    => FiltrableImages src dst p where
     -- | Gives the type of the accumulator image given the source and
     -- destination image and the accumulator pixel type.
     type AccumulatorImage src dst p
@@ -59,20 +60,32 @@ class (acc ~ AccumulatorImage src dst, Image acc, FromFunction acc)
 instance (Storable p_acc) => FiltrableImage src (Manifest p_dst) p_acc where
     type AccumulatorImage src (Manifest p_dst) p_acc = Manifest p_acc
 
-apply :: (Image src, FromFunction dst, FiltrableImage src dst)
+apply :: (Image src, FromFunction dst, FiltrableImages src dst acc)
       => src
       -> Filter (ImagePixel src) acc (FromFunctionPixel dst)
       -> BorderInterpolate (ImagePixel src)
       -> dst
-apply !img !(Filter (Z :. kh :. kw) anchor (Kernel kernel) fold post) =
-    
+apply !img !(Filter (Z :. kh :. kw) anchor (Kernel kernel) ini post interpol) =
+    fromFunctionLine (shape img) $ \!(Z :. y :. x) ->
+        goColumn (Z :. (y - cy) :. (x - cy))
 
-    !center = case anchor of KernelAnchor c     -> c
-                             KernelAnchorCenter -> Z :. (kh `div` 2)
-                                                     :. (kw `div` 2)
+    !(Z :. ih :. iw) = shape img
 
-    accum :: img -> AccumulatorImage img
-    accum = 
+    goColumn (Z :. iy :. ix) x =
+        case borderInterpolate interpol ih iy of
+            Left iy' -> 
+            Right v  ->
+
+    goLine !kix@(kyix :. kxix) !iix !acc
+        | kix < kw  = let !pix  = borderInterpolate img `linearIndex` iix
+                          !acc' = kernel kix pix acc
+                      in goLine (kyix :. (kxix + 1)) (iix + 1) acc
+        | otherwise = acc
+
+    !(Z :. cy :. cy) = case anchor of KernelAnchor c     -> c
+                                      KernelAnchorCenter -> Z :. (kh `div` 2)
+                                                              :. (kw `div` 2)
+
 apply img (Filter size center (SeparableKernel f) fold post) =
 --     fromFunction (shape img) $ \(Z :. y :. x) ->
 --         post 
@@ -84,18 +97,19 @@ apply img (Filter size center (SeparableKernel f) fold post) =
 -- an index in this dimension, returns either the index of the interpolated
 -- pixel or a constant value.
 borderInterpolate :: BorderInterpolate a -> Int -> Int -> Either Int a
-borderInterpolate !interpol !maxIx !ix | word ix < word maxIx = Left ix
-                                       | otherwise            =
-    case interpol of
-        BorderReplicate | ix < 0    -> Left 0
-                        | otherwise -> Left $! maxIx - 1
-        BorderReflect               -> Left $! goReflect ix
-        BorderWrap                  -> Left $! ix `mod` maxIx
-        BorderConstant i            -> Right i
+borderInterpolate !interpol !len !ix 
+    | word ix < word len = Left ix
+    | otherwise          =
+        case interpol of
+            BorderReplicate | ix < 0    -> Left 0
+                            | otherwise -> Left $! len - 1
+            BorderReflect               -> Left $! goReflect ix
+            BorderWrap                  -> Left $! ix `mod` len
+            BorderConstant i            -> Right i
   where
-    goReflect !ix' | ix' < 0      = goReflect (-ix' - 1)
-                   | ix' >= maxIx = goReflect ((maxIx - 1) - (ix' - maxIx))
-                   | otherwise    = ix'
+    goReflect !ix' | ix' < 0    = goReflect (-ix' - 1)
+                   | ix' >= len = goReflect ((len - 1) - (ix' - len))
+                   | otherwise  = ix'
 {-# INLINE borderInterpolate #-}
 
 erode :: Ord input => Filter input input input
