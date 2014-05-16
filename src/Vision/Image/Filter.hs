@@ -17,9 +17,13 @@ data Filter input acc output = Filter {
     , fPost         :: !(acc -> output)
     }
 
+-- | Defines how to center the kernel.
 data KernelAnchor = KernelAnchor !DIM2
                   | KernelAnchorCenter
 
+-- | Function which will be applied to every pixel.
+-- Some kernels can be factorized in two uni-dimensional kernels (horizontal and
+-- vertical). See <http://http://en.wikipedia.org/wiki/Separable_filter>.
 data Kernel input acc = Kernel !(DIM2 -> input -> acc -> acc)
                       | SeparableKernel !(DIM1 -> input -> acc -> acc)
                                         !(DIM1 -> acc   -> acc -> acc)
@@ -29,8 +33,9 @@ data FilterFold input acc where
     FilterFold1 ::        FilterFold input input
 
 -- | Defines how image boundaries are extrapolated by the algorithms.
+-- '|' characters in examples are image borders.
 data BorderInterpolate a =
-    -- | Replicates the first and last pixel of the image.
+    -- | Replicates the first and last pixels of the image.
     -- > aaaaaa|abcdefgh|hhhhhhh
       BorderReplicate
     -- | Reflects the border of the image.
@@ -43,16 +48,29 @@ data BorderInterpolate a =
     -- > iiiiii|abcdefgh|iiiiiii  with some specified 'i'
     | BorderConstant !a
 
-class FiltrableImage i where
-    type AccumulatorImage i
+-- | Defines what image will be used as accumulator when filtering using a
+-- separable kernel.
+class (acc ~ AccumulatorImage src dst, Image acc, FromFunction acc)
+    => FiltrableImage src dst p where
+    -- | Gives the type of the accumulator image given the source and
+    -- destination image and the accumulator pixel type.
+    type AccumulatorImage src dst p
 
-apply :: (Image (i src), FromFunction (i dst), FiltrableImage)
+instance (Storable p_acc) => FiltrableImage src (Manifest p_dst) p_acc where
+    type AccumulatorImage src (Manifest p_dst) p_acc = Manifest p_acc
+
+apply :: (Image src, FromFunction dst, FiltrableImage src dst)
       => src
       -> Filter (ImagePixel src) acc (FromFunctionPixel dst)
       -> BorderInterpolate (ImagePixel src)
       -> dst
-apply = undefined
-apply img (Filter size center (Kernel kernel) fold post) =
+apply !img !(Filter (Z :. kh :. kw) anchor (Kernel kernel) fold post) =
+    
+
+    !center = case anchor of KernelAnchor c     -> c
+                             KernelAnchorCenter -> Z :. (kh `div` 2)
+                                                     :. (kw `div` 2)
+
     accum :: img -> AccumulatorImage img
     accum = 
 apply img (Filter size center (SeparableKernel f) fold post) =
@@ -62,6 +80,9 @@ apply img (Filter size center (SeparableKernel f) fold post) =
 --   where
 --     center' | 
 
+-- | Given a method of interpolation, the number of pixel in the dimension and
+-- an index in this dimension, returns either the index of the interpolated
+-- pixel or a constant value.
 borderInterpolate :: BorderInterpolate a -> Int -> Int -> Either Int a
 borderInterpolate !interpol !maxIx !ix | word ix < word maxIx = Left ix
                                        | otherwise            =
