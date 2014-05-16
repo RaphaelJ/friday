@@ -28,22 +28,33 @@ data FilterFold input acc where
     FilterFold  :: acc -> FilterFold input acc
     FilterFold1 ::        FilterFold input input
 
-data BorderInterpolate a = BorderReplicate
-                         | BorderReflect
-                         | BorderWrap
-                         | BorderConstant a
+-- | Defines how image boundaries are extrapolated by the algorithms.
+data BorderInterpolate a =
+    -- | Replicates the first and last pixel of the image.
+    -- > aaaaaa|abcdefgh|hhhhhhh
+      BorderReplicate
+    -- | Reflects the border of the image.
+    -- > fedcba|abcdefgh|hgfedcb
+    | BorderReflect
+    -- | Considers that the last pixel of the image is before the first one.
+    -- > cdefgh|abcdefgh|abcdefg
+    | BorderWrap
+    -- | Assigns a constant value to out of image pixels.
+    -- > iiiiii|abcdefgh|iiiiiii  with some specified 'i'
+    | BorderConstant !a
 
 class FiltrableImage i where
     type AccumulatorImage i
 
-apply :: (Image src, FromFunction dst)
+apply :: (Image (i src), FromFunction (i dst), FiltrableImage)
       => src
       -> Filter (ImagePixel src) acc (FromFunctionPixel dst)
       -> BorderInterpolate (ImagePixel src)
       -> dst
 apply = undefined
 apply img (Filter size center (Kernel kernel) fold post) =
-    
+    accum :: img -> AccumulatorImage img
+    accum = 
 apply img (Filter size center (SeparableKernel f) fold post) =
 --     fromFunction (shape img) $ \(Z :. y :. x) ->
 --         post 
@@ -51,14 +62,19 @@ apply img (Filter size center (SeparableKernel f) fold post) =
 --   where
 --     center' | 
 
-borderInterpolate :: BorderInterpolate a -> (Int -> a) -> Int -> Int -> a
-borderInterpolate interpol get maxIx ix | word ix < word maxIx = get ix
-                                        | otherwise            =
+borderInterpolate :: BorderInterpolate a -> Int -> Int -> Either Int a
+borderInterpolate !interpol !maxIx !ix | word ix < word maxIx = Left ix
+                                       | otherwise            =
     case interpol of
-        BorderReplicate  ->
-        BorderReflect    ->
-        BorderWrap       ->
-        BorderConstant i -> i
+        BorderReplicate | ix < 0    -> Left 0
+                        | otherwise -> Left $! maxIx - 1
+        BorderReflect               -> Left $! goReflect ix
+        BorderWrap                  -> Left $! ix `mod` maxIx
+        BorderConstant i            -> Right i
+  where
+    goReflect !ix' | ix' < 0      = goReflect (-ix' - 1)
+                   | ix' >= maxIx = goReflect ((maxIx - 1) - (ix' - maxIx))
+                   | otherwise    = ix'
 {-# INLINE borderInterpolate #-}
 
 erode :: Ord input => Filter input input input
