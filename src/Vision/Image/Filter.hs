@@ -63,7 +63,6 @@ instance (Storable p_acc) => FiltrableImage src (Manifest p_dst) p_acc where
 apply :: (Image src, FromFunction dst, FiltrableImages src dst acc)
       => src
       -> Filter (ImagePixel src) acc (FromFunctionPixel dst)
-      -> BorderInterpolate (ImagePixel src)
       -> dst
 apply !img !(Filter (Z :. kh :. kw) anchor (Kernel kernel) ini post interpol) =
     fromFunctionLine (shape img) $ \!(Z :. y :. x) ->
@@ -71,12 +70,16 @@ apply !img !(Filter (Z :. kh :. kw) anchor (Kernel kernel) ini post interpol) =
 
     !(Z :. ih :. iw) = shape img
 
-    goColumn (Z :. iy :. ix) x =
+    goColumn (Z :. iy :. ix) ky acc =
         case borderInterpolate interpol ih iy of
-            Left iy' -> 
-            Right v  ->
+            Left iy'  -> goLine (ky :. 0) acc
+            Right val -> goLineConst (ky :. 0) val acc
 
-    goLine !kix@(kyix :. kxix) !iix !acc
+    goLineConst !kix@(ky :. kx) !val !acc
+        | kx < kw   = goLineConst (ky :. (kx + 1)) !val !acc
+        | otherwise = acc
+
+    goLine !kix@(ky :. kx) !iix !acc
         | kix < kw  = let !pix  = borderInterpolate img `linearIndex` iix
                           !acc' = kernel kix pix acc
                       in goLine (kyix :. (kxix + 1)) (iix + 1) acc
