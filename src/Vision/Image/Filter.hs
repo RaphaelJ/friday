@@ -65,29 +65,52 @@ apply :: (Image src, FromFunction dst, FiltrableImages src dst acc)
       -> Filter (ImagePixel src) acc (FromFunctionPixel dst)
       -> dst
 apply !img !(Filter (Z :. kh :. kw) anchor (Kernel kernel) ini post interpol) =
-    fromFunctionLine (shape img) $ \!(Z :. y :. x) ->
-        goColumn (Z :. (y - cy) :. (x - cy))
+    case ini of FilterFold acc ->
+                    fromFunction size $ \!(Z :. y :. x) ->
+                        let !iy = y - cy
+                        in goColumn iy (iy * iw) (x - cx) 0 acc
+                FilterFold1    ->
+                    fromFunction size $ \!(Z :. y :. x) ->
+                        goColumn1 (y - cy) (x - cx) 0
+  where
+    !size@(Z :. ih :. iw) = shape img
 
-    !(Z :. ih :. iw) = shape img
-
-    goColumn (Z :. iy :. ix) ky acc =
-        case borderInterpolate interpol ih iy of
-            Left iy'  -> goLine (ky :. 0) acc
-            Right val -> goLineConst (ky :. 0) val acc
-
-    goLineConst !kix@(ky :. kx) !val !acc
-        | kx < kw   = goLineConst (ky :. (kx + 1)) !val !acc
+    goColumn iy linearIY ix ky acc =
+        | ky < kh   =
+            case borderInterpolate interpol ih iy of
+                Left  iy' -> let !acc' = goLine linearIY (ky :. 0) ix acc
+                             in goColumn (iy + 1) (linearIY + iw) ix (ky + 1)
+                                         acc'
+                Right val -> goLineConst (ky :. 0) val acc
         | otherwise = acc
 
-    goLine !kix@(ky :. kx) !iix !acc
-        | kix < kw  = let !pix  = borderInterpolate img `linearIndex` iix
-                          !acc' = kernel kix pix acc
-                      in goLine (kyix :. (kxix + 1)) (iix + 1) acc
+    goColumn1 iy ix
+        | kh > 0 && kw > 0 =
+            case borderInterpolate interpol ih iy of
+                Left  iy' -> let !linearIY = iy * iw
+                                 !acc = goLine linearIY (Z :. 0 :. 1) (ix + 1)
+                                               (img `linearIndex` linearIY)
+                             in goColumn (Z :. (iy + 1) :. ix) linearIY (ky + 1) acc'
+                Right val -> goLineConst (ky :. 0) val acc
+        | otherwise = error "Using FilterFold1 with an empty kernel."
+
+    goLineConst !val !kix@(ky :. kx) !acc
+        | kx < kw   = let !acc' = kernel kix val acc
+                      in goLineConst val (ky :. (kx + 1)) acc'
         | otherwise = acc
 
-    !(Z :. cy :. cy) = case anchor of KernelAnchor c     -> c
-                                      KernelAnchorCenter -> Z :. (kh `div` 2)
-                                                              :. (kw `div` 2)
+    goLine !linearIY !kix@(ky :. kx) !ix !acc
+        | kix < kw  =
+            let !val = case borderInterpolate interpol iw ix of
+                            Left  ix' -> img `linearIndex` (linearIY + ix)
+                            Right val -> val
+                !acc' = kernel kix pix acc
+            in goLine (kyix :. (kxix + 1)) (iix + 1) acc'
+        | otherwise = acc
+
+    !(Z :. cy :. cx) = case anchor of KernelAnchor c     -> c
+                                      KernelAnchorCenter -> Z :. (kh `quot` 2)
+                                                              :. (kw `quot` 2)
 
 apply img (Filter size center (SeparableKernel f) fold post) =
 --     fromFunction (shape img) $ \(Z :. y :. x) ->
