@@ -1,32 +1,33 @@
-name:              friday
-version:           0.0.0
-license:           LGPL-3
-author:            Raphael Javaux <raphaeljavaux[at]gmail.com>
-maintainer:        Raphael Javaux <raphaeljavaux[at]gmail.com>
-synopsis:          Fast image IO and transformations.
-description:       Friday provides high performance image manipulation
-                   functions.
-                   .
-                   The library uses FFI calls to the DevIL image library to
-                   read images from a wide variety of formats, including BMP,
-                   JPG, PNG, GIF, ICO and PSD.
-                   .
-                   .
-                   Images can be represented in two representations:
-                   .
-                   * the @Manifest@ representation stores images in Haskell
-                   Vectors ;
-                   .
-                   * the @Delayed@ representation uses functions to produce
-                   image. These can be combined to produce complex
-                   transformations. By some inlining, Haskell compilers are able
-                   to produce fast algorithms by removing intermediate
-                   structures.
-homepage:          https://github.com/RaphaelJ/friday
-category:          Machine Vision
-stability:         Experimental
-cabal-version:     >= 1.9.2
-build-type:        Simple
+name:                   friday
+version:                0.0.0
+synopsis:               Fast image IO and transformations.
+homepage:               https://github.com/RaphaelJ/friday
+license:                LGPL-3
+license-file:           LICENSE
+author:                 Raphael Javaux <raphaeljavaux[at]gmail.com>
+maintainer:             Raphael Javaux <raphaeljavaux[at]gmail.com>
+description:            Friday provides high performance image manipulation
+                        functions.
+                        .
+                        The library uses FFI calls to the DevIL image library to
+                        read images from a wide variety of formats, including
+                        BMP, JPG, PNG, GIF, ICO and PSD.
+                        .
+                        .
+                        Images can be represented in two representations:
+                        .
+                        * the @Manifest@ representation stores images in Haskell
+                        Vectors ;
+                        .
+                        * the @Delayed@ representation uses functions to produce
+                        image. These can be combined to produce complex
+                        transformations. By some inlining, Haskell compilers are
+                        able to produce fast algorithms by removing intermediate
+                        structures.
+category:               Graphics
+stability:              Experimental
+build-type:             Simple
+cabal-version:          >= 1.10
 
 library
     exposed-modules:    Vision.Histogram
@@ -54,12 +55,12 @@ library
     ghc-options:        -Wall -O2
     hs-source-dirs:     src/
 
-    build-depends: base                         >= 4            && < 5
-                 , bytestring                   >= 0.10         && < 1.0
-                 , convertible                  >= 1            && < 2
-                 , ratio-int                    >= 0.1.1        && < 0.2
-                 , vector                       >= 0.10.0.1     && < 1.0
-                 , transformers                 >= 0.3          && < 0.4
+    build-depends:      base                    >= 4            && < 5
+                      , bytestring              >= 0.10         && < 1.0
+                      , convertible             >= 1            && < 2
+                      , ratio-int               >= 0.1.1        && < 0.2
+                      , vector                  >= 0.10.0.1     && < 1.0
+                      , transformers            >= 0.3          && < 0.4
 
     Build-tools:        hsc2hs
 
@@ -72,9 +73,9 @@ Benchmark benchmark
     ghc-options:        -Wall -O2 -rtsopts
     hs-source-dirs:     bench/
 
-    build-depends: base                         >= 4            && < 5
-                 , criterion                    >= 0.8          && < 1.0
-                 , friday
+    build-depends:      base                    >= 4            && < 5
+                      , criterion               >= 0.8          && < 1.0
+                      , friday
 
 Test-Suite test
     type:       exitcode-stdio-1.0
@@ -83,10 +84,10 @@ Test-Suite test
     ghc-options:        -Wall -O2 -rtsopts
     hs-source-dirs:     test/
 
-    build-depends: base                         >= 4            && < 5
-                 , QuickCheck                   >= 2.6          && < 3
-                 , friday
-                 , test-framework               >= 0.8          && < 0.9
-                 , test-framework-quickcheck2   >= 0.3.0.2      && < 0.4
-                 , vector                       >= 0.10.0.1     && < 1.0
+    build-depends:      base                         >= 4            && < 5
+                      , QuickCheck                   >= 2.6          && < 3
+                      , friday
+                      , test-framework               >= 0.8          && < 0.9
+                      , test-framework-quickcheck2   >= 0.3.0.2      && < 0.4
+                      , vector                       >= 0.10.0.1     && < 1.0
 
