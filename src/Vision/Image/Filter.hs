@@ -77,24 +77,24 @@ apply !img !(Filter (Z :. kh :. kw) anchor (Kernel kernel) ini post interpol) =
 
     goColumn iy linearIY ix ky acc =
         | ky < kh   =
-            case borderInterpolate interpol ih iy of
-                Left  iy' -> let !acc' = goLine linearIY (ky :. 0) ix acc
-                             in goColumn (iy + 1) (linearIY + iw) ix (ky + 1)
-                                         acc'
-                Right val -> goLineConst (ky :. 0) val acc
+            let !acc' = case borderInterpolate interpol ih iy of
+                            Left  iy' -> goLine linearIY (ky :. 0) ix acc
+                            Right val -> goLineConst (ky :. 0) val acc
+            in goColumn (iy + 1) (linearIY + 1) ix (ky + 1)
         | otherwise = acc
 
     goColumn1 iy ix
         | kh > 0 && kw > 0 =
-            case borderInterpolate interpol ih iy of
-                Left  iy' -> let !linearIY = iy * iw
-                                 !acc = goLine linearIY (Z :. 0 :. 1) (ix + 1)
-                                               (img `linearIndex` linearIY)
-                             in goColumn (Z :. (iy + 1) :. ix) linearIY (ky + 1) acc'
-                Right val -> goLineConst (ky :. 0) val acc
+            let !acc' = case borderInterpolate interpol ih iy of
+                            Left  iy' -> let !linearIY = iy * iw
+                                         in goLine (Z :. 0 :. 1) linearIY
+                                                   (ix + 1)
+                                                   (img `linearIndex` linearIY)
+                            Right val -> goLineConst (ky :. 0) val acc
+            in goColumn (Z :. (iy + 1) :. ix) linearIY (ky + 1) acc'
         | otherwise = error "Using FilterFold1 with an empty kernel."
 
-    goLineConst !val !kix@(ky :. kx) !acc
+    goLineConst !kix@(ky :. kx) !val !acc
         | kx < kw   = let !acc' = kernel kix val acc
                       in goLineConst val (ky :. (kx + 1)) acc'
         | otherwise = acc
@@ -105,7 +105,7 @@ apply !img !(Filter (Z :. kh :. kw) anchor (Kernel kernel) ini post interpol) =
                             Left  ix' -> img `linearIndex` (linearIY + ix)
                             Right val -> val
                 !acc' = kernel kix pix acc
-            in goLine (kyix :. (kxix + 1)) (iix + 1) acc'
+            in goLine !linearIY (ky :. (kx + 1)) (ix + 1) !acc'
         | otherwise = acc
 
     !(Z :. cy :. cx) = case anchor of KernelAnchor c     -> c
