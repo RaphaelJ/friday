@@ -9,7 +9,9 @@ module Vision.Image.Filter (
 import Data.Word
 import Foreign.Storable (Storable)
 
-import Vision.Image.Type (Manifest, MaskedImage (..), Image (..), FromFunction (..))
+import Vision.Image.Type (
+      Manifest, MaskedImage (..), Image (..), FromFunction (..)
+    )
 import Vision.Primitive (Z (..), (:.) (..), DIM1, DIM2, ix2)
 
 data Filter src acc dst = Filter {
@@ -78,10 +80,9 @@ apply !img !(Filter (Z :. kh :. kw) anchor (Kernel kernel) ini post interpol) =
 
     goColumn !iy !ix !ky !acc
         | ky < kh   =
-            let !acc' = case borderInterpolate interpol ih iy of
-                            Left  iy' -> goLine (iy' * iw) (Z :. ky :. 0) ix acc
-                            Right val -> goLineConst (Z :. ky :. 0) val acc
-            in goColumn (iy + 1) ix (ky + 1) acc'
+            case borderInterpolate interpol ih iy of
+                Left  iy' -> goLine iy (iy' * iw) ix ix ky 0 acc
+                Right val -> goLineConst iy ix ky 0 val acc
         | otherwise = acc
 
 --     goColumn1 iy ix
@@ -96,26 +97,26 @@ apply !img !(Filter (Z :. kh :. kw) anchor (Kernel kernel) ini post interpol) =
 --             in goColumn (iy + 1) (linearIY + iw) ix 1 acc'
 --         | otherwise = error "Using FilterFold1 with an empty kernel."
 
-    goLine !linearIY !kix@(ky :. kx) !ix !acc
+    goLine !iy !linearIY !ixs !ix !ky !kx !acc
         | kx < kw   =
             let !val = case borderInterpolate interpol iw ix of
                             Left  ix'  -> img `linearIndex` (linearIY + ix')
                             Right val' -> val'
-                !acc' = kernel kix val acc
-            in goLine linearIY (ky :. (kx + 1)) (ix + 1) acc'
-        | otherwise = acc
+                !acc' = kernel (ix2 ky kx) val acc
+            in goLine iy linearIY ixs (ix + 1) ky (kx + 1) acc'
+        | otherwise = goColumn (iy + 1) ixs (ky + 1) acc
 
-    goLineConst !kix@(ky :. kx) !val !acc
-        | kx < kw   = let !acc' = kernel kix val acc
-                      in goLineConst (ky :. (kx + 1)) val acc'
-        | otherwise = acc
+    goLineConst !iy !ix !ky !kx !val !acc
+        | kx < kw   = let !acc' = kernel (ix2 ky kx) val acc
+                      in goLineConst iy ix ky (kx + 1) val acc'
+        | otherwise = goColumn (iy + 1) ix (ky + 1) acc
 
     !(Z :. cy :. cx) = case anchor of KernelAnchor c     -> c
                                       KernelAnchorCenter -> Z :. (kh `quot` 2)
                                                               :. (kw `quot` 2)
-
 apply img (Filter size center (SeparableKernel f1 f2) fold post interpol) =
     undefined
+{-# INLINE apply #-}
 
 -- | Given a method of interpolation, the number of pixel in the dimension and
 -- an index in this dimension, returns either the index of the interpolated
@@ -157,6 +158,7 @@ blur radius =
 
     one _ !v !acc = acc + fromIntegral v
     {-# INLINE one #-}
+{-# INLINE blur #-}
 
 scharr :: (Integral a, Num b) => Filter a b b
 scharr =

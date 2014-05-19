@@ -65,6 +65,10 @@ main = do
             , bench "bilinear 200%" $
                 whnf (resize' rgb I.Bilinear) (Z :. (h * 2) :. (w * 2))
             ]
+        , bgroup "filter" [
+              bench "blur" $
+                whnf ((`I.apply` I.blur 1) :: GreyImage -> GreyImage) grey
+            ]
         , bgroup "flip" [
               bench "horizontal" $
                 whnf (I.horizontalFlip :: RGBImage -> RGBImage) rgb
