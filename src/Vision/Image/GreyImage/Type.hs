@@ -4,6 +4,7 @@ module Vision.Image.GreyImage.Type (
       GreyPixel (..), GreyImage, GreyDelayed
     ) where
 
+import Data.Bits
 import Data.Word
 import Foreign.Storable (Storable)
 
@@ -15,7 +16,8 @@ import Vision.Image.Type (Pixel (..), Manifest, Delayed)
 import Vision.Primitive (Rect, Size)
 
 newtype GreyPixel = GreyPixel Word8
-    deriving (Enum, Eq, Integral, Num, Ord, Real, Show, Storable)
+    deriving (Bits, Bounded, Enum, Eq, FiniteBits, Integral, Num, Ord, Real
+            , Read, Show, Storable)
 
 type GreyImage = Manifest GreyPixel
 

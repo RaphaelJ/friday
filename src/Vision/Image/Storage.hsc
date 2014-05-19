@@ -25,7 +25,7 @@ import Foreign.Concurrent (newForeignPtr)
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr, castPtr)
-import Foreign.Storable (Storable, peek)
+import Foreign.Storable (peek)
 import System.IO.Unsafe (unsafePerformIO)
 
 import Vision.Image.GreyImage (GreyImage, GreyPixel)

@@ -19,10 +19,12 @@ module Vision.Image.Type (
 
 import Control.Applicative ((<$>))
 import Data.Convertible (Convertible (..), convert)
+import Data.Int
 import Data.Vector.Storable (
       Vector, (!), create, enumFromN, forM_, generate, unfoldr
     )
 import Data.Vector.Storable.Mutable (new, write)
+import Data.Word
 import Foreign.Storable (Storable)
 import Prelude hiding (map)
 
@@ -43,6 +45,26 @@ class Storable p => Pixel p where
     pixNChannels :: p -> Int
 
     pixIndex :: p -> Int -> PixelChannel p
+
+instance Pixel Int16 where
+    type PixelChannel Int16 = Int16
+    pixNChannels _   = 1
+    pixIndex     p _ = p
+
+instance Pixel Int32 where
+    type PixelChannel Int32 = Int32
+    pixNChannels _   = 1
+    pixIndex     p _ = p
+
+instance Pixel Word8 where
+    type PixelChannel Word8 = Word8
+    pixNChannels _   = 1
+    pixIndex     p _ = p
+
+instance Pixel Word16 where
+    type PixelChannel Word16 = Word16
+    pixNChannels _   = 1
+    pixIndex     p _ = p
 
 -- | Provides an abstraction for images which are not defined for each of their
 -- pixels. The interface is similar to 'Image' except that indexing functions
