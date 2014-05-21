@@ -56,6 +56,11 @@ instance Pixel Int32 where
     pixNChannels _   = 1
     pixIndex     p _ = p
 
+instance Pixel Int where
+    type PixelChannel Int = Int
+    pixNChannels _   = 1
+    pixIndex     p _ = p
+
 instance Pixel Word8 where
     type PixelChannel Word8 = Word8
     pixNChannels _   = 1
@@ -63,6 +68,26 @@ instance Pixel Word8 where
 
 instance Pixel Word16 where
     type PixelChannel Word16 = Word16
+    pixNChannels _   = 1
+    pixIndex     p _ = p
+
+instance Pixel Word32 where
+    type PixelChannel Word32 = Word32
+    pixNChannels _   = 1
+    pixIndex     p _ = p
+
+instance Pixel Word where
+    type PixelChannel Word = Word
+    pixNChannels _   = 1
+    pixIndex     p _ = p
+
+instance Pixel Float where
+    type PixelChannel Float = Float
+    pixNChannels _   = 1
+    pixIndex     p _ = p
+
+instance Pixel Double where
+    type PixelChannel Double = Double
     pixNChannels _   = 1
     pixIndex     p _ = p
 
@@ -179,8 +204,8 @@ class FromFunction i where
 -- | Defines a class for images on which a function can be applied. The class is
 -- different from 'Functor' as there could be some constraints on the pixel and
 -- image types.
-class (MaskedImage src, MaskedImage dst) => FunctorImage src dst where
-    map :: (ImagePixel src -> ImagePixel dst) -> src -> dst
+class (MaskedImage src, MaskedImage res) => FunctorImage src res where
+    map :: (ImagePixel src -> ImagePixel res) -> src -> res
 
 -- Manifest images -------------------------------------------------------------
 

@@ -68,6 +68,9 @@ main = do
         , bgroup "filter" [
               bench "blur" $
                 whnf ((`I.apply` I.blur 1) :: GreyImage -> GreyImage) grey
+            , bench "gaussian blur" $
+                whnf ((`I.apply` I.gaussianBlur 1 Nothing)
+                        :: GreyImage -> GreyImage) grey
             ]
         , bgroup "flip" [
               bench "horizontal" $

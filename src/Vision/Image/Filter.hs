@@ -1,42 +1,84 @@
-{-# LANGUAGE BangPatterns, FlexibleInstances, GADTs, MultiParamTypeClasses
-           , TypeFamilies #-}
+{-# LANGUAGE BangPatterns, FlexibleContexts, FlexibleInstances, GADTs
+           , MultiParamTypeClasses, TypeFamilies #-}
 
 -- | Provides high level functions to apply filters on images.
 module Vision.Image.Filter (
-      Filter (..), Kernel (..), FilterInit (..), apply, blur, scharr
+      Filterable (..), Filter (..), BoxFilter, SeparableFilter, Kernel (..)
+    , SeparableKernel, SeparatelyFiltrable (..), FilterFold (..), FilterFold1
+    , BorderInterpolate (..)
+    , kernelAnchor, borderInterpolate
+    , blur, gaussianBlur, scharr
     ) where
 
+import Data.List
+import Data.Ratio
+import qualified Data.Vector.Storable as V
 import Data.Word
 import Foreign.Storable (Storable)
 
 import Vision.Image.Type (
-      Manifest, MaskedImage (..), Image (..), FromFunction (..)
+      Pixel (..), MaskedImage (..), Image (..), FromFunction (..)
+    , Manifest, Delayed
     )
-import Vision.Primitive (Z (..), (:.) (..), DIM1, DIM2, ix2)
+import Vision.Primitive (Z (..), (:.) (..), DIM1, DIM2, Size, ix1, ix2)
 
-data Filter src acc dst = Filter {
-      fKernelSize   :: !DIM2
+class Filterable src res f where
+    -- | Applies the given filter on the given image.
+    apply :: src -> f -> res
+
+data Filter src kernel init acc res = Filter {
+      fKernelSize   :: !Size
     , fKernelCenter :: !KernelAnchor
-    , fKernel       :: !(Kernel     src acc)
-    , fInit         :: !(FilterInit src acc)
-    , fPost         :: !(acc -> dst)
+    , fKernel       :: !kernel
+    -- | Defines how the accumulated value is initialized.
+    , fInit         :: !init
+    , fPost         :: !(acc -> res)
     , fInterpol     :: !(BorderInterpolate src)
     }
 
--- | Defines how to center the kernel.
-data KernelAnchor = KernelAnchor !DIM2
-                  | KernelAnchorCenter
+type BoxFilter src init acc res = Filter src (Kernel src acc) init acc res
 
--- | Function which will be applied to every pixel.
--- Some kernels can be factorized in two uni-dimensional kernels (horizontal and
--- vertical). See <http://http://en.wikipedia.org/wiki/Separable_filter>.
-data Kernel src acc = Kernel !(DIM2 -> src -> acc -> acc)
-                    | SeparableKernel !(DIM1 -> src -> acc -> acc)
-                                      !(DIM1 -> acc -> acc -> acc)
+type SeparableFilter src init acc res = Filter src (SeparableKernel src acc)
+                                               init acc res
 
-data FilterInit src acc where
-    FilterFold  :: acc -> FilterInit src acc
-    FilterFold1 ::        FilterInit src src
+-- | Defines how to center the kernel will be found.
+data KernelAnchor = KernelAnchor !DIM2 | KernelAnchorCenter
+
+-- | A simple 2D kernel.
+-- The kernel function accepts the coordinates in the kernel, the value of the
+-- pixel at these coordinates ('src'), the current accumulated value and returns
+-- a new accumulated value.
+newtype Kernel src acc = Kernel (DIM2 -> src -> acc -> acc)
+
+-- | Some kernels can be factorized in two uni-dimensional kernels (horizontal
+-- and vertical).
+-- See <http://http://en.wikipedia.org/wiki/Separable_filter>.
+data SeparableKernel src acc = SeparableKernel {
+    -- | Vertical (column) kernel.
+      skVertical   :: !(DIM1 -> src -> acc -> acc)
+    -- | Horizontal (row) kernel.
+    , skHorizontal :: !(DIM1 -> acc -> acc -> acc)
+    }
+
+-- | Used to determine the type of the accumulator image used when computing
+-- separable filters. 'src' and 'res' are respectively the source and the result
+-- image types while 'acc' is the pixel type of the accumulator.
+class SeparatelyFiltrable src res acc where
+    type SeparableFilterAccumulator src res acc
+
+instance SeparatelyFiltrable src (Manifest p) acc where
+    type SeparableFilterAccumulator src (Manifest p) acc = Manifest acc
+
+instance SeparatelyFiltrable src (Delayed p) acc where
+    type SeparableFilterAccumulator src (Delayed p) acc = Delayed acc
+
+-- | Uses an initial value to initialize the filter.
+data FilterFold acc = FilterFold acc
+
+-- | Uses the first pixel in the kernel as initial value. The kernel must not be
+-- empty and the accumulator type must be the same as the source pixel type.
+-- This kind of initialization is needed by morphological filters.
+data FilterFold1
 
 -- | Defines how image boundaries are extrapolated by the algorithms.
 -- '|' characters in examples are image borders.
@@ -54,75 +96,183 @@ data BorderInterpolate a =
     -- > iiiiii|abcdefgh|iiiiiii  with some specified 'i'
     | BorderConstant !a
 
--- | Defines what image will be used as accumulator when filtering using a
--- separable kernel.
-class FiltrableImages src dst p where
-    -- | Gives the type of the accumulator image given the source and
-    -- destination image and the accumulator pixel type.
-    type AccumulatorImage src dst p
+-- | Box filters initialized with a given value.
+instance (Image src, FromFunction res, src_p ~ ImagePixel src
+        , res_p ~ FromFunctionPixel res)
+        => Filterable src res (BoxFilter src_p (FilterFold acc) acc res_p) where
+    apply !img !(Filter ksize anchor (Kernel kernel) ini post interpol) =
+        let !size@(Z :. ih :. iw) = shape img
+            !(Z :. kh  :. kw)  = ksize
+            !(Z :. kcy :. kcx) = kernelAnchor anchor ksize
+            !(FilterFold acc)  = ini
+        in fromFunction size $ \(!(Z :. iy :. ix)) ->
+                post $! boxGoColumn img kernel interpol ih iw (iy - kcy)
+                                    (ix - kcx) kh kw 0 acc
+    {-# INLINE apply #-}
 
-instance (Storable p_acc) => FiltrableImages src (Manifest p_dst) p_acc where
-    type AccumulatorImage src (Manifest p_dst) p_acc = Manifest p_acc
+-- | Box filters initialized using the first pixel of the kernel.
+instance (Image src, FromFunction res, acc ~ ImagePixel src
+        , res_p ~ FromFunctionPixel res)
+        => Filterable src res (BoxFilter acc FilterFold1 acc res_p) where
+    apply !img !(Filter ksize anchor (Kernel kernel) _ post interpol) =
+        let !size@(Z :. ih :. iw) = shape img
+            !(Z :. kh  :. kw)  = ksize
+            !(Z :. kcy :. kcx) = kernelAnchor anchor ksize
+        in fromFunction size $ \(!(Z :. iy :. ix)) ->
+                post $! boxGoColumn1 img kernel interpol ih iw (iy - kcy)
+                                     (ix - kcx) kh kw
+    {-# INLINE apply #-}
 
-apply :: (Image src, FromFunction dst{-, FiltrableImages src dst acc-})
-      => src
-      -> Filter (ImagePixel src) acc (FromFunctionPixel dst)
-      -> dst
-apply !img !(Filter (Z :. kh :. kw) anchor (Kernel kernel) ini post interpol) =
-    case ini of FilterFold acc ->
-                    fromFunction size $ \(!(Z :. y :. x)) ->
-                        post $! goColumn (y - cy) (x - cx) 0 acc
---                 FilterFold1    ->
---                     fromFunction size $ \(!(Z :. y :. x)) ->
---                         post $! goColumn1 (y - cy) (x - cx)
-  where
-    !size@(Z :. ih :. iw) = shape img
+boxGoColumn :: Image src => src -> (DIM2 -> ImagePixel src -> acc -> acc)
+            -> BorderInterpolate (ImagePixel src) -> Int-> Int -> Int -> Int
+            -> Int -> Int -> Int -> acc -> acc
+boxGoColumn !img !kernel !interpol !ih !iw !iy !ix !kh !kw !ky !acc
+    | ky < kh   =
+        case borderInterpolate interpol ih iy of
+            Left  iy' -> boxGoLine img kernel interpol ih iw iy (iy' * iw) ix ix
+                                   kh kw ky 0 acc
+            Right val -> boxGoLineConst img kernel interpol ih iw iy ix kh kw ky
+                                        0 val acc
+    | otherwise = acc
 
-    goColumn !iy !ix !ky !acc
-        | ky < kh   =
-            case borderInterpolate interpol ih iy of
-                Left  iy' -> goLine iy (iy' * iw) ix ix ky 0 acc
-                Right val -> goLineConst iy ix ky 0 val acc
-        | otherwise = acc
+boxGoColumn1 :: Image src => src
+             -> (DIM2 -> ImagePixel src -> ImagePixel src -> ImagePixel src)
+             -> BorderInterpolate (ImagePixel src) -> Int -> Int -> Int -> Int
+             -> Int -> Int -> ImagePixel src
+boxGoColumn1 !img !kernel !interpol !ih !iw !iy !ix !kh !kw
+    | kh > 0 && kw > 0 =
+        case borderInterpolate interpol ih iy of
+            Left  iy' ->
+                let !linearIY = iy' * iw
+                    !acc      = img `linearIndex` linearIY
+                in boxGoLine img kernel interpol ih iw iy linearIY ix (ix + 1)
+                             kh kw 0 1 acc
+            Right val -> boxGoLineConst img kernel interpol ih iw iy ix kh kw 0
+                                        1 val val
+    | otherwise = error "Using FilterFold1 with an empty kernel."
 
---     goColumn1 iy ix
---         | kh > 0 && kw > 0 =
---             let !ky   = Z :. 0
---                 !kix  = ky :. 0
---                 !linearIY = iy * iw
---                 !acc' = case borderInterpolate interpol ih iy of
---                             Left  iy' -> goLine linearIY (ky :. 1) (ix + 1)
---                                                 (img `linearIndex` linearIY)
---                             Right val -> goLineConst (ky :. 1) val val
---             in goColumn (iy + 1) (linearIY + iw) ix 1 acc'
---         | otherwise = error "Using FilterFold1 with an empty kernel."
+boxGoLine :: Image src => src -> (DIM2 -> ImagePixel src -> acc -> acc)
+          -> BorderInterpolate (ImagePixel src) -> Int -> Int -> Int -> Int
+          -> Int -> Int -> Int -> Int -> Int -> Int -> acc -> acc
+boxGoLine !img !kernel !interpol !ih !iw !iy !linearIY !ix0 !ix !kh !kw !ky !kx
+          !acc
+    | kx < kw   =
+        let !val = case borderInterpolate interpol iw ix of
+                        Left  ix'  -> img `linearIndex` (linearIY + ix')
+                        Right val' -> val'
+            !acc' = kernel (ix2 ky kx) val acc
+        in boxGoLine img kernel interpol ih iw iy linearIY ix0 (ix + 1) kh kw ky
+                     (kx + 1) acc'
+    | otherwise = boxGoColumn img kernel interpol ih iw (iy + 1) ix0 kh kw 
+                              (ky + 1) acc
 
-    goLine !iy !linearIY !ixs !ix !ky !kx !acc
-        | kx < kw   =
-            let !val = case borderInterpolate interpol iw ix of
-                            Left  ix'  -> img `linearIndex` (linearIY + ix')
-                            Right val' -> val'
-                !acc' = kernel (ix2 ky kx) val acc
-            in goLine iy linearIY ixs (ix + 1) ky (kx + 1) acc'
-        | otherwise = goColumn (iy + 1) ixs (ky + 1) acc
+boxGoLineConst :: Image src => src -> (DIM2 -> ImagePixel src -> acc -> acc)
+               -> BorderInterpolate (ImagePixel src) -> Int -> Int -> Int -> Int
+               -> Int -> Int -> Int -> Int -> ImagePixel src -> acc -> acc
+boxGoLineConst !img !kernel !interpol !ih !iw !iy !ix !kh !kw !ky !kx !val !acc
+    | kx < kw   = let !acc' = kernel (ix2 ky kx) val acc
+                  in boxGoLineConst img kernel interpol ih iw iy ix kh kw ky
+                                    (kx + 1) val acc'
+    | otherwise = boxGoColumn img kernel interpol ih iw (iy + 1) ix kh kw
+                              (ky + 1) acc
 
-    goLineConst !iy !ix !ky !kx !val !acc
-        | kx < kw   = let !acc' = kernel (ix2 ky kx) val acc
-                      in goLineConst iy ix ky (kx + 1) val acc'
-        | otherwise = goColumn (iy + 1) ix (ky + 1) acc
+instance (Image src, FromFunction res, SeparatelyFiltrable src res acc
+        , src_p ~ ImagePixel src, res_p ~ FromFunctionPixel res
+        , FromFunction      (SeparableFilterAccumulator src res acc)
+        , FromFunctionPixel (SeparableFilterAccumulator src res acc) ~ acc
+        , Image             (SeparableFilterAccumulator src res acc)
+        , ImagePixel        (SeparableFilterAccumulator src res acc) ~ acc)
+        => Filterable src res (SeparableFilter src_p (FilterFold acc) acc res_p)
+            where
+    apply !src !f =
+        fst $! wrapper src f
+      where
+        wrapper :: (Image src, FromFunction res
+            , FromFunction (SeparableFilterAccumulator src res acc)
+            , FromFunctionPixel (SeparableFilterAccumulator src res acc) ~ acc
+            , Image             (SeparableFilterAccumulator src res acc)
+            , ImagePixel        (SeparableFilterAccumulator src res acc) ~ acc)
+            => src
+            -> SeparableFilter (ImagePixel src) (FilterFold acc) acc
+                               (FromFunctionPixel res)
+            -> (res, SeparableFilterAccumulator src res acc)
+        wrapper !src !(Filter ksize anchor kernel ini post interpol) =
+            (res, tmp)
+          where
+            !size@(Z :. ih :. iw) = shape src
 
-    !(Z :. cy :. cx) = case anchor of KernelAnchor c     -> c
-                                      KernelAnchorCenter -> Z :. (kh `quot` 2)
-                                                              :. (kw `quot` 2)
-apply img (Filter size center (SeparableKernel f1 f2) fold post interpol) =
-    undefined
-{-# INLINE apply #-}
+            !(Z :. kh  :. kw)  = ksize
+            !(Z :. kcy :. kcx) = kernelAnchor anchor ksize
+
+            !(SeparableKernel vert horiz) = kernel
+            !(FilterFold acc)             = ini
+
+            !tmp = fromFunction size $ \(!(Z :. iy :. ix)) ->
+                        let !iy0 = iy - kcy
+                        in if iy0 >= 0 && iy0 + kh <= ih
+                              then goColumn' iy0 ix 0 acc
+                              else goColumn  iy0 ix 0 acc
+
+            !res = fromFunction size $ \(!(Z :. iy :. ix)) ->
+                    let !ix0 = ix - kcx
+                    in post $! if ix0 >= 0 && ix0 + kw <= iw
+                                    then goLine' (iy * iw) ix0 0 acc
+                                    else goLine (iy * iw) ix0 0 acc
+
+            goColumn !iy !ix !ky !acc
+                | ky < kh   =
+                    let !val  = case borderInterpolate interpol ih iy of
+                                    Left  iy'  -> src `index` ix2 iy' ix
+                                    Right val' -> val'
+                        !acc' = vert (ix1 ky) val acc
+                    in goColumn (iy + 1) ix (ky + 1) acc'
+                | otherwise = acc
+
+            goColumn' !iy !ix !ky !acc
+                | ky < kh   =
+                    let !val  = src `index` ix2 iy ix
+                        !acc' = vert (ix1 ky) val acc
+                    in goColumn' (iy + 1) ix (ky + 1) acc'
+                | otherwise = acc
+
+            goLine !linearIY !ix !kx !acc
+                | kx < kw   =
+                    let !val =
+                            case borderInterpolate interpol iw ix of
+                                Left  ix'-> tmp `linearIndex` (linearIY + ix')
+                                Right _  -> constLine
+                        !acc' = horiz (ix1 kx) val acc
+                    in goLine linearIY (ix + 1) (kx + 1) acc'
+                | otherwise = acc
+
+            goLine' !linearIY !ix !kx !acc
+                | kx < kw   =
+                    let !val = tmp `linearIndex` (linearIY + ix)
+                        !acc' = horiz (ix1 kx) val acc
+                    in goLine' linearIY (ix + 1) (kx + 1) acc'
+                | otherwise = acc
+
+            constLine | BorderConstant val <- interpol =
+                        foldl' (\acc ky -> vert (ix1 ky) val acc) acc [0..kh-1]
+                      | otherwise                      = undefined
+        {-# INLINE wrapper #-}
+    {-# INLINE apply #-}
+
+-- | Given a method to compute the kernel anchor and the size of the kernel,
+-- returns the anchor of the kernel as coordinates.
+kernelAnchor :: KernelAnchor -> Size -> DIM2
+kernelAnchor (KernelAnchor ix)    _               = ix
+kernelAnchor (KernelAnchorCenter) (Z :. kh :. kw) = ix2 (round $ (kh - 1) % 2)
+                                                        (round $ (kw - 1) % 2)
 
 -- | Given a method of interpolation, the number of pixel in the dimension and
 -- an index in this dimension, returns either the index of the interpolated
 -- pixel or a constant value.
-borderInterpolate :: BorderInterpolate a -> Int -> Int -> Either Int a
-borderInterpolate !interpol !len !ix 
+borderInterpolate :: BorderInterpolate a
+                  -> Int -- ^ The size of the dimension.
+                  -> Int -- ^ The index in the dimension.
+                  -> Either Int a
+borderInterpolate !interpol !len !ix
     | word ix < word len = Left ix
     | otherwise          =
         case interpol of
@@ -141,7 +291,7 @@ borderInterpolate !interpol !len !ix
 -- erode = Filter (ix2 3 3) KernelAnchorCenter
 --                (SeparableKernel (const min) (const min)) FilterFold1 id
 
-blur :: Integral a => Int -> Filter a Int a
+blur :: Integral a => Int -> BoxFilter a (FilterFold Int) Int a
 -- blur radius =
 --     Filter (ix2 size size) KernelAnchorCenter (SeparableKernel one one)
 --            (FilterFold 0) (\acc -> fromIntegral $ acc `div` size `div` size)
@@ -160,7 +310,40 @@ blur radius =
     {-# INLINE one #-}
 {-# INLINE blur #-}
 
-scharr :: (Integral a, Num b) => Filter a b b
+gaussianBlur :: Integral a => Int -> Maybe Float
+             -> SeparableFilter a (FilterFold Float) Float a
+gaussianBlur !radius !mSig =
+    Filter (ix2 size size) KernelAnchorCenter (SeparableKernel vert horiz)
+           (FilterFold 0) (round . (/ kernelSum)) BorderReplicate
+--     Filter (ix2 size size) KernelAnchorCenter (Kernel kernel) (FilterFold 0)
+--            (round . (/ kernelSum)) BorderReplicate
+  where
+    !size = radius * 2 + 1
+
+    -- If σ is not provided, tries to fit 3σ in the kernel.
+    !sig = case mSig of Just s  -> s
+                        Nothing -> (0.5 + fromIntegral radius) / 3
+
+    kernel (Z :. y :. x) val acc = acc + fromIntegral val * (kernelVec V.! y * kernelVec V.! x)
+    {-# INLINE kernel #-}
+    vert !(Z :. y) !val !acc = let !coeff = kernelVec V.! y
+                            in acc + fromIntegral val * coeff
+    {-# INLINE vert #-}
+    horiz !(Z :. x) !acc1 !acc2 = let !coeff = kernelVec V.! x
+                               in acc1 * coeff + acc2
+    {-# INLINE horiz #-}
+
+    !kernelVec = V.generate size (\x -> gaussian $ fromIntegral $ abs $ x - radius)
+    !kernelSum = square (V.sum kernelVec)
+
+    gaussian !x = invSigSqrt2Pi * exp (inv2xSig2 * square x)
+
+    -- Pre-computed terms of the Gaussian function.
+    !invSigSqrt2Pi = 1 / (sig * sqrt (2 * pi))
+    !inv2xSig2     = -1 / (2 * square sig)
+{-# INLINE gaussianBlur #-}
+
+scharr :: (Integral a, Num b) => BoxFilter a (FilterFold b) b b
 scharr =
     Filter (ix2 3 3) KernelAnchorCenter (Kernel kernel) (FilterFold 0) id
            BorderReplicate
@@ -172,6 +355,9 @@ scharr =
     kernel (Z :. 1 :. 2) val acc = acc + 10 * fromIntegral val
     kernel (Z :. 2 :. 2) val acc = acc + 3  * fromIntegral val
     kernel _             _   acc = acc
+
+square :: Num a => a -> a
+square a = a * a
 
 word :: Integral a => a -> Word
 word = fromIntegral
