@@ -210,14 +210,14 @@ instance (Image src, FromFunction res, SeparatelyFiltrable src res acc
             !tmp = fromFunction size $ \(!(Z :. iy :. ix)) ->
                         let !iy0 = iy - kcy
                         in if iy0 >= 0 && iy0 + kh <= ih
-                              then goColumn' iy0 ix 0 acc
-                              else goColumn  iy0 ix 0 acc
+                              then goColumnSafe iy0 ix 0 acc
+                              else goColumn     iy0 ix 0 acc
 
             !res = fromFunction size $ \(!(Z :. iy :. ix)) ->
-                    let !ix0 = ix - kcx
-                    in post $! if ix0 >= 0 && ix0 + kw <= iw
-                                    then goLine' (iy * iw) ix0 0 acc
-                                    else goLine (iy * iw) ix0 0 acc
+                        let !ix0 = ix - kcx
+                        in post $! if ix0 >= 0 && ix0 + kw <= iw
+                                        then goLineSafe (iy * iw) ix0 0 acc
+                                        else goLine     (iy * iw) ix0 0 acc
 
             goColumn !iy !ix !ky !acc
                 | ky < kh   =
@@ -228,11 +228,11 @@ instance (Image src, FromFunction res, SeparatelyFiltrable src res acc
                     in goColumn (iy + 1) ix (ky + 1) acc'
                 | otherwise = acc
 
-            goColumn' !iy !ix !ky !acc
+            goColumnSafe !iy !ix !ky !acc
                 | ky < kh   =
                     let !val  = src `index` ix2 iy ix
                         !acc' = vert (ix1 ky) val acc
-                    in goColumn' (iy + 1) ix (ky + 1) acc'
+                    in goColumnSafe (iy + 1) ix (ky + 1) acc'
                 | otherwise = acc
 
             goLine !linearIY !ix !kx !acc
@@ -245,16 +245,130 @@ instance (Image src, FromFunction res, SeparatelyFiltrable src res acc
                     in goLine linearIY (ix + 1) (kx + 1) acc'
                 | otherwise = acc
 
-            goLine' !linearIY !ix !kx !acc
+            goLineSafe !linearIY !ix !kx !acc
                 | kx < kw   =
                     let !val = tmp `linearIndex` (linearIY + ix)
                         !acc' = horiz (ix1 kx) val acc
-                    in goLine' linearIY (ix + 1) (kx + 1) acc'
+                    in goLineSafe linearIY (ix + 1) (kx + 1) acc'
                 | otherwise = acc
 
             constLine | BorderConstant val <- interpol =
                         foldl' (\acc ky -> vert (ix1 ky) val acc) acc [0..kh-1]
                       | otherwise                      = undefined
+        {-# INLINE wrapper #-}
+    {-# INLINE apply #-}
+
+instance (Image src, FromFunction res, SeparatelyFiltrable src res acc
+        , src_p ~ ImagePixel src, res_p ~ FromFunctionPixel res
+        , acc ~ ImagePixel src
+        , FromFunction      (SeparableFilterAccumulator src res acc)
+        , FromFunctionPixel (SeparableFilterAccumulator src res acc) ~ acc
+        , Image             (SeparableFilterAccumulator src res acc)
+        , ImagePixel        (SeparableFilterAccumulator src res acc) ~ acc)
+        => Filterable src res (SeparableFilter src_p FilterFold1 acc res_p)
+            where
+    apply !src !f =
+        fst $! wrapper src f
+      where
+        wrapper :: (Image src, FromFunction res, acc ~ ImagePixel src
+            , FromFunction (SeparableFilterAccumulator src res acc)
+            , FromFunctionPixel (SeparableFilterAccumulator src res acc) ~ acc
+            , Image             (SeparableFilterAccumulator src res acc)
+            , ImagePixel        (SeparableFilterAccumulator src res acc) ~ acc)
+            => src
+            -> SeparableFilter (ImagePixel src) FilterFold1 acc
+                               (FromFunctionPixel res)
+            -> (res, SeparableFilterAccumulator src res acc)
+        wrapper !src !(Filter ksize anchor kernel _ post interpol)
+            | kh == 0 || kw == 0 =
+                error "Using FilterFold1 with an empty kernel."
+            | otherwise          =
+                (res, tmp)
+          where
+            !size@(Z :. ih :. iw) = shape src
+
+            !(Z :. kh  :. kw)  = ksize
+            !(Z :. kcy :. kcx) = kernelAnchor anchor ksize
+
+            !(SeparableKernel vert horiz) = kernel
+
+            !tmp = fromFunction size $ \(!(Z :. iy :. ix)) ->
+                        let !iy0 = iy - kcy
+                        in if iy0 >= 0 && iy0 + kh <= ih
+                              then goColumn1Safe iy0 ix
+                              else goColumn1     iy0 ix
+
+            !res = fromFunction size $ \(!(Z :. iy :. ix)) ->
+                        let !ix0 = ix - kcx
+                        in post $! if ix0 >= 0 && ix0 + kw <= iw
+                                        then goLine1Safe (iy * iw) ix0
+                                        else goLine1     (iy * iw) ix0
+
+            goColumn1 !iy !ix =
+                case borderInterpolate interpol ih iy of
+                    Left  iy' ->
+                        let !acc = src `index` ix2 iy' ix
+                        in goColumn (iy + 1) ix 1 acc
+                    Right val ->
+                        goColumn (iy + 1) ix 1 val
+
+            goColumn1Safe !iy !ix =
+                let !linearIY = iy * iw
+                    !acc      = src `linearIndex` linearIY
+                in goColumnSafe (linearIY + iw) ix 1 acc
+
+            goColumn !iy !ix !ky !acc
+                | ky < kh   =
+                    let !val  = case borderInterpolate interpol ih iy of
+                                    Left  iy'  -> src `index` ix2 iy' ix
+                                    Right val' -> val'
+                        !acc' = vert (ix1 ky) val acc
+                    in goColumn (iy + 1) ix (ky + 1) acc'
+                | otherwise = acc
+
+            goColumnSafe !linearIY !ix !ky !acc
+                | ky < kh   =
+                    let !val  = src `linearIndex` linearIY
+                        !acc' = vert (ix1 ky) val acc
+                    in goColumnSafe (linearIY + iw) ix (ky + 1) acc'
+                | otherwise = acc
+
+            goLine1 !linearIY !ix =
+                let !acc =
+                        case borderInterpolate interpol iw ix of
+                            Left  ix'-> tmp `linearIndex` (linearIY + ix')
+                            Right _  -> columnConst
+                in goLine linearIY (ix + 1) 1 acc
+
+            goLine1Safe !linearIY !ix =
+                let !linearIX = linearIY + ix
+                    !acc      = src `linearIndex` linearIX
+                in goLineSafe (linearIX + 1) 1 acc
+
+            goLine !linearIY !ix !kx !acc
+                | kx < kw   =
+                    let !val =
+                            case borderInterpolate interpol iw ix of
+                                Left  ix'-> tmp `linearIndex` (linearIY + ix')
+                                Right _  -> columnConst
+                        !acc' = horiz (ix1 kx) val acc
+                    in goLine linearIY (ix + 1) (kx + 1) acc'
+                | otherwise = acc
+
+            goLineSafe !linearIX !kx !acc
+                | kx < kw   =
+                    let !val = tmp `linearIndex` linearIX
+                        !acc' = horiz (ix1 kx) val acc
+                    in goLineSafe (linearIX + 1) (kx + 1) acc'
+                | otherwise = acc
+
+            columnConst
+                | BorderConstant val <- interpol = goColumnConst 1 val val
+                | otherwise                      = undefined
+
+            goColumnConst !ky !val !acc
+                | ky < kh   = goColumnConst (ky + 1) val (vert (ix1 ky) acc val)
+                | otherwise = acc
         {-# INLINE wrapper #-}
     {-# INLINE apply #-}
 
@@ -315,8 +429,6 @@ gaussianBlur :: Integral a => Int -> Maybe Float
 gaussianBlur !radius !mSig =
     Filter (ix2 size size) KernelAnchorCenter (SeparableKernel vert horiz)
            (FilterFold 0) (round . (/ kernelSum)) BorderReplicate
---     Filter (ix2 size size) KernelAnchorCenter (Kernel kernel) (FilterFold 0)
---            (round . (/ kernelSum)) BorderReplicate
   where
     !size = radius * 2 + 1
 
@@ -324,8 +436,6 @@ gaussianBlur !radius !mSig =
     !sig = case mSig of Just s  -> s
                         Nothing -> (0.5 + fromIntegral radius) / 3
 
-    kernel (Z :. y :. x) val acc = acc + fromIntegral val * (kernelVec V.! y * kernelVec V.! x)
-    {-# INLINE kernel #-}
     vert !(Z :. y) !val !acc = let !coeff = kernelVec V.! y
                             in acc + fromIntegral val * coeff
     {-# INLINE vert #-}
@@ -333,7 +443,9 @@ gaussianBlur !radius !mSig =
                                in acc1 * coeff + acc2
     {-# INLINE horiz #-}
 
-    !kernelVec = V.generate size (\x -> gaussian $ fromIntegral $ abs $ x - radius)
+    !kernelVec =
+        V.generate size $ \x ->
+            gaussian $! fromIntegral $! abs $! x - radius
     !kernelSum = square (V.sum kernelVec)
 
     gaussian !x = invSigSqrt2Pi * exp (inv2xSig2 * square x)
@@ -342,6 +454,8 @@ gaussianBlur !radius !mSig =
     !invSigSqrt2Pi = 1 / (sig * sqrt (2 * pi))
     !inv2xSig2     = -1 / (2 * square sig)
 {-# INLINE gaussianBlur #-}
+
+data Derivative = DerivativeX | DerivativeY
 
 scharr :: (Integral a, Num b) => BoxFilter a (FilterFold b) b b
 scharr =
@@ -355,6 +469,30 @@ scharr =
     kernel (Z :. 1 :. 2) val acc = acc + 10 * fromIntegral val
     kernel (Z :. 2 :. 2) val acc = acc + 3  * fromIntegral val
     kernel _             _   acc = acc
+
+sobel :: (Integral src, Integral acc, Storable acc) => Int -> Derivative
+      -> SeparableFilter src (FilterFold acc) acc acc
+sobel radius der =
+    let !kernel =
+            case der of
+                DerivativeX -> SeparableKernel (vert vec1) (horiz vec2)
+                DerivativeY -> SeparableKernel (vert vec2) (horiz vec1)
+    in Filter (ix2 size size) KernelAnchorCenter kernel (FilterFold 0) id
+              BorderReplicate
+  where
+    !size = radius * 2 + 1
+
+    vert !vec !(Z :. y) !val !acc = let !coeff = vec V.! y
+                                    in acc + fromIntegral val * coeff
+    {-# INLINE vert #-}
+    horiz !vec !(Z :. x) !acc1 !acc2 = let !coeff = vec V.! x
+                                       in acc1 * coeff + acc2
+    {-# INLINE horiz #-}
+
+    !radius' = fromIntegral radius
+    !vec1 = let pows = [ 2^i | i <- [0..radius'] ]
+            in V.fromList $ pows ++ (tail (reverse pows))
+    !vec2 = V.fromList $ [1..radius'] ++ [0] ++ map negate [1..radius']
 
 square :: Num a => a -> a
 square a = a * a
