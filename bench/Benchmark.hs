@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns, FlexibleContexts #-}
 import Criterion.Main
 import Data.Int
+import Data.Word
 
 import Vision.Image (
       GreyImage, HSVImage, RGBAImage, RGBImage, RGBDelayed, InterpolMethod
@@ -66,11 +67,11 @@ main = do
                 whnf (resize' rgb I.Bilinear) (Z :. (h * 2) :. (w * 2))
             ]
         , bgroup "filter" [
-              bench "blur" $
-                whnf ((`I.apply` I.blur 1) :: GreyImage -> GreyImage) grey
-            , bench "blur'" $
-                whnf ((`I.apply` I.blur' 1) :: GreyImage -> GreyImage) grey
+              bench "erode" $ whnf erode' grey
+            , bench "blur" $ whnf blur' grey
             , bench "gaussian blur" $ whnf gaussianBlur' grey
+            , bench "scharr" $ whnf sobel' grey
+            , bench "sobel" $ whnf scharr' grey
             ]
         , bgroup "flip" [
               bench "horizontal" $
@@ -132,9 +133,21 @@ main = do
     resize' = I.resize
     {-# INLINE resize' #-}
 
+    erode' :: GreyImage -> GreyImage
+    erode' img = img `I.apply` I.erode 1
+
+    blur' :: GreyImage -> GreyImage
+    blur' img = img `I.apply` (I.blur 1 :: I.SeparableFilter I.GreyPixel Word16
+                                                             I.GreyPixel)
+
     gaussianBlur' :: GreyImage -> GreyImage
     gaussianBlur' img = img `I.apply` I.gaussianBlur 1 Nothing
-    {-# INLINE gaussianBlur' #-}
+
+    sobel' :: GreyImage -> I.Manifest Int16
+    sobel' img = img `I.apply` I.sobel 1 I.DerivativeX
+
+    scharr' :: GreyImage -> I.Manifest Int16
+    scharr' img = img `I.apply` I.scharr I.DerivativeX
 
     miniature !rgb =
         let Z :. h :. w = I.shape rgb
