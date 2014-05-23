@@ -68,9 +68,9 @@ main = do
         , bgroup "filter" [
               bench "blur" $
                 whnf ((`I.apply` I.blur 1) :: GreyImage -> GreyImage) grey
-            , bench "gaussian blur" $
-                whnf ((`I.apply` I.gaussianBlur 1 Nothing)
-                        :: GreyImage -> GreyImage) grey
+            , bench "blur'" $
+                whnf ((`I.apply` I.blur' 1) :: GreyImage -> GreyImage) grey
+            , bench "gaussian blur" $ whnf gaussianBlur' grey
             ]
         , bgroup "flip" [
               bench "horizontal" $
@@ -131,6 +131,10 @@ main = do
     resize' :: RGBImage -> InterpolMethod -> Size -> RGBImage
     resize' = I.resize
     {-# INLINE resize' #-}
+
+    gaussianBlur' :: GreyImage -> GreyImage
+    gaussianBlur' img = img `I.apply` I.gaussianBlur 1 Nothing
+    {-# INLINE gaussianBlur' #-}
 
     miniature !rgb =
         let Z :. h :. w = I.shape rgb
