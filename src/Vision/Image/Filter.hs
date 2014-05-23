@@ -126,55 +126,72 @@ instance (Image src, FromFunction res, acc ~ ImagePixel src
 boxGoColumn :: Image src => src -> (DIM2 -> ImagePixel src -> acc -> acc)
             -> BorderInterpolate (ImagePixel src) -> Int-> Int -> Int -> Int
             -> Int -> Int -> Int -> acc -> acc
-boxGoColumn !img !kernel !interpol !ih !iw !iy !ix !kh !kw !ky !acc
-    | ky < kh   =
-        case borderInterpolate interpol ih iy of
-            Left  iy' -> boxGoLine img kernel interpol ih iw iy (iy' * iw) ix ix
-                                   kh kw ky 0 acc
-            Right val -> boxGoLineConst img kernel interpol ih iw iy ix kh kw ky
-                                        0 val acc
-    | otherwise = acc
+boxGoColumn !img !kernel !interpol !ih !iw !iy !ix !kh !kw !ky !acc =
+    go img kernel interpol ih iw iy ix kh kw ky acc
+  where
+    go !img !kernel !interpol !ih !iw !iy !ix !kh !kw !ky !acc
+        | ky < kh   =
+            case borderInterpolate interpol ih iy of
+                Left  iy' -> boxGoLine img kernel interpol ih iw iy (iy' * iw)
+                                       ix ix kh kw ky 0 acc
+                Right val -> boxGoLineConst img kernel interpol ih iw iy ix kh
+                                            kw ky 0 val acc
+        | otherwise = acc
+{-# INLINE boxGoColumn #-}
 
 boxGoColumn1 :: Image src => src
              -> (DIM2 -> ImagePixel src -> ImagePixel src -> ImagePixel src)
              -> BorderInterpolate (ImagePixel src) -> Int -> Int -> Int -> Int
              -> Int -> Int -> ImagePixel src
-boxGoColumn1 !img !kernel !interpol !ih !iw !iy !ix !kh !kw
-    | kh > 0 && kw > 0 =
-        case borderInterpolate interpol ih iy of
-            Left  iy' ->
-                let !linearIY = iy' * iw
-                    !acc      = img `linearIndex` linearIY
-                in boxGoLine img kernel interpol ih iw iy linearIY ix (ix + 1)
-                             kh kw 0 1 acc
-            Right val -> boxGoLineConst img kernel interpol ih iw iy ix kh kw 0
-                                        1 val val
-    | otherwise = error "Using FilterFold1 with an empty kernel."
+boxGoColumn1 !img !kernel !interpol !ih !iw !iy !ix !kh !kw =
+    go img kernel interpol ih iw iy ix kh kw
+  where
+    go !img !kernel !interpol !ih !iw !iy !ix !kh !kw
+        | kh > 0 && kw > 0 =
+            case borderInterpolate interpol ih iy of
+                Left  iy' ->
+                    let !linearIY = iy' * iw
+                        !acc      = img `linearIndex` linearIY
+                    in boxGoLine img kernel interpol ih iw iy linearIY ix (ix + 1)
+                                 kh kw 0 1 acc
+                Right val -> boxGoLineConst img kernel interpol ih iw iy ix kh kw 0
+                                            1 val val
+        | otherwise = error "Using FilterFold1 with an empty kernel."
+{-# INLINE boxGoColumn1 #-}
 
 boxGoLine :: Image src => src -> (DIM2 -> ImagePixel src -> acc -> acc)
           -> BorderInterpolate (ImagePixel src) -> Int -> Int -> Int -> Int
           -> Int -> Int -> Int -> Int -> Int -> Int -> acc -> acc
 boxGoLine !img !kernel !interpol !ih !iw !iy !linearIY !ix0 !ix !kh !kw !ky !kx
-          !acc
-    | kx < kw   =
-        let !val = case borderInterpolate interpol iw ix of
-                        Left  ix'  -> img `linearIndex` (linearIY + ix')
-                        Right val' -> val'
-            !acc' = kernel (ix2 ky kx) val acc
-        in boxGoLine img kernel interpol ih iw iy linearIY ix0 (ix + 1) kh kw ky
-                     (kx + 1) acc'
-    | otherwise = boxGoColumn img kernel interpol ih iw (iy + 1) ix0 kh kw 
-                              (ky + 1) acc
+          !acc =
+    go img kernel interpol ih iw iy linearIY ix0 ix kh kw ky kx acc
+  where
+    go !img !kernel !interpol !ih !iw !iy !linearIY !ix0 !ix !kh !kw !ky !kx
+       !acc
+        | kx < kw   =
+            let !val = case borderInterpolate interpol iw ix of
+                            Left  ix'  -> img `linearIndex` (linearIY + ix')
+                            Right val' -> val'
+                !acc' = kernel (ix2 ky kx) val acc
+            in go img kernel interpol ih iw iy linearIY ix0 (ix + 1) kh kw ky
+                      (kx + 1) acc'
+        | otherwise = boxGoColumn img kernel interpol ih iw (iy + 1) ix0 kh kw
+                                  (ky + 1) acc
+{-# INLINE boxGoLine #-}
 
 boxGoLineConst :: Image src => src -> (DIM2 -> ImagePixel src -> acc -> acc)
                -> BorderInterpolate (ImagePixel src) -> Int -> Int -> Int -> Int
                -> Int -> Int -> Int -> Int -> ImagePixel src -> acc -> acc
-boxGoLineConst !img !kernel !interpol !ih !iw !iy !ix !kh !kw !ky !kx !val !acc
-    | kx < kw   = let !acc' = kernel (ix2 ky kx) val acc
-                  in boxGoLineConst img kernel interpol ih iw iy ix kh kw ky
-                                    (kx + 1) val acc'
-    | otherwise = boxGoColumn img kernel interpol ih iw (iy + 1) ix kh kw
-                              (ky + 1) acc
+boxGoLineConst !img !kernel !interpol !ih !iw !iy !ix !kh !kw !ky !kx !val !acc =
+    go img kernel interpol ih iw iy ix kh kw ky kx val acc
+  where
+    go !img !kernel !interpol !ih !iw !iy !ix !kh !kw !ky !kx !val !acc
+        | kx < kw   = let !acc' = kernel (ix2 ky kx) val acc
+                      in go img kernel interpol ih iw iy ix kh kw ky (kx + 1)
+                            val acc'
+        | otherwise = boxGoColumn img kernel interpol ih iw (iy + 1) ix kh kw
+                                (ky + 1) acc
+{-# INLINE boxGoLineConst #-}
 
 instance (Image src, FromFunction res, SeparatelyFiltrable src res acc
         , src_p ~ ImagePixel src, res_p ~ FromFunctionPixel res
