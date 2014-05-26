@@ -131,6 +131,10 @@ data BorderInterpolate a =
 
 -- Instances -------------------------------------------------------------------
 
+-- Following implementations share a lot of similar processing. However, GHC
+-- fails to specialise and optimise correctly when goXXX functions are top-level
+-- functions, even with static argument transformations.
+
 -- | Box filters initialized with a given value.
 instance (Image src, FromFunction res, src_p ~ ImagePixel src
         , res_p ~ FromFunctionPixel res)
