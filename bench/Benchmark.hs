@@ -67,11 +67,11 @@ main = do
                 whnf (resize' rgb I.Bilinear) (Z :. (h * 2) :. (w * 2))
             ]
         , bgroup "filter" [
-              bench "erode" $ whnf erode' grey
-            , bench "blur" $ whnf blur' grey
+              bench "erode"         $ whnf erode' grey
+            , bench "blur"          $ whnf blur' grey
             , bench "gaussian blur" $ whnf gaussianBlur' grey
-            , bench "scharr" $ whnf sobel' grey
-            , bench "sobel" $ whnf scharr' grey
+            , bench "scharr"        $ whnf scharr' grey
+            , bench "sobel"         $ whnf sobel' grey
             ]
         , bgroup "flip" [
               bench "horizontal" $
@@ -137,7 +137,7 @@ main = do
     erode' img = img `I.apply` I.erode 1
 
     blur' :: GreyImage -> GreyImage
-    blur' img = img `I.apply` (I.blur 1 :: I.SeparableFilter I.GreyPixel Word16
+    blur' img = img `I.apply` (I.blur 1 :: I.SeparableFilter I.GreyPixel Word32
                                                              I.GreyPixel)
 
     gaussianBlur' :: GreyImage -> GreyImage

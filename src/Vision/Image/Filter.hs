@@ -2,7 +2,11 @@
            , MultiParamTypeClasses, TypeFamilies #-}
 
 -- | Provides high level functions to apply filters on images.
+--
+-- The @radius@ argument of some filter is used to determine the kernel size.
+-- A radius as of 1 means a kernel of size 3, 2 a kernel of size 5 and so on.
 module Vision.Image.Filter (
+    -- * Types
       Filterable (..), Filter (..)
     , BoxFilter, BoxFilter1, SeparableFilter, SeparableFilter1
     , KernelAnchor (..)
@@ -10,9 +14,13 @@ module Vision.Image.Filter (
     , SeparableKernel (..), SeparatelyFiltrable (..)
     , FilterFold (..), FilterFold1 (..)
     , BorderInterpolate (..)
+    -- * Functions
     , kernelAnchor, borderInterpolate
+    -- * Morphological operators
     , dilate, erode
+    -- * Blur
     , blur, gaussianBlur
+    -- * Derivation
     , Derivative (..), scharr, sobel
     ) where
 
@@ -28,6 +36,10 @@ import Vision.Image.Type (
     )
 import Vision.Primitive (Z (..), (:.) (..), DIM1, DIM2, Size, ix1, ix2)
 
+-- Types -----------------------------------------------------------------------
+
+-- | Provides an implementation to execute a type of filter.
+-- 'src' is the original image, 'res' the resulting image and 'f' the filter.
 class Filterable src res f where
     -- | Applies the given filter on the given image.
     apply :: src -> f -> res
@@ -42,15 +54,19 @@ data Filter src kernel init acc res = Filter {
     , fInterpol     :: !(BorderInterpolate src)
     }
 
+-- | 2D filters which are initialized with a value.
 type BoxFilter src acc res       = Filter src (Kernel src acc) (FilterFold acc)
                                           acc res
 
+-- | 2D filters which are not initialized with a value.
 type BoxFilter1 src res          = Filter src (Kernel src src) FilterFold1 src
                                           res
 
+-- | Separable 2D filters which are initialized with a value.
 type SeparableFilter src acc res = Filter src (SeparableKernel src acc)
                                           (FilterFold acc) acc res
 
+-- | Separable 2D filters which are not initialized with a value.
 type SeparableFilter1 src res    = Filter src (SeparableKernel src src)
                                           FilterFold1 src res
 
@@ -61,10 +77,14 @@ data KernelAnchor = KernelAnchor !DIM2 | KernelAnchorCenter
 -- The kernel function accepts the coordinates in the kernel, the value of the
 -- pixel at these coordinates ('src'), the current accumulated value and returns
 -- a new accumulated value.
+-- Non-separable filters computational complexity grows quadratically according
+-- to the size of the sides of the kernel.
 newtype Kernel src acc = Kernel (DIM2 -> src -> acc -> acc)
 
 -- | Some kernels can be factorized in two uni-dimensional kernels (horizontal
 -- and vertical).
+-- Separable filters computational complexity grows linearly according to the
+-- size of the sides of the kernel.
 -- See <http://http://en.wikipedia.org/wiki/Separable_filter>.
 data SeparableKernel src acc = SeparableKernel {
     -- | Vertical (column) kernel.
@@ -108,6 +128,8 @@ data BorderInterpolate a =
     -- | Assigns a constant value to out of image pixels.
     -- > iiiiii|abcdefgh|iiiiiii  with some specified 'i'
     | BorderConstant !a
+
+-- Instances -------------------------------------------------------------------
 
 -- | Box filters initialized with a given value.
 instance (Image src, FromFunction res, src_p ~ ImagePixel src
@@ -421,6 +443,8 @@ instance (Image src, FromFunction res, SeparatelyFiltrable src res src_p
         {-# INLINE wrapper #-}
     {-# INLINE apply #-}
 
+-- Functions -------------------------------------------------------------------
+
 -- | Given a method to compute the kernel anchor and the size of the kernel,
 -- returns the anchor of the kernel as coordinates.
 kernelAnchor :: KernelAnchor -> Size -> DIM2
@@ -450,36 +474,36 @@ borderInterpolate !interpol !len !ix
                    | otherwise  = ix'
 {-# INLINE borderInterpolate #-}
 
+-- Morphological operators -----------------------------------------------------
+
 dilate :: Ord src => Int -> SeparableFilter1 src src
 dilate radius =
-    Filter (ix2 size size) KernelAnchorCenter (SeparableKernel vert horiz)
+    Filter (ix2 size size) KernelAnchorCenter (SeparableKernel kernel kernel)
            FilterFold1 id BorderReplicate
   where
     !size = radius * 2 + 1
 
-    vert  _ = max
-    {-# INLINE vert #-}
-
-    horiz _ = max
-    {-# INLINE horiz #-}
+    kernel _ = max
+    {-# INLINE kernel #-}
 {-# INLINE dilate #-}
 
 erode :: Ord src => Int -> SeparableFilter1 src src
 erode radius =
-    Filter (ix2 size size) KernelAnchorCenter (SeparableKernel vert horiz)
+    Filter (ix2 size size) KernelAnchorCenter (SeparableKernel kernel kernel)
            FilterFold1 id BorderReplicate
   where
     !size = radius * 2 + 1
 
-    vert  _ = min
-    {-# INLINE vert #-}
-
-    horiz _ = min
-    {-# INLINE horiz #-}
+    kernel _ = min
+    {-# INLINE kernel #-}
 {-# INLINE erode #-}
 
+-- Blur ------------------------------------------------------------------------
+
+-- Blur the image by averaging the pixel inside the kernel.
 blur :: (Integral src, Integral acc, Num res)
-     => Int -> SeparableFilter src acc res
+     => Int -- ^ Blur radius.
+     -> SeparableFilter src acc res
 blur radius =
     Filter (ix2 size size) KernelAnchorCenter (SeparableKernel vert horiz)
            (FilterFold 0) (\acc -> fromIntegral $ acc `div` fromIntegral nPixs)
@@ -495,11 +519,19 @@ blur radius =
     {-# INLINE horiz #-}
 {-# INLINE blur #-}
 
-gaussianBlur :: Integral a => Int -> Maybe Float
+-- Blur the image by averaging the pixel inside the kernel using a Gaussian
+-- function.
+-- See <http://en.wikipedia.org/wiki/Gaussian_blur>
+gaussianBlur :: Integral a
+             => Int         -- ^ Blur radius.
+             -- | Sigma value of the Gaussian function. If not given, will be
+             -- automatically computed from the radius so that the kernel
+             -- fits 3σ of the distribution.
+             -> Maybe Float
              -> SeparableFilter a Float a
 gaussianBlur !radius !mSig =
     Filter (ix2 size size) KernelAnchorCenter (SeparableKernel vert horiz)
-           (FilterFold 0) (round . (/ kernelSum)) BorderReplicate
+           (FilterFold 0) (truncate . (* kernelSumRatio)) BorderReplicate
   where
     !size = radius * 2 + 1
 
@@ -507,18 +539,19 @@ gaussianBlur !radius !mSig =
     !sig = case mSig of Just s  -> s
                         Nothing -> (0.5 + fromIntegral radius) / 3
 
-    vert !(Z :. y) !val !acc = let !coeff = kernelVec V.! y
-                               in acc + fromIntegral val * coeff
+    vert  !(Z :. y) !val !acc = let !coeff = kernelVec V.! y
+                                in acc + fromIntegral val * coeff
     {-# INLINE vert #-}
 
-    horiz !(Z :. x) !acc1 !acc2 = let !coeff = kernelVec V.! x
-                                  in acc1 * coeff + acc2
+    horiz !(Z :. x) !val !acc = let !coeff = kernelVec V.! x
+                                in acc + val * coeff
     {-# INLINE horiz #-}
 
     !kernelVec =
         V.generate size $ \x ->
             gaussian $! fromIntegral $! abs $! x - radius
-    !kernelSum = square (V.sum kernelVec)
+
+    !kernelSumRatio = 1 / square (V.sum kernelVec)
 
     gaussian !x = invSigSqrt2Pi * exp (inv2xSig2 * square x)
 
@@ -527,9 +560,13 @@ gaussianBlur !radius !mSig =
     !inv2xSig2     = -1 / (2 * square sig)
 {-# INLINE gaussianBlur #-}
 
+-- Derivation ------------------------------------------------------------------
+
 data Derivative = DerivativeX | DerivativeY
 
-scharr :: (Integral src, Integral res) => Derivative -> SeparableFilter src res res
+-- | Estimates the first derivative using the Scharr's 3x3 kernel.
+scharr :: (Integral src, Integral res)
+       => Derivative -> SeparableFilter src res res
 scharr der =
     let !kernel =
             case der of
@@ -546,30 +583,38 @@ scharr der =
     kernel2 !(Z :.  1) !_   !acc = acc
     kernel2 !(Z :. ~2) !val !acc = acc + fromIntegral val
     {-# INLINE kernel2 #-}
+{-# INLINE scharr #-}
 
-sobel :: (Integral src, Integral res, Storable res) => Int -> Derivative
+-- | Estimates the first derivative using a Sobel's kernel.
+-- Prefer 'scharr' when radius equals @1@ as Scharr's kernel is more precise and
+-- implemented faster.
+sobel :: (Integral src, Integral res, Storable res) 
+      => Int        -- ^ Kernel radius.
+      -> Derivative
       -> SeparableFilter src res res
 sobel radius der =
-    let !kernel =
-            case der of
-                DerivativeX -> SeparableKernel (vert vec1) (horiz vec2)
-                DerivativeY -> SeparableKernel (vert vec2) (horiz vec1)
-    in Filter (ix2 size size) KernelAnchorCenter kernel (FilterFold 0) id
-              BorderReplicate
+    Filter (ix2 size size) KernelAnchorCenter (SeparableKernel vert horiz)
+           (FilterFold 0) id BorderReplicate
   where
     !size = radius * 2 + 1
 
-    vert  !vec !(Z :. y) !val  !acc  = let !coeff = vec V.! y
-                                       in acc + fromIntegral val * coeff
+    vert  !(Z :. x) !val !acc = let !coeff = vec1 V.! x
+                                in acc + fromIntegral val * coeff
     {-# INLINE vert #-}
-    horiz !vec !(Z :. x) !acc1 !acc2 = let !coeff = vec V.! x
-                                       in acc1 * coeff + acc2
+
+    horiz !(Z :. x) !val !acc = let !coeff = vec2 V.! x
+                                in acc + fromIntegral val * coeff
     {-# INLINE horiz #-}
 
     !radius' = fromIntegral radius
-    !vec1 = let pows = [ 2^i | i <- [0..radius'] ]
-            in V.fromList $ pows ++ (tail (reverse pows))
-    !vec2 = V.fromList $ [1..radius'] ++ [0] ++ map negate [1..radius']
+
+    (!vec1, !vec2) = case der of DerivativeX -> (vec1', vec2')
+                                 DerivativeY -> (vec2', vec1')
+
+    !vec1' = let pows = [ 2^i | i <- [0..radius'] ]
+             in V.fromList $ pows ++ (tail (reverse pows))
+    !vec2' = V.fromList $ [1..radius'] ++ [0] ++ map negate [1..radius']
+{-# INLINE sobel #-}
 
 square :: Num a => a -> a
 square a = a * a
