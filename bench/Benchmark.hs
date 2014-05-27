@@ -137,11 +137,16 @@ main = do
     erode' img = img `I.apply` I.erode 1
 
     blur' :: GreyImage -> GreyImage
-    blur' img = img `I.apply` (I.blur 1 :: I.SeparableFilter I.GreyPixel Word32
-                                                             I.GreyPixel)
+    blur' img =
+        let filt = I.blur 1 :: I.SeparableFilter I.GreyPixel Word32 I.GreyPixel
+        in img `I.apply` filt
 
     gaussianBlur' :: GreyImage -> GreyImage
-    gaussianBlur' img = img `I.apply` I.gaussianBlur 1 Nothing
+    gaussianBlur' img =
+        let filt = I.gaussianBlur 1 Nothing :: I.SeparableFilter I.GreyPixel
+                                                                 Float
+                                                                 I.GreyPixel
+        in img `I.apply` filt
 
     sobel' :: GreyImage -> I.Manifest Int16
     sobel' img = img `I.apply` I.sobel 1 I.DerivativeX

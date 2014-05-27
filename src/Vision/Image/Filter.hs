@@ -505,6 +505,8 @@ erode radius =
 -- Blur ------------------------------------------------------------------------
 
 -- Blur the image by averaging the pixel inside the kernel.
+-- Considers using a type for 'acc' with
+-- @maxBound acc >= maxBound src * (kernel size)²@.
 blur :: (Integral src, Integral acc, Num res)
      => Int -- ^ Blur radius.
      -> SeparableFilter src acc res
@@ -526,13 +528,14 @@ blur radius =
 -- Blur the image by averaging the pixel inside the kernel using a Gaussian
 -- function.
 -- See <http://en.wikipedia.org/wiki/Gaussian_blur>
-gaussianBlur :: Integral a
+gaussianBlur :: (Integral src, Floating acc, RealFrac acc, Storable acc
+               , Integral res)
              => Int         -- ^ Blur radius.
              -- | Sigma value of the Gaussian function. If not given, will be
              -- automatically computed from the radius so that the kernel
              -- fits 3σ of the distribution.
-             -> Maybe Float
-             -> SeparableFilter a Float a
+             -> Maybe acc
+             -> SeparableFilter src acc res
 gaussianBlur !radius !mSig =
     Filter (ix2 size size) KernelAnchorCenter (SeparableKernel vert horiz)
            (FilterFold 0) (round . (/ kernelSum)) BorderReplicate
@@ -569,6 +572,7 @@ gaussianBlur !radius !mSig =
 data Derivative = DerivativeX | DerivativeY
 
 -- | Estimates the first derivative using the Scharr's 3x3 kernel.
+-- Considers using a type for 'res' with @maxBound res >= 16 * maxBound src@.
 scharr :: (Integral src, Integral res)
        => Derivative -> SeparableFilter src res res
 scharr der =
@@ -592,7 +596,8 @@ scharr der =
 -- | Estimates the first derivative using a Sobel's kernel.
 -- Prefer 'scharr' when radius equals @1@ as Scharr's kernel is more precise and
 -- implemented faster.
-sobel :: (Integral src, Integral res, Storable res) 
+-- Considers using a type for 'res' which is larger than 
+sobel :: (Integral src, Integral res, Storable res)
       => Int        -- ^ Kernel radius.
       -> Derivative
       -> SeparableFilter src res res
