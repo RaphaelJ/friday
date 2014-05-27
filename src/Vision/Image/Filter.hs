@@ -535,7 +535,7 @@ gaussianBlur :: Integral a
              -> SeparableFilter a Float a
 gaussianBlur !radius !mSig =
     Filter (ix2 size size) KernelAnchorCenter (SeparableKernel vert horiz)
-           (FilterFold 0) (truncate . (* kernelSumRatio)) BorderReplicate
+           (FilterFold 0) (round . (/ kernelSum)) BorderReplicate
   where
     !size = radius * 2 + 1
 
@@ -555,7 +555,7 @@ gaussianBlur !radius !mSig =
         V.generate size $ \x ->
             gaussian $! fromIntegral $! abs $! x - radius
 
-    !kernelSumRatio = 1 / square (V.sum kernelVec)
+    !kernelSum = V.sum kernelVec
 
     gaussian !x = invSigSqrt2Pi * exp (inv2xSig2 * square x)
 
