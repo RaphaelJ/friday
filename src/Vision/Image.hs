@@ -37,6 +37,7 @@ module Vision.Image (
     , module Vision.Image.RGBImage
     , module Vision.Image.RGBAImage
     , module Vision.Image.Storage
+    , module Vision.Image.Threshold
     , module Vision.Image.Transform
     , module Vision.Image.Type
     ) where
@@ -48,5 +49,6 @@ import Vision.Image.Interpolate
 import Vision.Image.RGBImage
 import Vision.Image.RGBAImage
 import Vision.Image.Storage
+import Vision.Image.Threshold
 import Vision.Image.Transform
 import Vision.Image.Type

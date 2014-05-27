@@ -124,6 +124,10 @@ main = do
                                             :: Histogram DIM3 Int32 -> Int32)
                      hist2D
             ]
+        , bgroup "threshold" [
+              bench "simple threshold"   $ whnf threshold'         grey
+            , bench "adaptive threshold" $ whnf adaptiveThreshold' grey
+            ]
         , bgroup "application" [
               bench "miniature 150x150" $ whnf miniature rgb
             ]
@@ -134,25 +138,35 @@ main = do
     {-# INLINE resize' #-}
 
     erode' :: GreyImage -> GreyImage
-    erode' img = img `I.apply` I.erode 1
+    erode' !img = img `I.apply` I.erode 1
 
     blur' :: GreyImage -> GreyImage
-    blur' img =
+    blur' !img =
         let filt = I.blur 1 :: I.SeparableFilter I.GreyPixel Word32 I.GreyPixel
         in img `I.apply` filt
 
     gaussianBlur' :: GreyImage -> GreyImage
-    gaussianBlur' img =
+    gaussianBlur' !img =
         let filt = I.gaussianBlur 1 Nothing :: I.SeparableFilter I.GreyPixel
                                                                  Float
                                                                  I.GreyPixel
         in img `I.apply` filt
 
     sobel' :: GreyImage -> I.Manifest Int16
-    sobel' img = img `I.apply` I.sobel 1 I.DerivativeX
+    sobel' !img = img `I.apply` I.sobel 1 I.DerivativeX
 
     scharr' :: GreyImage -> I.Manifest Int16
-    scharr' img = img `I.apply` I.scharr I.DerivativeX
+    scharr' !img = img `I.apply` I.scharr I.DerivativeX
+
+    threshold' :: GreyImage -> GreyImage
+    threshold' !img = I.threshold (> 127) (I.BinaryThreshold 0 255) img
+
+    adaptiveThreshold' :: GreyImage -> GreyImage
+    adaptiveThreshold' !img =
+        let filt :: I.SeparableFilter I.GreyPixel Float I.GreyPixel
+            filt = I.adaptiveThreshold (I.GaussianKernel Nothing) 1 0
+                                       (I.BinaryThreshold 0 255)
+        in img `I.apply` filt
 
     miniature !rgb =
         let Z :. h :. w = I.shape rgb

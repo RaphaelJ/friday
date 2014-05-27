@@ -47,6 +47,7 @@ library
                         Vision.Image.RGBImage.Conversion
                         Vision.Image.RGBImage.Type
                         Vision.Image.Storage
+                        Vision.Image.Threshold
                         Vision.Image.Transform
                         Vision.Image.Type
                         Vision.Primitive
