@@ -50,7 +50,7 @@ data Filter src kernel init acc res = Filter {
     , fKernel       :: !kernel
     -- | Defines how the accumulated value is initialized.
     , fInit         :: !init
-    , fPost         :: !(acc -> res)
+    , fPost         :: !(src -> acc -> res)
     , fInterpol     :: !(BorderInterpolate src)
     }
 
@@ -141,13 +141,14 @@ instance (Image src, FromFunction res, src_p ~ ImagePixel src
         => Filterable src res (BoxFilter src_p acc res_p) where
     apply !img !(Filter ksize anchor (Kernel kernel) ini post interpol) =
         let !(FilterFold acc)  = ini
-        in fromFunction size $ \(!(Z :. iy :. ix)) ->
+        in fromFunction size $ \(!pt@(Z :. iy :. ix)) ->
             let !iy0  = iy - kcy
                 !ix0  = ix - kcx
                 !safe =    iy0 >= 0 && iy0 + kh <= ih
                         && ix0 >= 0 && ix0 + kw <= iw
-            in post $! if safe then goColumnSafe (iy0 * iw) ix0 0 acc
-                               else goColumn     iy0        ix0 0 acc
+                !pix  = img `index` pt
+            in post pix $! if safe then goColumnSafe (iy0 * iw) ix0 0 acc
+                                   else goColumn     iy0        ix0 0 acc
       where
         !size@(Z :. ih :. iw) = shape img
 
@@ -194,13 +195,14 @@ instance (Image src, FromFunction res, src_p ~ ImagePixel src
         | kh == 0 || kw == 0 =
             error "Using FilterFold1 with an empty kernel."
         | otherwise          =
-            fromFunction size $ \(!(Z :. iy :. ix)) ->
+            fromFunction size $ \(!pt@(Z :. iy :. ix)) ->
                 let !iy0  = iy - kcy
                     !ix0  = ix - kcx
                     !safe =    iy0 >= 0 && iy0 + kh <= ih
                             && ix0 >= 0 && ix0 + kw <= iw
-                in post $! if safe then goColumn1Safe iy0 ix0
-                                   else goColumn1     iy0 ix0
+                    !pix  = img `index` pt
+                in post pix $! if safe then goColumn1Safe iy0 ix0
+                                       else goColumn1     iy0 ix0
       where
         !size@(Z :. ih :. iw) = shape img
 
@@ -289,11 +291,12 @@ instance (Image src, FromFunction res, SeparatelyFiltrable src res acc
                               then goColumnSafe iy0 ix 0 acc0
                               else goColumn     iy0 ix 0 acc0
 
-            !res = fromFunction size $ \(!(Z :. iy :. ix)) ->
+            !res = fromFunction size $ \(!pt@(Z :. iy :. ix)) ->
                         let !ix0 = ix - kcx
-                        in post $! if ix0 >= 0 && ix0 + kw <= iw
-                                        then goLineSafe (iy * iw) ix0 0 acc0
-                                        else goLine     (iy * iw) ix0 0 acc0
+                            !pix = src `index` pt
+                        in post pix $! if ix0 >= 0 && ix0 + kw <= iw
+                                            then goLineSafe (iy * iw) ix0 0 acc0
+                                            else goLine     (iy * iw) ix0 0 acc0
 
             goColumn !iy !ix !ky !acc
                 | ky < kh   =
@@ -373,11 +376,12 @@ instance (Image src, FromFunction res, SeparatelyFiltrable src res src_p
                               then goColumn1Safe iy0 ix
                               else goColumn1     iy0 ix
 
-            !res = fromFunction size $ \(!(Z :. iy :. ix)) ->
+            !res = fromFunction size $ \(!pt@(Z :. iy :. ix)) ->
                         let !ix0 = ix - kcx
-                        in post $! if ix0 >= 0 && ix0 + kw <= iw
-                                        then goLine1Safe (iy * iw) ix0
-                                        else goLine1     (iy * iw) ix0
+                            !pix = src `index` pt
+                        in post pix $! if ix0 >= 0 && ix0 + kw <= iw
+                                            then goLine1Safe (iy * iw) ix0
+                                            else goLine1     (iy * iw) ix0
 
             goColumn1 !iy !ix =
                 case borderInterpolate interpol ih iy of
@@ -483,7 +487,7 @@ borderInterpolate !interpol !len !ix
 dilate :: Ord src => Int -> SeparableFilter1 src src
 dilate radius =
     Filter (ix2 size size) KernelAnchorCenter (SeparableKernel kernel kernel)
-           FilterFold1 id BorderReplicate
+           FilterFold1 (\_ acc -> acc) BorderReplicate
   where
     !size = radius * 2 + 1
 
@@ -494,7 +498,7 @@ dilate radius =
 erode :: Ord src => Int -> SeparableFilter1 src src
 erode radius =
     Filter (ix2 size size) KernelAnchorCenter (SeparableKernel kernel kernel)
-           FilterFold1 id BorderReplicate
+           FilterFold1 (\_ acc -> acc) BorderReplicate
   where
     !size = radius * 2 + 1
 
@@ -512,17 +516,16 @@ blur :: (Integral src, Integral acc, Num res)
      -> SeparableFilter src acc res
 blur radius =
     Filter (ix2 size size) KernelAnchorCenter (SeparableKernel vert horiz)
-           (FilterFold 0) (\acc -> fromIntegral $ acc `div` fromIntegral nPixs)
-           BorderReplicate
+           (FilterFold 0) post BorderReplicate
   where
     !size  = radius * 2 + 1
-    !nPixs = square size
+    !nPixs = fromIntegral $ square size
 
     vert  _ !val  !acc = acc + fromIntegral val
-    {-# INLINE vert #-}
 
     horiz _ !acc' !acc = acc + acc'
-    {-# INLINE horiz #-}
+
+    post _ acc = fromIntegral $ acc `div` nPixs
 {-# INLINE blur #-}
 
 -- Blur the image by averaging the pixel inside the kernel using a Gaussian
@@ -538,7 +541,7 @@ gaussianBlur :: (Integral src, Floating acc, RealFrac acc, Storable acc
              -> SeparableFilter src acc res
 gaussianBlur !radius !mSig =
     Filter (ix2 size size) KernelAnchorCenter (SeparableKernel vert horiz)
-           (FilterFold 0) (round . (/ kernelSum)) BorderReplicate
+           (FilterFold 0) (\_ !acc -> round $ acc / kernelSum) BorderReplicate
   where
     !size = radius * 2 + 1
 
@@ -548,11 +551,9 @@ gaussianBlur !radius !mSig =
 
     vert  !(Z :. y) !val !acc = let !coeff = kernelVec V.! y
                                 in acc + fromIntegral val * coeff
-    {-# INLINE vert #-}
 
     horiz !(Z :. x) !val !acc = let !coeff = kernelVec V.! x
                                 in acc + val * coeff
-    {-# INLINE horiz #-}
 
     !kernelVec =
         V.generate size $ \x ->
@@ -580,17 +581,15 @@ scharr der =
             case der of
                 DerivativeX -> SeparableKernel kernel1 kernel2
                 DerivativeY -> SeparableKernel kernel2 kernel1
-    in Filter (ix2 3 3) KernelAnchorCenter kernel (FilterFold 0) id
+    in Filter (ix2 3 3) KernelAnchorCenter kernel (FilterFold 0) (\_ acc -> acc)
               BorderReplicate
   where
     kernel1 !(Z :. 1)  !val !acc = acc + 10 * fromIntegral val
     kernel1 !(Z :. _)  !val !acc = acc + 3  * fromIntegral val
-    {-# INLINE kernel1 #-}
 
     kernel2 !(Z :.  0) !val !acc = acc - fromIntegral val
     kernel2 !(Z :.  1) !_   !acc = acc
     kernel2 !(Z :. ~2) !val !acc = acc + fromIntegral val
-    {-# INLINE kernel2 #-}
 {-# INLINE scharr #-}
 
 -- | Estimates the first derivative using a Sobel's kernel.
@@ -603,17 +602,15 @@ sobel :: (Integral src, Integral res, Storable res)
       -> SeparableFilter src res res
 sobel radius der =
     Filter (ix2 size size) KernelAnchorCenter (SeparableKernel vert horiz)
-           (FilterFold 0) id BorderReplicate
+           (FilterFold 0) (\_ acc -> acc) BorderReplicate
   where
     !size = radius * 2 + 1
 
     vert  !(Z :. x) !val !acc = let !coeff = vec1 V.! x
                                 in acc + fromIntegral val * coeff
-    {-# INLINE vert #-}
 
     horiz !(Z :. x) !val !acc = let !coeff = vec2 V.! x
                                 in acc + fromIntegral val * coeff
-    {-# INLINE horiz #-}
 
     !radius' = fromIntegral radius
 
