@@ -1,7 +1,10 @@
 {-# LANGUAGE BangPatterns, FlexibleContexts, FlexibleInstances, GADTs
            , MultiParamTypeClasses, TypeFamilies #-}
 
--- | Provides high level functions to apply filters on images.
+-- | Provides high level functions to define and apply filters on images.
+-- Filters are operations on images on which the surrounding of each processed
+-- pixel is considered according to a kernel.
+-- See <http://en.wikipedia.org/wiki/Kernel_(image_processing)> for details.
 --
 -- The @radius@ argument of some filter is used to determine the kernel size.
 -- A radius as of 1 means a kernel of size 3, 2 a kernel of size 5 and so on.

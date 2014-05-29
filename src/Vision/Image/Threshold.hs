@@ -34,8 +34,8 @@ threshold !cond !(Truncate        ifTrue)         !img =
 data AdaptiveThresholdKernel acc where
     -- | Each pixel of the kernel has the same weight.
     MeanKernel     :: Integral acc => AdaptiveThresholdKernel acc
-    -- | Pixels are weighted against their distance from the thresholded pixel
-    -- using a Gaussian function.
+    -- | Pixels are weighted according to their distance from the thresholded
+    -- pixel using a Gaussian function.
     GaussianKernel :: (Floating acc, RealFrac acc)
                    -- | Sigma value of the Gaussian function.
                    -- See 'gaussianBlur' for details.
