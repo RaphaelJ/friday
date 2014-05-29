@@ -213,13 +213,13 @@ instance (Image src, FromFunction res, src_p ~ ImagePixel src
             case borderInterpolate interpol ih iy of
                 Left  iy' ->
                     let !linearIY = iy' * iw
-                        !acc      = img `linearIndex` linearIY
+                        !acc      = safeIndex linearIY ix
                     in goLine iy linearIY ix (ix + 1) 0 1 acc
                 Right val -> goLineConst iy ix 0 1 val val
 
         goColumn1Safe !iy !ix =
             let !linearIY = iy * iw
-                !acc      = img `linearIndex` linearIY
+                !acc      = img `linearIndex` (linearIY + ix)
             in goLineSafe linearIY ix (ix + 1) 0 1 acc
 
         goColumn !iy !ix !ky !acc
@@ -234,9 +234,7 @@ instance (Image src, FromFunction res, src_p ~ ImagePixel src
 
         goLine !iy !linearIY !ix0 !ix !ky !kx !acc
             | kx < kw   =
-                let !val  = case borderInterpolate interpol iw ix of
-                                Left  ix'  -> img `linearIndex` (linearIY + ix')
-                                Right val' -> val'
+                let !val  = safeIndex linearIY ix
                     !acc' = kernel (ix2 ky kx) val acc
                 in goLine iy linearIY ix0 (ix + 1) ky (kx + 1) acc'
             | otherwise = goColumn (iy + 1) ix0 (ky + 1) acc
@@ -252,6 +250,11 @@ instance (Image src, FromFunction res, src_p ~ ImagePixel src
             | kx < kw   = let !acc' = kernel (ix2 ky kx) val acc
                           in goLineConst iy ix ky (kx + 1) val acc'
             | otherwise = goColumn (iy + 1) ix (ky + 1) acc
+
+        safeIndex !linearIY !ix =
+            case borderInterpolate interpol iw ix of
+                Left  ix' -> img `linearIndex` (linearIY + ix')
+                Right val -> val
     {-# INLINE apply #-}
 
 -- | Separable filters initialized with a given value.
@@ -393,7 +396,7 @@ instance (Image src, FromFunction res, SeparatelyFiltrable src res src_p
 
             goColumn1Safe !iy !ix =
                 let !linearIY = iy * iw
-                    !acc      = src `linearIndex` linearIY
+                    !acc      = src `linearIndex` (linearIY + ix)
                 in goColumnSafe (linearIY + iw) ix 1 acc
 
             goColumn !iy !ix !ky !acc
@@ -407,7 +410,7 @@ instance (Image src, FromFunction res, SeparatelyFiltrable src res src_p
 
             goColumnSafe !linearIY !ix !ky !acc
                 | ky < kh   =
-                    let !val  = src `linearIndex` linearIY
+                    let !val  = src `linearIndex` (linearIY + ix)
                         !acc' = vert (ix1 ky) val acc
                     in goColumnSafe (linearIY + iw) ix (ky + 1) acc'
                 | otherwise = acc
@@ -415,13 +418,13 @@ instance (Image src, FromFunction res, SeparatelyFiltrable src res src_p
             goLine1 !linearIY !ix =
                 let !acc =
                         case borderInterpolate interpol iw ix of
-                            Left  ix'-> tmp `linearIndex` (linearIY + ix')
-                            Right _  -> columnConst
+                            Left  ix' -> tmp `linearIndex` (linearIY + ix')
+                            Right _   -> columnConst
                 in goLine linearIY (ix + 1) 1 acc
 
             goLine1Safe !linearIY !ix =
                 let !linearIX = linearIY + ix
-                    !acc      = src `linearIndex` linearIX
+                    !acc      = tmp `linearIndex` linearIX
                 in goLineSafe (linearIX + 1) 1 acc
 
             goLine !linearIY !ix !kx !acc
@@ -492,7 +495,6 @@ dilate radius =
     !size = radius * 2 + 1
 
     kernel _ = max
-    {-# INLINE kernel #-}
 {-# INLINE dilate #-}
 
 erode :: Ord src => Int -> SeparableFilter1 src src
@@ -503,7 +505,6 @@ erode radius =
     !size = radius * 2 + 1
 
     kernel _ = min
-    {-# INLINE kernel #-}
 {-# INLINE erode #-}
 
 -- Blur ------------------------------------------------------------------------
