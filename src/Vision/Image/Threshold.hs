@@ -12,6 +12,7 @@ import Vision.Image.Filter (Filter (..), SeparableFilter, blur, gaussianBlur)
 import Vision.Image.Type (ImagePixel, FunctorImage)
 import qualified Vision.Image.Type as I
 
+-- | Specifies what to do with pixels matching the threshold predicate.
 data ThresholdType src res where
     BinaryThreshold :: res -- ^ Pixel value if the predicate matches.
                     -> res -- ^ Pixel value if the predicate doesn't
@@ -31,15 +32,26 @@ threshold !cond !(Truncate        ifTrue)         !img =
 {-# INLINE threshold #-}
 
 data AdaptiveThresholdKernel acc where
+    -- | Each pixel of the kernel has the same weight.
     MeanKernel     :: Integral acc => AdaptiveThresholdKernel acc
+    -- | Pixels are weighted against their distance from the thresholded pixel
+    -- using a Gaussian function.
     GaussianKernel :: (Floating acc, RealFrac acc)
                    -- | Sigma value of the Gaussian function.
                    -- See 'gaussianBlur' for details.
                    => Maybe acc
                    -> AdaptiveThresholdKernel acc
 
+-- | Applies a thresholding adaptively.
+-- Compares every pixel to its surrounding ones in the kernel of the given
+-- radius.
 adaptiveThreshold :: (Integral src, Num src, Ord src, Storable acc)
-                  => AdaptiveThresholdKernel acc -> Int -> src
+                  => AdaptiveThresholdKernel acc
+                  -> Int -- ^ Kernel radius.
+                  -> src -- ^ Minimum difference between the pixel and the
+                         -- kernel average. The pixel is thresholded if
+                         -- @pixel_value - kernel_mean > difference@ where
+                         -- difference if this number.
                   -> ThresholdType src res -> SeparableFilter src acc res
 adaptiveThreshold !kernelType !radius !thres !thresType =
     kernelFilter { fPost = post }
