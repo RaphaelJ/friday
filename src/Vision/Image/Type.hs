@@ -26,7 +26,7 @@ import Data.Vector.Storable (
 import Data.Vector.Storable.Mutable (new, write)
 import Data.Word
 import Foreign.Storable (Storable)
-import Prelude hiding (map)
+import Prelude hiding (map, read)
 
 import Vision.Primitive (
       Z (..), (:.) (..), Point, Size
@@ -94,6 +94,7 @@ instance Pixel Double where
 -- | Provides an abstraction for images which are not defined for each of their
 -- pixels. The interface is similar to 'Image' except that indexing functions
 -- don't always return.
+-- Image origin is located in the lower left corner.
 --
 -- Minimal definition is 'shape' and ('maskedIndex' or 'maskedLinearIndex').
 class Pixel (ImagePixel i) => MaskedImage i where
@@ -131,13 +132,13 @@ type ImageChannel i = PixelChannel (ImagePixel i)
 --
 -- Minimal definition is 'index' or 'linearIndex'.
 class MaskedImage i => Image i where
-    -- | Returns the pixel\'s value at 'Z :. y :. x'.
+    -- | Returns the pixel value at 'Z :. y :. x'.
     index :: i -> Point -> ImagePixel i
     index img = (img `linearIndex`) . toLinearIndex (shape img)
     {-# INLINE index #-}
 
-    -- | Returns the pixel\'s value as if the image was a single dimension
-    -- vector (row-major representation).
+    -- | Returns the pixel value as if the image was a single dimension vector
+    -- (row-major representation).
     linearIndex :: i -> Int -> ImagePixel i
     linearIndex img = (img `index`) . fromLinearIndex (shape img)
     {-# INLINE linearIndex #-}

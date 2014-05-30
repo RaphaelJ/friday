@@ -577,6 +577,20 @@ gaussianBlur !radius !mSig =
 data Derivative = DerivativeX | DerivativeY
 
 -- | Estimates the first derivative using the Scharr's 3x3 kernel.
+--
+-- Convolves the following kernel for the X derivative:
+-- @
+--  -3   0   3
+-- -10   0  10
+--  -3   0   3
+-- @
+-- And this kernel for the Y derivative:
+-- @
+--  -3 -10  -3
+--   0   0   0
+--   3  10   3
+-- @
+--
 -- Considers using a signed integer type for 'res' with
 -- @maxBound res >= 16 * maxBound src@.
 scharr :: (Integral src, Integral res)
@@ -598,8 +612,8 @@ scharr der =
 {-# INLINE scharr #-}
 
 -- | Estimates the first derivative using a Sobel's kernel.
--- Prefer 'scharr' when radius equals @1@ as Scharr's kernel is more precise and
--- implemented faster.
+-- Prefer 'scharr' when radius equals @1@ as Scharr's kernel is more accurate
+-- and is implemented faster.
 -- Considers using a signed integer type for 'res' which is significantly larger
 -- than 'src', especially for large kernels.
 sobel :: (Integral src, Integral res, Storable res)

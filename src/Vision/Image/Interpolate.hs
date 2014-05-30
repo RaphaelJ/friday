@@ -23,14 +23,15 @@ class Integral (PixelChannel p) => Interpolable p where
 -- rational coordinates.
 --
 -- Estimates the value of a rational point @p@ using @a@, @b@, @c@ and @d@ :
+-- @
+--       x1       x2
 --
--- >       x1       x2
--- >
--- > y1    a ------ b
--- >       -        -
--- >       -  p     -
--- >       -        -
--- > y2    c ------ d
+-- y1    a ------ b
+--       -        -
+--       -  p     -
+--       -        -
+-- y2    c ------ d
+-- @
 bilinearInterpol :: (Image i, Interpolable (ImagePixel i))
                  => i -> RPoint -> ImagePixel i
 img `bilinearInterpol` RPoint x y
@@ -68,8 +69,8 @@ img `bilinearInterpol` RPoint x y
             !deltaY2 = compl deltaY1
         in interpol (interpolChannel deltaY1 deltaY2) a c
     | otherwise = img `index` ix2 (numerator y) (numerator x)
---     | x1 >= 0 && y1 >= 0 && (Z :. y2 :. x2) `inImage` img =
---         error "Invalid index"
+    -- | x1 >= 0 && y1 >= 0 && (Z :. y2 :. x2) `inImage` img =
+    --     error "Invalid index"
   where
     integralX = denominator x == 1
     integralY = denominator y == 1
@@ -83,9 +84,9 @@ img `bilinearInterpol` RPoint x y
     -- Interpolates the value of a single channel given its two surrounding
     -- points.
     interpolChannel deltaA deltaB chanA chanB = truncate $
---         (fromIntegral chanA) * deltaB + (fromIntegral chanB) * deltaA
---           deltaB { numerator = int chanA * numerator deltaB }
---         + deltaA { numerator = int chanB * numerator deltaA }
+    -- (fromIntegral chanA) * deltaB + (fromIntegral chanB) * deltaA
+    --   deltaB { numerator = int chanA * numerator deltaB }
+    -- + deltaA { numerator = int chanB * numerator deltaA }
         deltaA {
               numerator = int chanA * numerator deltaB
                         + int chanB * numerator deltaA

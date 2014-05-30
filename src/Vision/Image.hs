@@ -34,6 +34,7 @@ module Vision.Image (
     , module Vision.Image.Filter
     , module Vision.Image.HSVImage
     , module Vision.Image.Interpolate
+    , module Vision.Image.Mutable
     , module Vision.Image.RGBImage
     , module Vision.Image.RGBAImage
     , module Vision.Image.Storage
@@ -46,6 +47,7 @@ import Vision.Image.GreyImage
 import Vision.Image.Filter
 import Vision.Image.HSVImage
 import Vision.Image.Interpolate
+import Vision.Image.Mutable
 import Vision.Image.RGBImage
 import Vision.Image.RGBAImage
 import Vision.Image.Storage

@@ -51,7 +51,7 @@ adaptiveThreshold :: (Integral src, Num src, Ord src, Storable acc)
                   -> src -- ^ Minimum difference between the pixel and the
                          -- kernel average. The pixel is thresholded if
                          -- @pixel_value - kernel_mean > difference@ where
-                         -- difference if this number.
+                         -- difference if this number. Can be negative.
                   -> ThresholdType src res -> SeparableFilter src acc res
 adaptiveThreshold !kernelType !radius !thres !thresType =
     kernelFilter { fPost = post }
