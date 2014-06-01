@@ -30,7 +30,8 @@ build-type:             Simple
 cabal-version:          >= 1.10
 
 library
-    exposed-modules:    Vision.Histogram
+    exposed-modules:    Vision.Detector.Edge
+                        Vision.Histogram
                         Vision.Image
                         Vision.Image.GreyImage
                         Vision.Image.GreyImage.Conversion

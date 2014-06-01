@@ -6,18 +6,47 @@ module Vision.Image.Interpolate (
       Interpolable (..), bilinearInterpol
     ) where
 
+import Data.Int
 import Data.RatioInt (denominator, numerator)
+import Data.Word
 
-import Vision.Image.Type (Pixel (..), Image (..), ImagePixel)
+import Vision.Image.Type (Pixel (..), Image (..), ImagePixel, ImageChannel)
 import Vision.Primitive (RPoint (..), ix2)
 
 -- | Provides a way to apply the interpolation to every component of a pixel.
-class Integral (PixelChannel p) => Interpolable p where
+class Interpolable p where
     -- | Given a function which interpolates two points over a single channel,
     -- returns a function which interpolates two points over every channel of
     -- two pixels.
     interpol :: (PixelChannel p -> PixelChannel p -> PixelChannel p)
              -> p -> p -> p
+
+instance Interpolable Int16 where
+    interpol = id
+
+instance Interpolable Int32 where
+    interpol = id
+
+instance Interpolable Int where
+    interpol = id
+
+instance Interpolable Word8 where
+    interpol = id
+
+instance Interpolable Word16 where
+    interpol = id
+
+instance Interpolable Word32 where
+    interpol = id
+
+instance Interpolable Word where
+    interpol = id
+
+instance Interpolable Float where
+    interpol = id
+
+instance Interpolable Double where
+    interpol = id
 
 -- | Uses a bilinear interpolation to find the value of the pixel at the
 -- rational coordinates.
@@ -32,7 +61,8 @@ class Integral (PixelChannel p) => Interpolable p where
 --       -        -
 -- y2    c ------ d
 -- @
-bilinearInterpol :: (Image i, Interpolable (ImagePixel i))
+bilinearInterpol :: (Image i, Interpolable (ImagePixel i)
+                   , Integral (ImageChannel i))
                  => i -> RPoint -> ImagePixel i
 img `bilinearInterpol` RPoint x y
     | not integralX && not integralY =

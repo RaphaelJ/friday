@@ -8,7 +8,9 @@ module Vision.Image.Transform (
 import Data.RatioInt (RatioInt, (%))
 
 import Vision.Image.Interpolate (Interpolable, bilinearInterpol)
-import Vision.Image.Type (MaskedImage (..), Image (..), FromFunction (..))
+import Vision.Image.Type (
+      MaskedImage (..), Image (..), ImageChannel, FromFunction (..)
+    )
 import Vision.Primitive (Z (..), (:.) (..), RPoint (..), Rect (..), Size, ix2)
 
 -- | Defines the set of possible methods for pixel interpolations when looking
@@ -29,7 +31,7 @@ crop !img !(Rect rx ry rw rh) =
 
 -- | Resizes the 'Image' using the given interpolation method.
 resize :: (Image i1, Interpolable (ImagePixel i1), FromFunction i2
-          , ImagePixel i1 ~ FromFunctionPixel i2)
+         , ImagePixel i1 ~ FromFunctionPixel i2, Integral (ImageChannel i1))
        => i1 -> InterpolMethod -> Size -> i2
 resize !img !method !size'@(Z :. h' :. w') =
     case method of
