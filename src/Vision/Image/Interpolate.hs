@@ -48,6 +48,9 @@ instance Interpolable Float where
 instance Interpolable Double where
     interpol = id
 
+instance Interpolable Bool where
+    interpol = id
+
 -- | Uses a bilinear interpolation to find the value of the pixel at the
 -- rational coordinates.
 --

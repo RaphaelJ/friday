@@ -91,6 +91,11 @@ instance Pixel Double where
     pixNChannels _   = 1
     pixIndex     p _ = p
 
+instance Pixel Bool where
+    type PixelChannel Bool = Bool
+    pixNChannels _   = 1
+    pixIndex     p _ = p
+
 -- | Provides an abstraction for images which are not defined for each of their
 -- pixels. The interface is similar to 'Image' except that indexing functions
 -- don't always return.

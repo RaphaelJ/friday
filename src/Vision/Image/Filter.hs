@@ -537,7 +537,7 @@ blur radius =
 -- See <http://en.wikipedia.org/wiki/Gaussian_blur>
 gaussianBlur :: (Integral src, Floating acc, RealFrac acc, Storable acc
                , Integral res)
-             => Int         -- ^ Blur radius.
+             => Int -- ^ Blur radius.
              -- | Sigma value of the Gaussian function. If not given, will be
              -- automatically computed from the radius so that the kernel
              -- fits 3σ of the distribution.
@@ -545,7 +545,7 @@ gaussianBlur :: (Integral src, Floating acc, RealFrac acc, Storable acc
              -> SeparableFilter src acc res
 gaussianBlur !radius !mSig =
     Filter (ix2 size size) KernelAnchorCenter (SeparableKernel vert horiz)
-           (FilterFold 0) (\_ !acc -> round $ acc / kernelSum) BorderReplicate
+           (FilterFold 0) (\_ !acc -> round acc) BorderReplicate
   where
     !size = radius * 2 + 1
 
@@ -560,10 +560,12 @@ gaussianBlur !radius !mSig =
                                 in acc + val * coeff
 
     !kernelVec =
-        V.generate size $ \x ->
-            gaussian $! fromIntegral $! abs $! x - radius
-
-    !kernelSum = V.sum kernelVec
+        -- Creates a vector of Gaussian values and normalizes it so its sum
+        -- equals 1.
+        let !unormalized = V.generate size $ \x ->
+                                gaussian $! fromIntegral $! abs $! x - radius
+            !kernelSum   = V.sum unormalized
+        in V.map (/ kernelSum) unormalized
 
     gaussian !x = invSigSqrt2Pi * exp (inv2xSig2 * square x)
 

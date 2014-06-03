@@ -6,6 +6,7 @@ import Data.Word
 import Vision.Image (
       GreyImage, HSVImage, RGBAImage, RGBImage, RGBDelayed, InterpolMethod
     )
+import qualified Vision.Detector.Edge as D (canny)
 import qualified Vision.Image as I
 import Vision.Histogram (Histogram)
 import qualified Vision.Histogram as H
@@ -128,6 +129,9 @@ main = do
               bench "simple threshold"   $ whnf threshold'         grey
             , bench "adaptive threshold" $ whnf adaptiveThreshold' grey
             ]
+        , bgroup "detector" [
+              bench "Canny's edge detector" $ whnf canny' grey
+            ]
         , bgroup "application" [
               bench "miniature 150x150" $ whnf miniature rgb
             ]
@@ -167,6 +171,9 @@ main = do
             filt = I.adaptiveThreshold (I.GaussianKernel Nothing) 1 0
                                        (I.BinaryThreshold 0 255)
         in img `I.apply` filt
+
+    canny' :: GreyImage -> I.Manifest Bool
+    canny' !img = D.canny img 2 256 1024
 
     miniature !rgb =
         let Z :. h :. w = I.shape rgb
