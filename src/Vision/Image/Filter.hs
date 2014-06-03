@@ -639,7 +639,7 @@ sobel radius der =
 
     !vec1' = let pows = [ 2^i | i <- [0..radius'] ]
              in V.fromList $ pows ++ (tail (reverse pows))
-    !vec2' = V.fromList $ [1..radius'] ++ [0] ++ map negate [1..radius']
+    !vec2' = V.fromList $ map negate [1..radius'] ++ [0] ++ [1..radius']
 {-# INLINE sobel #-}
 
 square :: Num a => a -> a

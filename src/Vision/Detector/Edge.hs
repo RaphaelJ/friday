@@ -14,7 +14,7 @@ import Vision.Image (
     , SeparableFilter, Derivative (..)
     , shape, index, linearIndex, fromFunction, bilinearInterpol
     , create, new', linearRead, linearWrite
-    , apply, gaussianBlur, scharr
+    , apply, gaussianBlur, sobel
     )
 import Vision.Primitive (Z (..), (:.) (..), RPoint (..), inShape, ix2)
 
@@ -26,8 +26,8 @@ data EdgeDirection = NorthSouth         -- ^ |
 -- Detects edges using the Canny's algorithm.
 -- See <http://en.wikipedia.org/wiki/Canny_edge_detector> for details.
 -- canny :: (Image i, ImagePixel i ~ GreyPixel) => i
-canny :: GreyImage -> Int -> Maybe Float -> Int32 -> Int32 -> GreyImage
-canny !img !gaussRadius !gaussSig !lowThres !highThres =
+canny :: GreyImage -> Int -> Int32 -> Int32 -> GreyImage
+canny !img !derivSize !lowThres !highThres =
     create $ do
         edges <- new' size 0 :: ST s (MutableManifest GreyPixel s)
         forM_ (enumFromN 0 h) $ \y -> do
@@ -45,11 +45,11 @@ canny !img !gaussRadius !gaussSig !lowThres !highThres =
     (!lowThres', !highThres') = (square lowThres, square highThres)
 
     blurred        :: GreyImage
-    !blurred        = img `apply` gaussianBlur gaussRadius gaussSig
+    !blurred        = img {-img `apply` gaussianBlur gaussRadius gaussSig-}
 
     dx, dy :: Manifest Int16
-    !dx = img `apply` scharr DerivativeX
-    !dy = img `apply` scharr DerivativeY
+    !dx = img `apply` sobel derivSize DerivativeX
+    !dy = img `apply` sobel derivSize DerivativeY
 
     -- Magnitude of the gradient, squared.
     dxy :: Manifest Int32
@@ -70,7 +70,7 @@ canny !img !gaussRadius !gaussSig !lowThres !highThres =
             -- point of an edge. Tries to draw the remaining of the edge
             -- using the low threshold and by following the edge direction.
 
-            when (ptDxy > thres && isMaxima y x ptDx ptDy ptDxy) $ do
+            when (ptDxy > thres && isMaxima x y ptDx ptDy ptDxy) $ do
                 linearWrite edges offset 255
                 visitNeighbour edges x y ptDx ptDy
 
@@ -80,7 +80,7 @@ canny !img !gaussRadius !gaussSig !lowThres !highThres =
                     NorthSouth         -> (x - 1, y,     x + 1, y    )
                     WestEast           -> (x,     y - 1, x,     y + 1)
                     NorthEastSouthWest -> (x - 1, y + 1, x + 1, y - 1)
-                    NorthWestSouthEast -> (x - 1, y - 1, y + 1, x + 1)
+                    NorthWestSouthEast -> (x - 1, y - 1, x + 1, y + 1)
 
         when (inShape size (ix2 y1 x1)) $
             visitPoint edges x1 y1 (y1 * w + x1) lowThres'
@@ -89,30 +89,45 @@ canny !img !gaussRadius !gaussSig !lowThres !highThres =
             visitPoint edges x2 y2 (y2 * w + x2) lowThres'
 
     isMaxima !x !y !ptDx !ptDy !ptDxy =
-        let !ptDxy' = round (sqrt $ fromIntegral ptDxy :: Double)
-            ptDx' = ptDx % ptDxy'
-            ptDy' = ptDy % ptDxy'
-            x'    = ratio x
-            y'    = ratio y
-            next  = RPoint (x' + ptDx') (y' + ptDy')
-            prec  = RPoint (x' - ptDx') (y' - ptDy')
-        in tryCompare ptDxy next && tryCompare ptDxy prec
+        let (x1, y1, x2, y2) =
+                case gradientDirection ptDx ptDy of
+                    NorthSouth         -> (x,     y - 1, x,     y + 1)
+                    WestEast           -> (x - 1, y    , x + 1, y)
+                    NorthEastSouthWest -> (x + 1, y + 1, x - 1, y - 1)
+                    NorthWestSouthEast -> (x - 1, y + 1, x + 1, y - 1)
+        in tryCompare ptDxy (x1, y1) (<=) && tryCompare ptDxy (x2, y2) (<)
 
-    tryCompare !ptDxy !pt@(RPoint x y)
-        | x >= 0 && y >= 0 && x < w' && y < h' =
-            fromIntegral (dxy `bilinearInterpol` pt) < ptDxy
+    tryCompare !ptDxy !(x, y) op
+        | inShape size (ix2 y x) =
+            fromIntegral (dxy `index` ix2 y x) `op` ptDxy
         | otherwise = True
+
+--         let !ptDxy' = round (sqrt $ fromIntegral ptDxy :: Double)
+--             ptDx' = ptDx % ptDxy'
+--             ptDy' = ptDy % ptDxy'
+--             x'    = ratio x
+--             y'    = ratio y
+--             next  = RPoint (x' + ptDx') (y' + ptDy')
+--             prec  = RPoint (x' - ptDx') (y' - ptDy')
+--         in tryCompare ptDxy next (<=) && tryCompare ptDxy prec (<)
+-- 
+--     tryCompare !ptDxy !pt@(RPoint x y) op
+--         | x >= 0 && y >= 0 && x < w' && y < h' =
+--             fromIntegral (dxy `bilinearInterpol` pt) `op` ptDxy
+--         | otherwise = True
 
     gradientDirection ptDx ptDy =
         let !angle = atan2 (double ptDy) (double ptDx)
         in if angle >= 0 then if | angle >  7 * pi8 -> WestEast
                                  | angle >  5 * pi8 -> NorthWestSouthEast
                                  | angle >  3 * pi8 -> NorthSouth
-                                 | otherwise        -> NorthEastSouthWest
+                                 | angle >      pi8 -> NorthEastSouthWest
+                                 | otherwise        -> WestEast
                          else if | angle < -7 * pi8 -> WestEast
                                  | angle < -5 * pi8 -> NorthEastSouthWest
                                  | angle < -3 * pi8 -> NorthSouth
-                                 | otherwise        -> NorthWestSouthEast
+                                 | angle <     -pi8 -> NorthWestSouthEast
+                                 | otherwise        -> WestEast
 
     !pi8 = pi / 8
 
