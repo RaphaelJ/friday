@@ -1,17 +1,26 @@
 {-# LANGUAGE BangPatterns, FlexibleContexts, TypeFamilies #-}
 
 -- | Provides high level functions to do geometric transformations on images.
+--
+-- Each transformation has been declared INLINABLE so new image types could be
+-- specialized.
 module Vision.Image.Transform (
-      InterpolMethod (..), crop, resize, horizontalFlip, verticalFlip
+      InterpolMethod (..), crop, resize, horizontalFlip, verticalFlip, floodFill
     ) where
 
+import Control.Monad (when)
+import Control.Monad.Primitive (PrimMonad (..))
 import Data.RatioInt (RatioInt, (%))
+import Data.Vector.Storable (enumFromN)
 
 import Vision.Image.Interpolate (Interpolable, bilinearInterpol)
+import Vision.Image.Mutable (MutableImage (Freezed, mShape, linearRead, linearWrite))
 import Vision.Image.Type (
       MaskedImage (..), Image (..), ImageChannel, FromFunction (..)
     )
-import Vision.Primitive (Z (..), (:.) (..), RPoint (..), Rect (..), Size, ix2)
+import Vision.Primitive (
+      Z (..), (:.) (..), Point, RPoint (..), Rect (..), Size, ix2, toLinearIndex
+    )
 
 -- | Defines the set of possible methods for pixel interpolations when looking
 -- for a pixel at floating point coordinates.
@@ -113,6 +122,52 @@ verticalFlip !img =
     !size@(Z :. h :. _) = shape img
     !maxY = h - 1
 {-# INLINABLE verticalFlip #-}
+
+floodFill :: (PrimMonad m, MutableImage i, Eq (ImagePixel (Freezed i)))
+          => Point -> i (PrimState m) -> ImagePixel (Freezed i) -> m ()
+floodFill !pt !img newVal = do
+    let !linearIX = toLinearIndex size pt
+    val <- linearRead img linearIX
+    go val pt linearIX
+  where
+    !size@(Z :. h :. w) = mShape img
+
+    go !val !(Z :. y :. x) linearIX = do
+        let !minLineLinearIX = linearIX - x
+            !maxLineLinearIX = minLineLinearIX + w - 1
+
+        pix <- linearRead img linearIX
+
+        when (pix == val) $ do
+            linearWrite img linearIX newVal
+
+            stopLeft  <- goHoriz val (< minLineLinearIX) pred (linearIX - 1)
+            stopRight <- goHoriz val (> maxLineLinearIX) succ (linearIX + 1)
+            return ()
+
+            let !from  = stopLeft  + 1
+                !to    = stopRight - 1
+                !xFrom = x - (linearIX - from)
+
+            when (y > 0) $
+                visitLine val to (ix2 (y - 1) xFrom) from
+            when ((y + 1) < h) $
+                visitLine val to (ix2 (y + 1) xFrom) from
+
+    goHoriz !val !stop !next !linearIX
+        | stop linearIX = return linearIX
+        | otherwise     = do
+            pix <- linearRead img linearIX
+            if pix == val then do linearWrite img linearIX newVal
+                                  goHoriz val stop next (next linearIX)
+                          else return linearIX
+
+    visitLine !val !maxLinearIX !pt@(y :. x) !linearIX
+        | linearIX > maxLinearIX = return ()
+        | otherwise              = do
+            go val pt linearIX
+            visitLine val maxLinearIX (y :. (x + 1)) (linearIX + 1)
+{-# INLINABLE floodFill #-}
 
 double :: Integral a => a -> Double
 double = fromIntegral

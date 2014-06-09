@@ -4,10 +4,10 @@
 
 -- | Contains functions to compute and manipulate histograms as well as some
 -- images transformations which are histograms-based.
--- 
+--
 -- Every polymorphic function is specialised for histograms of 'Int32', 'Double'
--- and 'Float'. Other types could be specialized as every polymorphic functions
--- are declared @INLINABLE@.
+-- and 'Float'. Other types could be specialized as every polymorphic function
+-- is declared @INLINABLE@.
 module Vision.Histogram (
     -- * Types & helpers
       Histogram (..), HistogramShape (..), ToHistogram (..)
