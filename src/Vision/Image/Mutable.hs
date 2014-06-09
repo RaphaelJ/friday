@@ -20,7 +20,7 @@ import Vision.Primitive (
 
 -- | Class for images which can be constructed from a mutable image.
 -- Minimal definition is 'new', 'new'', ('read' || 'linearRead'),
--- ('write' || 'linearWrite') and 'freeze'.
+-- ('write' || 'linearWrite'), 'freeze' and 'thaw'.
 class Image (Freezed i) => MutableImage i where
     -- | The type of the immutable version of the mutable image 'i'.
     type Freezed i
@@ -69,6 +69,9 @@ class Image (Freezed i) => MutableImage i where
     unsafeFreeze :: PrimMonad m => i (PrimState m) -> m (Freezed i)
     unsafeFreeze = freeze
 
+    -- | Returns a mutable copy of the immutable image.
+    thaw :: PrimMonad m => Freezed i -> m (i (PrimState m))
+
 -- | Creates an immutable image from an 'ST' action creating a mutable image.
 -- create :: (ST s i
 create :: (MutableImage i) => (forall s. ST s (i s)) -> Freezed i
@@ -110,3 +113,7 @@ instance (Pixel p, Storable p) => MutableImage (MutableManifest p) where
     unsafeFreeze !(MutableManifest size mvec) = do
         vec <- V.unsafeFreeze mvec
         return $! Manifest size vec
+
+    thaw !(Manifest size vec) = do
+        mvec <- V.thaw vec
+        return $! MutableManifest size mvec

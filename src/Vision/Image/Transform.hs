@@ -11,7 +11,6 @@ module Vision.Image.Transform (
 import Control.Monad (when)
 import Control.Monad.Primitive (PrimMonad (..))
 import Data.RatioInt (RatioInt, (%))
-import Data.Vector.Storable (enumFromN)
 
 import Vision.Image.Interpolate (Interpolable, bilinearInterpol)
 import Vision.Image.Mutable (MutableImage (Freezed, mShape, linearRead, linearWrite))
@@ -132,27 +131,26 @@ floodFill !pt !img newVal = do
   where
     !size@(Z :. h :. w) = mShape img
 
-    go !val !(Z :. y :. x) linearIX = do
-        let !minLineLinearIX = linearIX - x
-            !maxLineLinearIX = minLineLinearIX + w - 1
-
+    go !val !(Z :. y :. x) !linearIX = do
         pix <- linearRead img linearIX
 
         when (pix == val) $ do
+            let !minLineLinearIX = linearIX - x
+                !maxLineLinearIX = minLineLinearIX + w - 1
+
             linearWrite img linearIX newVal
 
             stopLeft  <- goHoriz val (< minLineLinearIX) pred (linearIX - 1)
             stopRight <- goHoriz val (> maxLineLinearIX) succ (linearIX + 1)
-            return ()
 
             let !from  = stopLeft  + 1
                 !to    = stopRight - 1
-                !xFrom = x - (linearIX - from)
+                !xFrom = from - (linearIX - x)
 
             when (y > 0) $
-                visitLine val to (ix2 (y - 1) xFrom) from
+                visitLine val (to - w) (ix2 (y - 1) xFrom) (from - w)
             when ((y + 1) < h) $
-                visitLine val to (ix2 (y + 1) xFrom) from
+                visitLine val (to + w) (ix2 (y + 1) xFrom) (from + w)
 
     goHoriz !val !stop !next !linearIX
         | stop linearIX = return linearIX
@@ -162,7 +160,7 @@ floodFill !pt !img newVal = do
                                   goHoriz val stop next (next linearIX)
                           else return linearIX
 
-    visitLine !val !maxLinearIX !pt@(y :. x) !linearIX
+    visitLine !val !maxLinearIX !(y :. x) !linearIX
         | linearIX > maxLinearIX = return ()
         | otherwise              = do
             go val pt linearIX
