@@ -13,7 +13,9 @@ import Control.Monad.Primitive (PrimMonad (..))
 import Data.RatioInt (RatioInt, (%))
 
 import Vision.Image.Interpolate (Interpolable, bilinearInterpol)
-import Vision.Image.Mutable (MutableImage (Freezed, mShape, linearRead, linearWrite))
+import Vision.Image.Mutable (
+      MutableImage (Freezed, mShape, linearRead, linearWrite)
+    )
 import Vision.Image.Type (
       MaskedImage (..), Image (..), ImageChannel, FromFunction (..)
     )
@@ -124,10 +126,11 @@ verticalFlip !img =
 
 floodFill :: (PrimMonad m, MutableImage i, Eq (ImagePixel (Freezed i)))
           => Point -> i (PrimState m) -> ImagePixel (Freezed i) -> m ()
-floodFill !pt !img newVal = do
-    let !linearIX = toLinearIndex size pt
+floodFill !start !img !newVal = do
+    let !linearIX = toLinearIndex size start
     val <- linearRead img linearIX
-    go val pt linearIX
+    when (val /= newVal) $ -- No reason to repaint using the same color.
+        go val start linearIX
   where
     !size@(Z :. h :. w) = mShape img
 
@@ -145,7 +148,7 @@ floodFill !pt !img newVal = do
 
             let !from  = stopLeft  + 1
                 !to    = stopRight - 1
-                !xFrom = from - (linearIX - x)
+                !xFrom = from - minLineLinearIX
 
             when (y > 0) $
                 visitLine val (to - w) (ix2 (y - 1) xFrom) (from - w)
@@ -160,7 +163,7 @@ floodFill !pt !img newVal = do
                                   goHoriz val stop next (next linearIX)
                           else return linearIX
 
-    visitLine !val !maxLinearIX !(y :. x) !linearIX
+    visitLine !val !maxLinearIX !pt@(y :. x) !linearIX
         | linearIX > maxLinearIX = return ()
         | otherwise              = do
             go val pt linearIX

@@ -63,7 +63,7 @@ library
                       , bytestring              >= 0.10         && < 1.0
                       , convertible             >= 1            && < 2
                       , primitive               >= 0.5.2.1      && < 0.6
-                      , ratio-int               >= 0.1.1        && < 0.2
+                      , ratio-int               >= 0.1.2        && < 0.2
                       , vector                  >= 0.10.0.1     && < 1.0
                       , transformers            >= 0.3          && < 0.4
 
