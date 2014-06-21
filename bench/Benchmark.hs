@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns, FlexibleContexts #-}
+import Control.Monad.ST.Safe (ST)
 import Criterion.Main
 import Data.Int
 import Data.Word
@@ -22,6 +23,7 @@ main = do
         !rgb           = I.convert io             :: RGBImage
         !rgba          = I.convert rgb            :: RGBAImage
         !grey          = I.convert rgb            :: GreyImage
+        !edges         = canny' grey
         !hsv           = I.convert rgb            :: HSVImage
         !hist          = H.histogram grey Nothing :: H.Histogram DIM1 Int32
         !hist2D        = H.histogram2D grey (ix3 256 3 3)
@@ -50,22 +52,8 @@ main = do
                 whnf (I.crop rgb :: Rect -> RGBImage)
                      (Rect (w `quot` 2) (h `quot` 2) (w `quot` 2) (h `quot` 2))
             ]
-        , bgroup "resize" [
-              bench "truncate-integer 50%" $
-                whnf (resize' rgb I.TruncateInteger)
-                     (Z :. (h `quot` 2) :. (w `quot` 2))
-            , bench "truncate-integer 200%" $
-                whnf (resize' rgb I.TruncateInteger) (Z :. (h * 2) :. (w * 2))
-            , bench "nearest-neighbor 50%" $
-                whnf (resize' rgb I.NearestNeighbor)
-                     (Z :. (h `quot` 2) :. (w `quot` 2))
-            , bench "nearest-neighbor 200%" $
-                whnf (resize' rgb I.NearestNeighbor) (Z :. (h * 2) :. (w * 2))
-            , bench "bilinear 50%" $
-                whnf (resize' rgb I.Bilinear)
-                     (Z :. (h `quot` 2) :. (w `quot` 2))
-            , bench "bilinear 200%" $
-                whnf (resize' rgb I.Bilinear) (Z :. (h * 2) :. (w * 2))
+        , bgroup "detector" [
+              bench "Canny's edge detector" $ whnf canny' grey
             ]
         , bgroup "filter" [
               bench "erode"         $ whnf erode' grey
@@ -80,6 +68,7 @@ main = do
             , bench "vertical"   $
                 whnf (I.verticalFlip :: RGBImage -> RGBImage)   rgb
             ]
+        , bench "flood-fill" $ whnf floodFill' edges
         , bgroup "histogram" [
               bench "calculate 1D histogram of a grey image" $
                 whnf (\img -> H.histogram img Nothing :: Histogram DIM1 Int32)
@@ -125,21 +114,36 @@ main = do
                                             :: Histogram DIM3 Int32 -> Int32)
                      hist2D
             ]
+        , bgroup "resize" [
+              bench "truncate-integer 50%" $
+                whnf (resize' rgb I.TruncateInteger)
+                     (Z :. (h `quot` 2) :. (w `quot` 2))
+            , bench "truncate-integer 200%" $
+                whnf (resize' rgb I.TruncateInteger) (Z :. (h * 2) :. (w * 2))
+            , bench "nearest-neighbor 50%" $
+                whnf (resize' rgb I.NearestNeighbor)
+                     (Z :. (h `quot` 2) :. (w `quot` 2))
+            , bench "nearest-neighbor 200%" $
+                whnf (resize' rgb I.NearestNeighbor) (Z :. (h * 2) :. (w * 2))
+            , bench "bilinear 50%" $
+                whnf (resize' rgb I.Bilinear)
+                     (Z :. (h `quot` 2) :. (w `quot` 2))
+            , bench "bilinear 200%" $
+                whnf (resize' rgb I.Bilinear) (Z :. (h * 2) :. (w * 2))
+            ]
         , bgroup "threshold" [
               bench "simple threshold"   $ whnf threshold'         grey
             , bench "adaptive threshold" $ whnf adaptiveThreshold' grey
             ]
-        , bgroup "detector" [
-              bench "Canny's edge detector" $ whnf canny' grey
-            ]
+
+
         , bgroup "application" [
               bench "miniature 150x150" $ whnf miniature rgb
             ]
         ]
   where
-    resize' :: RGBImage -> InterpolMethod -> Size -> RGBImage
-    resize' = I.resize
-    {-# INLINE resize' #-}
+    canny' :: GreyImage -> GreyImage
+    canny' !img = D.canny img 2 256 1024
 
     erode' :: GreyImage -> GreyImage
     erode' !img = img `I.apply` I.erode 1
@@ -162,6 +166,16 @@ main = do
     scharr' :: GreyImage -> I.Manifest Int16
     scharr' !img = img `I.apply` I.scharr I.DerivativeX
 
+    floodFill' :: I.GreyImage -> I.GreyImage
+    floodFill' img =
+        I.create $ do
+            mut <- I.thaw img :: ST s (I.MutableManifest I.GreyPixel s)
+            I.floodFill (ix2 5 5) 255 mut
+            return mut
+
+    resize' :: RGBImage -> InterpolMethod -> Size -> RGBImage
+    resize' = I.resize
+
     threshold' :: GreyImage -> GreyImage
     threshold' !img = I.threshold (> 127) (I.BinaryThreshold 0 255) img
 
@@ -171,9 +185,6 @@ main = do
             filt = I.adaptiveThreshold (I.GaussianKernel Nothing) 1 0
                                        (I.BinaryThreshold 0 255)
         in img `I.apply` filt
-
-    canny' :: GreyImage -> I.Manifest Bool
-    canny' !img = D.canny img 2 256 1024
 
     miniature !rgb =
         let Z :. h :. w = I.shape rgb

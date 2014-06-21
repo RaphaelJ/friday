@@ -77,13 +77,13 @@ canny !img !derivSize !lowThres !highThres =
 
     -- Visits a point and compares its gradient magnitude to the given
     -- threshold, visits neighbor if the point is perceived an an edge.
-    visitPoint !edges !x !y !offset !thres = do
-        val <- linearRead edges offset
+    visitPoint !edges !x !y !linearIX !thres = do
+        val <- linearRead edges linearIX
 
         when (val == minBound) $ do
-            let !ptDxy    = dxy `linearIndex` offset
-                ptDx      = dx  `linearIndex` offset
-                ptDy      = dy  `linearIndex` offset
+            let !ptDxy    = dxy `linearIndex` linearIX
+                ptDx      = dx  `linearIndex` linearIX
+                ptDy      = dy  `linearIndex` linearIX
                 direction = edgeDirection ptDx ptDy
 
             -- When the current pixel has a greater magnitude than the threshold
@@ -92,7 +92,7 @@ canny !img !derivSize !lowThres !highThres =
             -- threshold and by following the edge direction.
 
             when (ptDxy > thres && isMaximum x y ptDxy direction) $ do
-                linearWrite edges offset maxBound
+                linearWrite edges linearIX maxBound
                 visitNeighbour edges x y direction
 
     visitNeighbour !edges !x !y !direction = do

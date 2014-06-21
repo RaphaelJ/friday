@@ -89,6 +89,7 @@ Test-Suite test
     main-is:            Test.hs
     ghc-options:        -Wall -O2 -rtsopts
     hs-source-dirs:     test/
+    default-language:   Haskell2010
 
     build-depends:      base                         >= 4            && < 5
                       , QuickCheck                   >= 2.6          && < 3

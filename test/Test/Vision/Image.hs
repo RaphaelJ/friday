@@ -10,7 +10,8 @@ import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck (Arbitrary (..), choose)
 
 import Vision.Image (
-      MaskedImage (..), Image (..), Interpolable, FromFunction (..), Manifest (..), Delayed (..)
+      MaskedImage (..), Image (..), Interpolable, FromFunction (..)
+    , ImageChannel, Manifest (..), Delayed (..)
     , GreyImage, GreyPixel (..), HSVPixel, RGBAImage, RGBAPixel (..)
     , RGBADelayed, RGBImage, RGBPixel (..), InterpolMethod (..)
     , convert, resize, horizontalFlip, verticalFlip
@@ -90,7 +91,8 @@ propRGBHSV pix =
 -- | Tests if by increasing the size of the image by a factor of two and then
 -- reducing by a factor of two give the original image.
 propImageResize :: (Image i, FromFunction i, FromFunctionPixel i ~ ImagePixel i
-                   , Interpolable (ImagePixel i), Eq i)
+                   , Interpolable (ImagePixel i), Integral (ImageChannel i)
+                   , Eq i)
                 => i -> Bool
 propImageResize img =
     img == resize' (resize' img (Z :. (h * 2) :. (w * 2))) size
@@ -98,7 +100,7 @@ propImageResize img =
     size@(Z :. h :. w) = shape img
 
     resize' :: (Image i, FromFunction i, FromFunctionPixel i ~ ImagePixel i
-               , Interpolable (ImagePixel i))
+               , Interpolable (ImagePixel i), Integral (ImageChannel i))
             => i -> Size -> i
     resize' img' = resize img' NearestNeighbor
 

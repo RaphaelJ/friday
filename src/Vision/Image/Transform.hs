@@ -124,15 +124,22 @@ verticalFlip !img =
     !maxY = h - 1
 {-# INLINABLE verticalFlip #-}
 
+-- | Paints with a new value the pixels surrounding the given point of the image
+-- which have the same value as the starting point.
 floodFill :: (PrimMonad m, MutableImage i, Eq (ImagePixel (Freezed i)))
-          => Point -> i (PrimState m) -> ImagePixel (Freezed i) -> m ()
-floodFill !start !img !newVal = do
+          => Point -> ImagePixel (Freezed i) -> i (PrimState m) -> m ()
+floodFill !start !newVal !img = do
     let !linearIX = toLinearIndex size start
     val <- linearRead img linearIX
     when (val /= newVal) $ -- No reason to repaint using the same color.
         go val start linearIX
   where
     !size@(Z :. h :. w) = mShape img
+
+    -- Runs the flood-fill algorithm from the starting point then checks the
+    -- pixels at the left and at the right of the point until their value
+    -- change (scanLine). Then visits the upper and lower line of neighboring
+    -- pixels (visitLine).
 
     go !val !(Z :. y :. x) !linearIX = do
         pix <- linearRead img linearIX
@@ -143,8 +150,8 @@ floodFill !start !img !newVal = do
 
             linearWrite img linearIX newVal
 
-            stopLeft  <- goHoriz val (< minLineLinearIX) pred (linearIX - 1)
-            stopRight <- goHoriz val (> maxLineLinearIX) succ (linearIX + 1)
+            stopLeft  <- scanLine val (< minLineLinearIX) pred (linearIX - 1)
+            stopRight <- scanLine val (> maxLineLinearIX) succ (linearIX + 1)
 
             let !from  = stopLeft  + 1
                 !to    = stopRight - 1
@@ -155,12 +162,12 @@ floodFill !start !img !newVal = do
             when ((y + 1) < h) $
                 visitLine val (to + w) (ix2 (y + 1) xFrom) (from + w)
 
-    goHoriz !val !stop !next !linearIX
+    scanLine !val !stop !next !linearIX
         | stop linearIX = return linearIX
         | otherwise     = do
             pix <- linearRead img linearIX
             if pix == val then do linearWrite img linearIX newVal
-                                  goHoriz val stop next (next linearIX)
+                                  scanLine val stop next (next linearIX)
                           else return linearIX
 
     visitLine !val !maxLinearIX !pt@(y :. x) !linearIX
