@@ -33,8 +33,8 @@ data InterpolMethod =
 
 -- | Maps the content of the image\'s rectangle in a new image.
 crop :: (Image i1, FromFunction i2, ImagePixel i1 ~ FromFunctionPixel i2)
-     => i1 -> Rect -> i2
-crop !img !(Rect rx ry rw rh) =
+     => Rect -> i1 -> i2
+crop !(Rect rx ry rw rh) !img =
     fromFunction (Z :. rh :. rw) $ \(Z :. y :. x) ->
         img `index` ix2 (ry + y) (rx + x)
 {-# INLINABLE crop #-}
@@ -42,8 +42,8 @@ crop !img !(Rect rx ry rw rh) =
 -- | Resizes the 'Image' using the given interpolation method.
 resize :: (Image i1, Interpolable (ImagePixel i1), FromFunction i2
          , ImagePixel i1 ~ FromFunctionPixel i2, Integral (ImageChannel i1))
-       => i1 -> InterpolMethod -> Size -> i2
-resize !img !method !size'@(Z :. h' :. w') =
+       => InterpolMethod -> Size -> i1 -> i2
+resize !method !size'@(Z :. h' :. w') !img =
     case method of
         TruncateInteger ->
             let !widthRatio   = double w / double w'

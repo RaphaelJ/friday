@@ -36,9 +36,8 @@ data EdgeDirection = NorthSouth         -- ^ |
 -- This functions is specialized for 'GreyImage's but is declared INLINABLE to
 -- be further specialized for new image types.
 canny :: (Image src, Integral (ImagePixel src), Bounded res, Eq res, Pixel res)
-      => src
       -- | Radius of the Sobel's filter.
-      -> Int
+      => Int
       -- | High threshold. Pixels for which the bidirectional derivative is
       -- greater than this value and which are connected to another pixel which
       -- is part of an edge will be part of this edge.
@@ -46,8 +45,9 @@ canny :: (Image src, Integral (ImagePixel src), Bounded res, Eq res, Pixel res)
       -- | High threshold. Pixels for which the bidirectional derivative is
       -- greater than this value will be part of an edge.
       -> Int32
+      -> src
       -> Manifest res
-canny !img !derivSize !lowThres !highThres =
+canny !derivSize !lowThres !highThres !img =
     create $ do
         edges <- newManifest
         forM_ (enumFromN 0 h) $ \y -> do
@@ -142,7 +142,7 @@ canny !img !derivSize !lowThres !highThres =
     !pi8x5 = pi8 * 5
     !pi8x7 = pi8 * 7
 {-# INLINABLE  canny #-}
-{-# SPECIALIZE canny :: GreyImage -> Int -> Int32 -> Int32 -> GreyImage #-}
+{-# SPECIALIZE canny :: Int -> Int32 -> Int32 -> GreyImage -> GreyImage #-}
 
 square :: Num a => a -> a
 square a = a * a

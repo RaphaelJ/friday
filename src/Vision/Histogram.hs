@@ -151,9 +151,9 @@ assocs !(Histogram sh vec) = [ (ix, v) | ix <- shapeList sh
 -- will be of the same size (uniform histogram).
 histogram :: (MaskedImage i, ToHistogram (ImagePixel i), Storable a, Num a
             , HistogramShape (PixelValueSpace (ImagePixel i)))
-         => i -> Maybe (PixelValueSpace (ImagePixel i))
+         => Maybe (PixelValueSpace (ImagePixel i)) -> i
          -> Histogram (PixelValueSpace (ImagePixel i)) a
-histogram img mSize =
+histogram mSize img =
     let initial = V.replicate nBins 0
         ones    = V.replicate nPixs 1
         ixs     = V.map toIndex (I.values img)
@@ -170,18 +170,18 @@ histogram img mSize =
         case mSize of Just _  -> toBin size maxSize $! pixToIndex p
                       Nothing -> pixToIndex p
     {-# INLINE toIndex #-}
-{-# SPECIALIZE histogram :: GreyImage -> Maybe DIM1 -> Histogram DIM1 Int32
-                         ,  GreyImage -> Maybe DIM1 -> Histogram DIM1 Double
-                         ,  GreyImage -> Maybe DIM1 -> Histogram DIM1 Float
-                         ,  HSVImage  -> Maybe DIM3 -> Histogram DIM3 Int32
-                         ,  HSVImage  -> Maybe DIM3 -> Histogram DIM3 Double
-                         ,  HSVImage  -> Maybe DIM3 -> Histogram DIM3 Float
-                         ,  RGBAImage -> Maybe DIM4 -> Histogram DIM4 Int32
-                         ,  RGBAImage -> Maybe DIM4 -> Histogram DIM4 Double
-                         ,  RGBAImage -> Maybe DIM4 -> Histogram DIM4 Float
-                         ,  RGBImage  -> Maybe DIM3 -> Histogram DIM3 Int32
-                         ,  RGBImage  -> Maybe DIM3 -> Histogram DIM3 Double
-                         ,  RGBImage  -> Maybe DIM3 -> Histogram DIM3 Float  #-}
+{-# SPECIALIZE histogram :: Maybe DIM1 -> GreyImage -> Histogram DIM1 Int32
+                         ,  Maybe DIM1 -> GreyImage -> Histogram DIM1 Double
+                         ,  Maybe DIM1 -> GreyImage -> Histogram DIM1 Float
+                         ,  Maybe DIM3 -> HSVImage  -> Histogram DIM3 Int32
+                         ,  Maybe DIM3 -> HSVImage  -> Histogram DIM3 Double
+                         ,  Maybe DIM3 -> HSVImage  -> Histogram DIM3 Float
+                         ,  Maybe DIM4 -> RGBAImage -> Histogram DIM4 Int32
+                         ,  Maybe DIM4 -> RGBAImage -> Histogram DIM4 Double
+                         ,  Maybe DIM4 -> RGBAImage -> Histogram DIM4 Float
+                         ,  Maybe DIM3 -> RGBImage  -> Histogram DIM3 Int32
+                         ,  Maybe DIM3 -> RGBImage  -> Histogram DIM3 Double
+                         ,  Maybe DIM3 -> RGBImage  -> Histogram DIM3 Float  #-}
 {-# INLINABLE histogram #-}
 
 -- | Similar to 'histogram' but adds two dimensions for the y and x-coordinates
@@ -192,9 +192,9 @@ histogram img mSize =
 -- of the image, a size is always needed.
 histogram2D :: (Image i, ToHistogram (ImagePixel i), Storable a, Num a
             , HistogramShape (PixelValueSpace (ImagePixel i)))
-            => i -> (PixelValueSpace (ImagePixel i)) :. Int :. Int
+            => (PixelValueSpace (ImagePixel i)) :. Int :. Int -> i
             -> Histogram ((PixelValueSpace (ImagePixel i)) :. Int :. Int) a
-histogram2D img size =
+histogram2D size img =
     let initial = V.replicate nBins 0
         ones    = V.replicate nPixs 1
         imgIxs  = V.iterateN nPixs (shapeSucc imgSize) shapeZero
@@ -211,18 +211,18 @@ histogram2D img size =
         let !ix = (pixToIndex p) :. y :. x
         in toLinearIndex size $! toBin size maxSize ix
     {-# INLINE toIndex #-}
-{-# SPECIALIZE histogram2D :: GreyImage -> DIM3 -> Histogram DIM3 Int32
-                           ,  GreyImage -> DIM3 -> Histogram DIM3 Double
-                           ,  GreyImage -> DIM3 -> Histogram DIM3 Float
-                           ,  HSVImage  -> DIM5 -> Histogram DIM5 Int32
-                           ,  HSVImage  -> DIM5 -> Histogram DIM5 Double
-                           ,  HSVImage  -> DIM5 -> Histogram DIM5 Float
-                           ,  RGBAImage -> DIM6 -> Histogram DIM6 Int32
-                           ,  RGBAImage -> DIM6 -> Histogram DIM6 Double
-                           ,  RGBAImage -> DIM6 -> Histogram DIM6 Float
-                           ,  RGBImage  -> DIM5 -> Histogram DIM5 Int32
-                           ,  RGBImage  -> DIM5 -> Histogram DIM5 Double
-                           ,  RGBImage  -> DIM5 -> Histogram DIM5 Float  #-}
+{-# SPECIALIZE histogram2D :: DIM3 -> GreyImage -> Histogram DIM3 Int32
+                           ,  DIM3 -> GreyImage -> Histogram DIM3 Double
+                           ,  DIM3 -> GreyImage -> Histogram DIM3 Float
+                           ,  DIM5 -> HSVImage  -> Histogram DIM5 Int32
+                           ,  DIM5 -> HSVImage  -> Histogram DIM5 Double
+                           ,  DIM5 -> HSVImage  -> Histogram DIM5 Float
+                           ,  DIM6 -> RGBAImage -> Histogram DIM6 Int32
+                           ,  DIM6 -> RGBAImage -> Histogram DIM6 Double
+                           ,  DIM6 -> RGBAImage -> Histogram DIM6 Float
+                           ,  DIM5 -> RGBImage  -> Histogram DIM5 Int32
+                           ,  DIM5 -> RGBImage  -> Histogram DIM5 Double
+                           ,  DIM5 -> RGBImage  -> Histogram DIM5 Float  #-}
 {-# INLINABLE histogram2D #-}
 
 -- Reshaping -------------------------------------------------------------------
@@ -250,8 +250,8 @@ reduce !(Histogram sh vec) =
 -- | Resizes an histogram to another index shape. See 'reduce' for a reduction
 -- of the number of dimensions of an histogram.
 resize :: (HistogramShape sh, Storable a, Num a)
-       => Histogram sh a -> sh -> Histogram sh a
-resize !(Histogram sh vec) !sh' =
+       => sh -> Histogram sh a -> Histogram sh a
+resize !sh' (Histogram sh vec) =
     let initial = V.replicate (shapeLength sh') 0
         -- TODO: In this scheme, indexes are computed for each bin of the
         -- original histogram. It's sub-optimal as some parts of those indexes
@@ -277,18 +277,18 @@ cumulative (Histogram sh vec) = Histogram sh (V.scanl1' (+) vec)
 -- This is useful to compare two histograms which have been computed from images
 -- with a different number of pixels.
 normalize :: (Storable a, Real a, Storable b, Fractional b)
-          => Histogram sh a -> b -> Histogram sh b
-normalize !hist@(Histogram _ vec) norm =
+          => b -> Histogram sh a -> Histogram sh b
+normalize norm !hist@(Histogram _ vec) =
     let !ratio = norm / realToFrac (V.sum vec)
         equalizeVal !val = realToFrac val * ratio
         {-# INLINE equalizeVal #-}
     in map equalizeVal hist
-{-# SPECIALIZE normalize :: Histogram sh Int32  -> Double -> Histogram sh Double
-                         ,  Histogram sh Int32  -> Float  -> Histogram sh Float
-                         ,  Histogram sh Double -> Double -> Histogram sh Double
-                         ,  Histogram sh Double -> Float  -> Histogram sh Float
-                         ,  Histogram sh Float  -> Double -> Histogram sh Double
-                         ,  Histogram sh Float  -> Float  -> Histogram sh Float
+{-# SPECIALIZE normalize :: Double -> Histogram sh Int32  -> Histogram sh Double
+                         ,  Float  -> Histogram sh Int32  -> Histogram sh Float
+                         ,  Double -> Histogram sh Double -> Histogram sh Double
+                         ,  Float  -> Histogram sh Double -> Histogram sh Float
+                         ,  Double -> Histogram sh Float  -> Histogram sh Double
+                         ,  Float  -> Histogram sh Float  -> Histogram sh Float
                          #-}
 {-# INLINABLE normalize #-}
 
@@ -306,9 +306,9 @@ equalizeImage :: (FunctorImage i i, Integral (ImagePixel i)
 equalizeImage img =
     I.map equalizePixel img
   where
-    hist            = histogram img Nothing             :: Histogram DIM1 Int32
+    hist            = histogram Nothing img             :: Histogram DIM1 Int32
     Z :. nBins      = shape hist
-    cumNormalized   = cumulative $ normalize hist (double nBins)
+    cumNormalized   = cumulative $ normalize (double nBins) hist
     !cumNormalized' = map round cumNormalized           :: Histogram DIM1 Int32
     equalizePixel !val = fromIntegral $ cumNormalized' `index` ix1 (int val)
     {-# INLINE equalizePixel #-}

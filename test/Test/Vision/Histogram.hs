@@ -56,22 +56,22 @@ tests = [
 propCalcHist :: GreyImage -> Bool
 propCalcHist img =
     let Z :. h :. w     = I.shape img
-        Histogram _ vec = histogram img Nothing
+        Histogram _ vec = histogram Nothing img
     in V.sum vec == w * h
 
 -- | Checks the identity @histogram == reduce . histogram2D@.
 propReduceHist :: GreyImage -> Bool
 propReduceHist img =
-    let hist1 = histogram img Nothing :: Histogram DIM1 Int32
-        hist2 = reduce (histogram2D img (ix3 256 3 3))
+    let hist1 = histogram Nothing img :: Histogram DIM1 Int32
+        hist2 = reduce (histogram2D (ix3 256 3 3) img)
     in hist1 == hist2
 
 -- | Checks the resizing of an histogram equals the direct computation of the
 -- smallest one.
 propResizeHist :: GreyImage -> Bool
 propResizeHist img =
-    let hist1 = histogram img (Just (ix1 128)) :: Histogram DIM1 Int32
-        hist2 = resize (histogram img (Just (ix1 256))) (ix1 128)
+    let hist1 = histogram (Just (ix1 128)) img :: Histogram DIM1 Int32
+        hist2 = resize (ix1 128) (histogram (Just (ix1 256)) img)
     in hist1 == hist2
 
 -- | Checks if the last bin of the cumulative histogram equals the sum of the
@@ -84,7 +84,7 @@ propCumulatHist hist@(Histogram _ vec) =
 -- | Checks that the sums of an equalized histogram equals the desired value.
 propNormalizedHist :: Double -> Histogram DIM1 Int32 -> Bool
 propNormalizedHist val hist =
-    let Histogram _ vec = normalize hist val
+    let Histogram _ vec = normalize val hist
     in round (V.sum vec) == (round val :: Integer)
 
 -- | Checks that the comparison of two identical histograms gives the

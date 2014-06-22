@@ -20,13 +20,15 @@ main :: IO ()
 main = do
     Right io <- I.load path Nothing
     let !(Z :. h :. w) = I.shape rgb
+        !halfSize      = Rect (w `quot` 2) (h `quot` 2)
+                              (w `quot` 2) (h `quot` 2)
         !rgb           = I.convert io             :: RGBImage
         !rgba          = I.convert rgb            :: RGBAImage
         !grey          = I.convert rgb            :: GreyImage
         !edges         = canny' grey
         !hsv           = I.convert rgb            :: HSVImage
-        !hist          = H.histogram grey Nothing :: H.Histogram DIM1 Int32
-        !hist2D        = H.histogram2D grey (ix3 256 3 3)
+        !hist          = H.histogram Nothing grey :: H.Histogram DIM1 Int32
+        !hist2D        = H.histogram2D (ix3 256 3 3) grey
                                                   :: H.Histogram DIM3 Int32
 
     defaultMain [
@@ -49,8 +51,7 @@ main = do
             ]
         , bgroup "crop" [
               bench "RGB" $
-                whnf (I.crop rgb :: Rect -> RGBImage)
-                     (Rect (w `quot` 2) (h `quot` 2) (w `quot` 2) (h `quot` 2))
+                whnf (I.crop halfSize :: RGBImage -> RGBImage) rgb
             ]
         , bgroup "detector" [
               bench "Canny's edge detector" $ whnf canny' grey
@@ -71,24 +72,25 @@ main = do
         , bench "flood-fill" $ whnf floodFill' edges
         , bgroup "histogram" [
               bench "calculate 1D histogram of a grey image" $
-                whnf (\img -> H.histogram img Nothing :: Histogram DIM1 Int32)
+                whnf (H.histogram Nothing :: GreyImage -> Histogram DIM1 Int32)
                      grey
             , bench "calculate 3D histogram of a RGB image" $
-                whnf (\img -> H.histogram img Nothing :: Histogram DIM3 Int32)
+                whnf (H.histogram Nothing :: RGBImage  -> Histogram DIM3 Int32)
                      rgb
             , bench "calculate 3D histogram (9 regions) of a grey image" $
-                whnf (\img -> H.histogram2D img (Z :. 256 :. 3 :. 3)
-                              :: Histogram DIM3 Int32)
+                whnf (H.histogram2D (ix3 256 3 3)
+                                    :: GreyImage -> Histogram DIM3 Int32)
                      grey
 
             , bench "reduce an Int32 histogram" $ whnf H.reduce hist2D
-            , bench "resize an Int32 histogram" $ whnf (H.resize hist)
-                                                       (Z :. 128)
+            , bench "resize an Int32 histogram" $ whnf (H.resize (ix1 128))
+                                                       hist
 
             , bench "cumulative Int32 histogram" $ whnf H.cumulative hist
 
             , bench "normalize histogram" $
-                whnf (\hist' -> H.normalize hist' 1 :: Histogram DIM1 Double)
+                whnf (H.normalize 1
+                        :: Histogram DIM1 Int32 -> Histogram DIM1 Double)
                      hist
             , bench "equalize grey image" $
                 whnf (H.equalizeImage :: GreyImage -> GreyImage) grey
@@ -116,20 +118,19 @@ main = do
             ]
         , bgroup "resize" [
               bench "truncate-integer 50%" $
-                whnf (resize' rgb I.TruncateInteger)
-                     (Z :. (h `quot` 2) :. (w `quot` 2))
+                whnf (resize' I.TruncateInteger (ix2 (h `quot` 2) (w `quot` 2)))
+                     rgb
             , bench "truncate-integer 200%" $
-                whnf (resize' rgb I.TruncateInteger) (Z :. (h * 2) :. (w * 2))
+                whnf (resize' I.TruncateInteger (ix2 (h * 2) (w * 2))) rgb
             , bench "nearest-neighbor 50%" $
-                whnf (resize' rgb I.NearestNeighbor)
-                     (Z :. (h `quot` 2) :. (w `quot` 2))
+                whnf (resize' I.NearestNeighbor (ix2 (h `quot` 2) (w `quot` 2)))
+                     rgb
             , bench "nearest-neighbor 200%" $
-                whnf (resize' rgb I.NearestNeighbor) (Z :. (h * 2) :. (w * 2))
+                whnf (resize' I.NearestNeighbor (ix2 (h * 2) (w * 2))) rgb
             , bench "bilinear 50%" $
-                whnf (resize' rgb I.Bilinear)
-                     (Z :. (h `quot` 2) :. (w `quot` 2))
+                whnf (resize' I.Bilinear (ix2 (h `quot` 2) (w `quot` 2))) rgb
             , bench "bilinear 200%" $
-                whnf (resize' rgb I.Bilinear) (Z :. (h * 2) :. (w * 2))
+                whnf (resize' I.Bilinear (ix2 (h * 2) (w * 2))) rgb
             ]
         , bgroup "threshold" [
               bench "simple threshold"   $ whnf threshold'         grey
@@ -143,7 +144,7 @@ main = do
         ]
   where
     canny' :: GreyImage -> GreyImage
-    canny' !img = D.canny img 2 256 1024
+    canny' !img = D.canny 2 256 1024 img
 
     erode' :: GreyImage -> GreyImage
     erode' !img = img `I.apply` I.erode 1
@@ -173,7 +174,7 @@ main = do
             I.floodFill (ix2 5 5) 255 mut
             return mut
 
-    resize' :: RGBImage -> InterpolMethod -> Size -> RGBImage
+    resize' :: InterpolMethod -> Size -> RGBImage -> RGBImage
     resize' = I.resize
 
     threshold' :: GreyImage -> GreyImage
@@ -189,8 +190,8 @@ main = do
     miniature !rgb =
         let Z :. h :. w = I.shape rgb
         in if w > h
-              then resizeSquare $ I.crop rgb (Rect ((w - h) `quot` 2) 0 h h)
-              else resizeSquare $ I.crop rgb (Rect 0 ((h - w) `quot` 2) w w)
+              then resizeSquare $ I.crop (Rect ((w - h) `quot` 2) 0 h h) rgb
+              else resizeSquare $ I.crop (Rect 0 ((h - w) `quot` 2) w w) rgb
 
     resizeSquare :: RGBDelayed -> RGBImage
-    resizeSquare !rgb = I.resize rgb I.Bilinear (Z :. 150 :. 150)
+    resizeSquare = I.resize I.Bilinear (Z :. 150 :. 150)

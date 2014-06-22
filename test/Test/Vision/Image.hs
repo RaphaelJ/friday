@@ -95,14 +95,14 @@ propImageResize :: (Image i, FromFunction i, FromFunctionPixel i ~ ImagePixel i
                    , Eq i)
                 => i -> Bool
 propImageResize img =
-    img == resize' (resize' img (Z :. (h * 2) :. (w * 2))) size
+    img == resize' size (resize' (Z :. (h * 2) :. (w * 2)) img)
   where
     size@(Z :. h :. w) = shape img
 
     resize' :: (Image i, FromFunction i, FromFunctionPixel i ~ ImagePixel i
                , Interpolable (ImagePixel i), Integral (ImageChannel i))
-            => i -> Size -> i
-    resize' img' = resize img' NearestNeighbor
+            => Size -> i -> i
+    resize' size' = resize NearestNeighbor size'
 
 -- | Tests if applying the horizontal flip twice gives the original image.
 propHorizontalFlip :: (Image i, FromFunction i
