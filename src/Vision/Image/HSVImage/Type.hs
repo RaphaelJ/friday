@@ -74,7 +74,7 @@ instance Interpolable HSVPixel where
             }
     {-# INLINE interpol #-}
 
-{-# SPECIALIZE crop :: HSVImage -> Rect -> HSVImage #-}
-{-# SPECIALIZE resize :: HSVImage -> InterpolMethod -> Size -> HSVImage #-}
+{-# SPECIALIZE crop :: Rect -> HSVImage -> HSVImage #-}
+{-# SPECIALIZE resize :: InterpolMethod -> Size -> HSVImage -> HSVImage #-}
 {-# SPECIALIZE horizontalFlip :: HSVImage -> HSVImage #-}
 {-# SPECIALIZE verticalFlip :: HSVImage -> HSVImage #-}

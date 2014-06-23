@@ -18,7 +18,7 @@ path = "bench/image.jpg"
 
 main :: IO ()
 main = do
-    Right io <- I.load path Nothing
+    Right io <- I.load Nothing path
     let !(Z :. h :. w) = I.shape rgb
         !halfSize      = Rect (w `quot` 2) (h `quot` 2)
                               (w `quot` 2) (h `quot` 2)
@@ -33,7 +33,7 @@ main = do
 
     defaultMain [
           bgroup "IO" [
-              bench "load" $ whnfIO $ I.load path Nothing
+              bench "load" $ whnfIO $ I.load Nothing path
             ]
         , bgroup "conversion" [
               bench "RGB to grey" $

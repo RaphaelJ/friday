@@ -36,7 +36,7 @@ instance Interpolable GreyPixel where
     interpol f (GreyPixel a) (GreyPixel b) = GreyPixel $ f a b
     {-# INLINE interpol #-}
 
-{-# SPECIALIZE crop :: GreyImage -> Rect -> GreyImage #-}
-{-# SPECIALIZE resize :: GreyImage -> InterpolMethod -> Size -> GreyImage #-}
+{-# SPECIALIZE crop :: Rect -> GreyImage -> GreyImage #-}
+{-# SPECIALIZE resize :: InterpolMethod -> Size -> GreyImage -> GreyImage #-}
 {-# SPECIALIZE horizontalFlip :: GreyImage -> GreyImage #-}
 {-# SPECIALIZE verticalFlip :: GreyImage -> GreyImage #-}

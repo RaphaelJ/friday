@@ -66,7 +66,7 @@ instance Interpolable RGBPixel where
             }
     {-# INLINE interpol #-}
 
-{-# SPECIALIZE crop :: RGBImage -> Rect -> RGBImage #-}
-{-# SPECIALIZE resize :: RGBImage -> InterpolMethod -> Size -> RGBImage #-}
+{-# SPECIALIZE crop :: Rect -> RGBImage -> RGBImage #-}
+{-# SPECIALIZE resize :: InterpolMethod -> Size -> RGBImage -> RGBImage #-}
 {-# SPECIALIZE horizontalFlip :: RGBImage -> RGBImage #-}
 {-# SPECIALIZE verticalFlip :: RGBImage -> RGBImage #-}

@@ -116,8 +116,8 @@ instance Show StorageError where
 -- | Reads an image into a manifest vector from a file.
 --
 -- If no image type is given, type will be determined automatically.
-load :: FilePath -> Maybe ImageType -> IO (Either StorageError StorageImage)
-load path mType =
+load :: Maybe ImageType -> FilePath -> IO (Either StorageError StorageImage)
+load mType path =
     lockDevil $
         bindAndLoad $
             withCString path $ \cPath ->
@@ -127,10 +127,10 @@ load path mType =
 --
 -- If no image type is given, type will be determined automatically.
 -- TIFF images are not supported.
-loadBS :: BS.ByteString -> Maybe ImageType
+loadBS :: Maybe ImageType -> BS.ByteString
        -> IO (Either StorageError StorageImage)
-loadBS _  (Just TIFF) = return $ Left FailedToLoad
-loadBS bs mType       =
+loadBS (Just TIFF) _  = return $ Left FailedToLoad
+loadBS mType       bs =
     lockDevil $
         bindAndLoad $
             BS.unsafeUseAsCStringLen bs $ \(ptr, len) ->
