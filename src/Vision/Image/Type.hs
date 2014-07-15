@@ -11,6 +11,8 @@ module Vision.Image.Type (
     , Manifest (..)
     -- * Delayed images
     , Delayed (..)
+    -- * Delayed masked images
+    , DelayedMask (..)
     -- * Functions
     , nChannels, pixel
     -- * Conversion
