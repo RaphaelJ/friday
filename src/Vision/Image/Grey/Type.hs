@@ -1,7 +1,7 @@
 {-# LANGUAGE BangPatterns, GeneralizedNewtypeDeriving, TypeFamilies #-}
 
-module Vision.Image.GreyImage.Type (
-      GreyPixel (..), GreyImage, GreyDelayed
+module Vision.Image.Grey.Type (
+      Grey, GreyPixel (..), GreyDelayed
     ) where
 
 import Data.Bits
@@ -19,7 +19,7 @@ newtype GreyPixel = GreyPixel Word8
     deriving (Bits, Bounded, Enum, Eq, FiniteBits, Integral, Num, Ord, Real
             , Read, Show, Storable)
 
-type GreyImage = Manifest GreyPixel
+type Grey = Manifest GreyPixel
 
 type GreyDelayed = Delayed GreyPixel
 
@@ -36,7 +36,7 @@ instance Interpolable GreyPixel where
     interpol f (GreyPixel a) (GreyPixel b) = GreyPixel $ f a b
     {-# INLINE interpol #-}
 
-{-# SPECIALIZE crop :: Rect -> GreyImage -> GreyImage #-}
-{-# SPECIALIZE resize :: InterpolMethod -> Size -> GreyImage -> GreyImage #-}
-{-# SPECIALIZE horizontalFlip :: GreyImage -> GreyImage #-}
-{-# SPECIALIZE verticalFlip :: GreyImage -> GreyImage #-}
+{-# SPECIALIZE crop           :: Rect -> Grey -> Grey #-}
+{-# SPECIALIZE resize         :: InterpolMethod -> Size -> Grey -> Grey #-}
+{-# SPECIALIZE horizontalFlip :: Grey -> Grey #-}
+{-# SPECIALIZE verticalFlip   :: Grey -> Grey #-}

@@ -8,8 +8,7 @@ import Data.Int
 import Data.Vector.Storable (enumFromN, forM_)
 
 import Vision.Image (
-      Image, Pixel, ImagePixel, Manifest, MutableManifest, GreyImage
-    , Derivative (..)
+      Image, Pixel, ImagePixel, Manifest, MutableManifest, Grey, Derivative (..)
     , shape, index, linearIndex, fromFunction
     , create, new', linearRead, linearWrite
     , apply, sobel
@@ -21,30 +20,30 @@ data EdgeDirection = NorthSouth         -- ^ |
                    | NorthEastSouthWest -- ^ /
                    | NorthWestSouthEast -- ^ \
 
--- Detects edges using the Canny's algorithm. Edges are given the value
+-- | Detects edges using the Canny's algorithm. Edges are given the value
 -- 'maxBound' while non-edges are given the value 'minBound'.
 --
--- This implementation doesn't perform any noise erasing using blurring before
+-- This implementation doesn't perform any noise erasing (as blurring) before
 -- edge detection. Noisy images might need to be pre-processed using a Gaussian
 -- blur.
 --
--- The bidirectional derivative (gradient magnitude) is computed with the value
--- of @x@ and @y@ derivatives using @sqrt(dx² + dy²)@.
+-- The bidirectional derivative (gradient magnitude) is computed from @x@ and
+-- @y@ derivatives using @sqrt(dx² + dy²)@.
 --
 -- See <http://en.wikipedia.org/wiki/Canny_edge_detector> for details.
 --
--- This functions is specialized for 'GreyImage's but is declared INLINABLE to
--- be further specialized for new image types.
+-- This function is specialized for 'Grey' images but is declared @INLINABLE@
+-- to be further specialized for new image types.
 canny :: (Image src, Integral (ImagePixel src), Bounded res, Eq res, Pixel res)
-      -- | Radius of the Sobel's filter.
       => Int
-      -- | High threshold. Pixels for which the bidirectional derivative is
+      -- ^ Radius of the Sobel's filter.
+      -> Int32
+      -- ^ Low threshold. Pixels for which the bidirectional derivative is
       -- greater than this value and which are connected to another pixel which
       -- is part of an edge will be part of this edge.
       -> Int32
-      -- | High threshold. Pixels for which the bidirectional derivative is
+      -- ^ High threshold. Pixels for which the bidirectional derivative is
       -- greater than this value will be part of an edge.
-      -> Int32
       -> src
       -> Manifest res
 canny !derivSize !lowThres !highThres !img =
@@ -63,8 +62,8 @@ canny !derivSize !lowThres !highThres !img =
     (!lowThres', !highThres') = (square lowThres, square highThres)
 
     dx, dy :: Manifest Int16
-    !dx = img `apply` sobel derivSize DerivativeX
-    !dy = img `apply` sobel derivSize DerivativeY
+    !dx = sobel derivSize DerivativeX `apply` img
+    !dy = sobel derivSize DerivativeY `apply` img
 
     -- Gradient magnitude, squared.
     dxy :: Manifest Int32
@@ -142,7 +141,7 @@ canny !derivSize !lowThres !highThres !img =
     !pi8x5 = pi8 * 5
     !pi8x7 = pi8 * 7
 {-# INLINABLE  canny #-}
-{-# SPECIALIZE canny :: Int -> Int32 -> Int32 -> GreyImage -> GreyImage #-}
+{-# SPECIALIZE canny :: Int -> Int32 -> Int32 -> Grey -> Grey #-}
 
 square :: Num a => a -> a
 square a = a * a

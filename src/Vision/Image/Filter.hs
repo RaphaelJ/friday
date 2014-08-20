@@ -2,12 +2,27 @@
            , MultiParamTypeClasses, TypeFamilies #-}
 
 -- | Provides high level functions to define and apply filters on images.
+--
 -- Filters are operations on images on which the surrounding of each processed
 -- pixel is considered according to a kernel.
+--
 -- See <http://en.wikipedia.org/wiki/Kernel_(image_processing)> for details.
 --
--- The @radius@ argument of some filter is used to determine the kernel size.
+-- The @radius@ argument of some filters is used to determine the kernel size.
 -- A radius as of 1 means a kernel of size 3, 2 a kernel of size 5 and so on.
+--
+-- The @acc@ type argument of some filters defines the type which will be used
+-- to store the accumulated value of the kernel (e.g. by setting @acc@ to
+-- 'Double' in the computation of a Gaussian blur, the kernel average will be
+-- computed using a 'Double').
+--
+-- To apply a filter to an image, use the 'apply' method:
+--
+-- @
+-- let filter :: 'SeparableFilter' GreyPixel Double GreyPixel
+--     filter = 'gaussianBlur' 2 Nothing
+-- in 'apply' filter img :: Grey
+-- @
 module Vision.Image.Filter (
     -- * Types
       Filterable (..), Filter (..)
@@ -19,11 +34,12 @@ module Vision.Image.Filter (
     , BorderInterpolate (..)
     -- * Functions
     , kernelAnchor, borderInterpolate
-    -- * Morphological operators
+    -- * Filters
+    -- ** Morphological operators
     , dilate, erode
-    -- * Blur
+    -- ** Blur
     , blur, gaussianBlur
-    -- * Derivation
+    -- ** Derivation
     , Derivative (..), scharr, sobel
     ) where
 
@@ -42,16 +58,20 @@ import Vision.Primitive (Z (..), (:.) (..), DIM1, DIM2, Size, ix1, ix2)
 -- Types -----------------------------------------------------------------------
 
 -- | Provides an implementation to execute a type of filter.
+--
 -- 'src' is the original image, 'res' the resulting image and 'f' the filter.
 class Filterable src res f where
     -- | Applies the given filter on the given image.
-    apply :: src -> f -> res
+    apply :: f -> src -> res
 
 data Filter src kernel init acc res = Filter {
       fKernelSize   :: !Size
     , fKernelCenter :: !KernelAnchor
+    -- | See 'Kernel' and 'SeparableKernel'.
     , fKernel       :: !kernel
     -- | Defines how the accumulated value is initialized.
+    --
+    -- See 'FilterFold' and 'FilterFold1'.
     , fInit         :: !init
     , fPost         :: !(src -> acc -> res)
     , fInterpol     :: !(BorderInterpolate src)
@@ -73,21 +93,25 @@ type SeparableFilter src acc res = Filter src (SeparableKernel src acc)
 type SeparableFilter1 src res    = Filter src (SeparableKernel src src)
                                           FilterFold1 src res
 
--- | Defines how to center the kernel will be found.
+-- | Defines how the center of the kernel will be determined.
 data KernelAnchor = KernelAnchor !DIM2 | KernelAnchorCenter
 
 -- | A simple 2D kernel.
+--
 -- The kernel function accepts the coordinates in the kernel, the value of the
 -- pixel at these coordinates ('src'), the current accumulated value and returns
 -- a new accumulated value.
+--
 -- Non-separable filters computational complexity grows quadratically according
 -- to the size of the sides of the kernel.
 newtype Kernel src acc = Kernel (DIM2 -> src -> acc -> acc)
 
 -- | Some kernels can be factorized in two uni-dimensional kernels (horizontal
 -- and vertical).
+--
 -- Separable filters computational complexity grows linearly according to the
 -- size of the sides of the kernel.
+--
 -- See <http://http://en.wikipedia.org/wiki/Separable_filter>.
 data SeparableKernel src acc = SeparableKernel {
     -- | Vertical (column) kernel.
@@ -97,8 +121,10 @@ data SeparableKernel src acc = SeparableKernel {
     }
 
 -- | Used to determine the type of the accumulator image used when computing
--- separable filters. 'src' and 'res' are respectively the source and the result
--- image types while 'acc' is the pixel type of the accumulator.
+-- separable filters.
+--
+-- 'src' and 'res' are respectively the source and the result image types while
+-- 'acc' is the pixel type of the accumulator.
 class SeparatelyFiltrable src res acc where
     type SeparableFilterAccumulator src res acc
 
@@ -113,22 +139,28 @@ data FilterFold acc = FilterFold acc
 
 -- | Uses the first pixel in the kernel as initial value. The kernel must not be
 -- empty and the accumulator type must be the same as the source pixel type.
+--
 -- This kind of initialization is needed by morphological filters.
 data FilterFold1 = FilterFold1
 
 -- | Defines how image boundaries are extrapolated by the algorithms.
+--
 -- '|' characters in examples are image borders.
 data BorderInterpolate a =
     -- | Replicates the first and last pixels of the image.
+    --
     -- > aaaaaa|abcdefgh|hhhhhhh
       BorderReplicate
     -- | Reflects the border of the image.
+    --
     -- > fedcba|abcdefgh|hgfedcb
     | BorderReflect
     -- | Considers that the last pixel of the image is before the first one.
+    --
     -- > cdefgh|abcdefgh|abcdefg
     | BorderWrap
     -- | Assigns a constant value to out of image pixels.
+    --
     -- > iiiiii|abcdefgh|iiiiiii  with some specified 'i'
     | BorderConstant !a
 
@@ -142,7 +174,7 @@ data BorderInterpolate a =
 instance (Image src, FromFunction res, src_p ~ ImagePixel src
         , res_p ~ FromFunctionPixel res)
         => Filterable src res (BoxFilter src_p acc res_p) where
-    apply !img !(Filter ksize anchor (Kernel kernel) ini post interpol) =
+    apply !(Filter ksize anchor (Kernel kernel) ini post interpol) !img =
         let !(FilterFold acc)  = ini
         in fromFunction size $ \(!pt@(Z :. iy :. ix)) ->
             let !iy0  = iy - kcy
@@ -194,7 +226,7 @@ instance (Image src, FromFunction res, src_p ~ ImagePixel src
 instance (Image src, FromFunction res, src_p ~ ImagePixel src
         , res_p ~ FromFunctionPixel res)
         => Filterable src res (BoxFilter1 src_p res_p) where
-    apply !img !(Filter ksize anchor (Kernel kernel) _ post interpol)
+    apply !(Filter ksize anchor (Kernel kernel) _ post interpol) !img
         | kh == 0 || kw == 0 =
             error "Using FilterFold1 with an empty kernel."
         | otherwise          =
@@ -269,7 +301,7 @@ instance (Image src, FromFunction res, SeparatelyFiltrable src res acc
         , ImagePixel        (SeparableFilterAccumulator src res acc) ~ acc)
         => Filterable src res (SeparableFilter src_p acc res_p)
             where
-    apply !img !f =
+    apply !f !img =
         fst $! wrapper img f
       where
         wrapper :: (Image src, FromFunction res
@@ -352,7 +384,7 @@ instance (Image src, FromFunction res, SeparatelyFiltrable src res src_p
         , ImagePixel        (SeparableFilterAccumulator src res src_p) ~ src_p)
         => Filterable src res (SeparableFilter1 src_p res_p)
             where
-    apply !img !f =
+    apply !f !img =
         fst $! wrapper img f
       where
         wrapper :: (Image src, FromFunction res, acc ~ ImagePixel src
@@ -512,7 +544,8 @@ erode radius =
 
 -- Blur ------------------------------------------------------------------------
 
--- Blur the image by averaging the pixel inside the kernel.
+-- | Blurs the image by averaging the pixel inside the kernel.
+--
 -- Considers using a type for 'acc' with
 -- @maxBound acc >= maxBound src * (kernel size)²@.
 blur :: (Integral src, Integral acc, Num res)
@@ -532,16 +565,17 @@ blur radius =
     post _ acc = fromIntegral $ acc `div` nPixs
 {-# INLINE blur #-}
 
--- Blur the image by averaging the pixel inside the kernel using a Gaussian
+-- | Blurs the image by averaging the pixel inside the kernel using a Gaussian
 -- function.
+--
 -- See <http://en.wikipedia.org/wiki/Gaussian_blur>
 gaussianBlur :: (Integral src, Floating acc, RealFrac acc, Storable acc
                , Integral res)
              => Int -- ^ Blur radius.
-             -- | Sigma value of the Gaussian function. If not given, will be
+             -> Maybe acc
+             -- ^ Sigma value of the Gaussian function. If not given, will be
              -- automatically computed from the radius so that the kernel
              -- fits 3σ of the distribution.
-             -> Maybe acc
              -> SeparableFilter src acc res
 gaussianBlur !radius !mSig =
     Filter (ix2 size size) KernelAnchorCenter (SeparableKernel vert horiz)
@@ -581,12 +615,15 @@ data Derivative = DerivativeX | DerivativeY
 -- | Estimates the first derivative using the Scharr's 3x3 kernel.
 --
 -- Convolves the following kernel for the X derivative:
+--
 -- @
 --  -3   0   3
 -- -10   0  10
 --  -3   0   3
 -- @
+--
 -- And this kernel for the Y derivative:
+--
 -- @
 --  -3 -10  -3
 --   0   0   0
@@ -614,8 +651,10 @@ scharr der =
 {-# INLINE scharr #-}
 
 -- | Estimates the first derivative using a Sobel's kernel.
+--
 -- Prefer 'scharr' when radius equals @1@ as Scharr's kernel is more accurate
 -- and is implemented faster.
+--
 -- Considers using a signed integer type for 'res' which is significantly larger
 -- than 'src', especially for large kernels.
 sobel :: (Integral src, Integral res, Storable res)

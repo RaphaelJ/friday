@@ -11,7 +11,7 @@ import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck (Arbitrary (..), Positive, getPositive)
 
 import Vision.Histogram
-import Vision.Image (GreyImage)
+import Vision.Image (Grey)
 import qualified Vision.Image as I
 import Vision.Primitive (Z (..), (:.) (..), DIM1, ix1, ix3)
 import Test.Vision.Image ()
@@ -53,14 +53,14 @@ tests = [
 
 -- | The sum of the values of the histogram is equal to the number of pixels of
 -- the image.
-propCalcHist :: GreyImage -> Bool
+propCalcHist :: Grey -> Bool
 propCalcHist img =
     let Z :. h :. w     = I.shape img
         Histogram _ vec = histogram Nothing img
     in V.sum vec == w * h
 
 -- | Checks the identity @histogram == reduce . histogram2D@.
-propReduceHist :: GreyImage -> Bool
+propReduceHist :: Grey -> Bool
 propReduceHist img =
     let hist1 = histogram Nothing img :: Histogram DIM1 Int32
         hist2 = reduce (histogram2D (ix3 256 3 3) img)
@@ -68,7 +68,7 @@ propReduceHist img =
 
 -- | Checks the resizing of an histogram equals the direct computation of the
 -- smallest one.
-propResizeHist :: GreyImage -> Bool
+propResizeHist :: Grey -> Bool
 propResizeHist img =
     let hist1 = histogram (Just (ix1 128)) img :: Histogram DIM1 Int32
         hist2 = resize (ix1 128) (histogram (Just (ix1 256)) img)

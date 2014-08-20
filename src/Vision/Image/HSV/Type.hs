@@ -1,7 +1,7 @@
 {-# LANGUAGE BangPatterns, RecordWildCards, TypeFamilies, TypeOperators #-}
 
-module Vision.Image.HSVImage.Type (
-      HSVPixel (..), HSVImage, HSVDelayed
+module Vision.Image.HSV.Type (
+      HSV, HSVPixel (..), HSVDelayed
     ) where
 
 import Control.Applicative ((<$>), (<*>))
@@ -22,14 +22,15 @@ data HSVPixel = HSVPixel {
     } deriving (Eq, Show)
 
 -- | 24 bits (3 * 8 bits) HSV image.
+--
 -- The Hue value is in [0..179], Saturation in [0..255] and Value in [0..255].
 --
 -- This image type is more respectful to human eye perception of colors and can
--- be converted (using 'convert') from 'RGBImage's.
--- Uses
--- <http://en.wikipedia.org/wiki/HSL_and_HSV>
--- to convert from and to RGB.
-type HSVImage = Manifest HSVPixel
+-- be converted (using 'convert') from 'RGB' images.
+--
+-- Uses <http://en.wikipedia.org/wiki/HSL_and_HSV> equations to convert from and
+-- to RGB.
+type HSV = Manifest HSVPixel
 
 type HSVDelayed = Delayed HSVPixel
 
@@ -74,7 +75,7 @@ instance Interpolable HSVPixel where
             }
     {-# INLINE interpol #-}
 
-{-# SPECIALIZE crop :: Rect -> HSVImage -> HSVImage #-}
-{-# SPECIALIZE resize :: InterpolMethod -> Size -> HSVImage -> HSVImage #-}
-{-# SPECIALIZE horizontalFlip :: HSVImage -> HSVImage #-}
-{-# SPECIALIZE verticalFlip :: HSVImage -> HSVImage #-}
+{-# SPECIALIZE crop           :: Rect -> HSV -> HSV #-}
+{-# SPECIALIZE resize         :: InterpolMethod -> Size -> HSV -> HSV #-}
+{-# SPECIALIZE horizontalFlip :: HSV -> HSV #-}
+{-# SPECIALIZE verticalFlip   :: HSV -> HSV #-}

@@ -1,13 +1,13 @@
 {-# LANGUAGE BangPatterns, MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Vision.Image.RGBAImage.Conversion () where
+module Vision.Image.RGBA.Conversion () where
 
 import Data.Convertible (Convertible (..))
 
-import Vision.Image.GreyImage.Type (GreyPixel (..))
-import Vision.Image.RGBAImage.Type (RGBAPixel (..))
-import Vision.Image.RGBImage.Type (RGBPixel (..))
+import Vision.Image.Grey.Type (GreyPixel (..))
+import Vision.Image.RGBA.Type (RGBAPixel (..))
+import Vision.Image.RGB.Type (RGBPixel (..))
 
 instance Convertible RGBAPixel RGBAPixel where
     safeConvert = Right

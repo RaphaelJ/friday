@@ -2,7 +2,7 @@
 
 -- | Provides high level functions to do geometric transformations on images.
 --
--- Each transformation has been declared INLINABLE so new image types could be
+-- Every transformation is been declared @INLINABLE@ so new image types could be
 -- specialized.
 module Vision.Image.Transform (
       InterpolMethod (..), crop, resize, horizontalFlip, verticalFlip, floodFill
@@ -179,5 +179,6 @@ floodFill !start !newVal !img = do
 
 double :: Integral a => a -> Double
 double = fromIntegral
+
 ratio :: Integral a => a -> RatioInt
 ratio = fromIntegral

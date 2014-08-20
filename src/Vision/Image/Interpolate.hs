@@ -55,6 +55,7 @@ instance Interpolable Bool where
 -- rational coordinates.
 --
 -- Estimates the value of a rational point @p@ using @a@, @b@, @c@ and @d@ :
+--
 -- @
 --       x1       x2
 --
@@ -102,8 +103,6 @@ img `bilinearInterpol` RPoint x y
             !deltaY2 = compl deltaY1
         in interpol (interpolChannel deltaY1 deltaY2) a c
     | otherwise = img `index` ix2 (numerator y) (numerator x)
-    -- | x1 >= 0 && y1 >= 0 && (Z :. y2 :. x2) `inImage` img =
-    --     error "Invalid index"
   where
     integralX = denominator x == 1
     integralY = denominator y == 1

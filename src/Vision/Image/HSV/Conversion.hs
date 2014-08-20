@@ -1,16 +1,16 @@
 {-# LANGUAGE BangPatterns, MultiParamTypeClasses, PatternGuards #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Vision.Image.HSVImage.Conversion () where
+module Vision.Image.HSV.Conversion () where
 
 import Data.Convertible (Convertible (..), ConvertResult)
 import Data.Word
 
-import Vision.Image.HSVImage.Type (HSVPixel (..))
-import Vision.Image.RGBImage.Type (RGBPixel (..))
-import Vision.Image.RGBImage.Conversion ()
-import Vision.Image.RGBAImage.Type (RGBAPixel (..))
-import Vision.Image.RGBAImage.Conversion ()
+import Vision.Image.HSV.Type (HSVPixel (..))
+import Vision.Image.RGB.Type (RGBPixel (..))
+import Vision.Image.RGB.Conversion ()
+import Vision.Image.RGBA.Type (RGBAPixel (..))
+import Vision.Image.RGBA.Conversion ()
 
 instance Convertible HSVPixel HSVPixel where
     safeConvert = Right
@@ -86,5 +86,6 @@ instance Convertible HSVPixel RGBAPixel where
 
 int :: Integral a => a -> Int
 int = fromIntegral
+
 word8 :: Integral a => a -> Word8
 word8 = fromIntegral

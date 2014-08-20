@@ -17,6 +17,8 @@ module Vision.Image.Type (
     , nChannels, pixel
     -- * Conversion
     , convert, delay, compute
+    -- * Types helpers
+    , delayed, manifest
     ) where
 
 import Control.Applicative ((<$>))
@@ -43,7 +45,7 @@ class Storable p => Pixel p where
     type PixelChannel p
 
     -- | Returns the number of channels of the pixel.
-    -- Shouldn't consume 'p' (could be 'undefined').
+    -- Must not consume 'p' (could be 'undefined').
     pixNChannels :: p -> Int
 
     pixIndex :: p -> Int -> PixelChannel p
@@ -102,8 +104,6 @@ instance Pixel Bool where
 -- pixels. The interface is similar to 'Image' except that indexing functions
 -- don't always return.
 -- Image origin is located in the lower left corner.
---
--- Minimal definition is 'shape' and ('maskedIndex' or 'maskedLinearIndex').
 class Pixel (ImagePixel i) => MaskedImage i where
     type ImagePixel i
 
@@ -128,16 +128,16 @@ class Pixel (ImagePixel i) => MaskedImage i where
         !n = shapeLength (shape img)
 
         step !i | i >= n                              = Nothing
-                | Just p <- img `maskedLinearIndex` i = Just (p, i)
-                | otherwise                           = step (i+1)
+                | Just p <- img `maskedLinearIndex` i = Just (p, i + 1)
+                | otherwise                           = step (i + 1)
     {-# INLINE values #-}
+
+    {-# MINIMAL shape, (maskedIndex | maskedLinearIndex) #-}
 
 type ImageChannel i = PixelChannel (ImagePixel i)
 
--- | Provides an abstraction over the internal representation of the image.
+-- | Provides an abstraction over the internal representation of an image.
 -- Image origin is located in the lower left corner.
---
--- Minimal definition is 'index' or 'linearIndex'.
 class MaskedImage i => Image i where
     -- | Returns the pixel value at 'Z :. y :. x'.
     index :: i -> Point -> ImagePixel i
@@ -156,8 +156,9 @@ class MaskedImage i => Image i where
     vector img = generate (shapeLength $ shape img) (img `linearIndex`)
     {-# INLINE vector #-}
 
+    {-# MINIMAL index | linearIndex #-}
+
 -- | Provides ways to construct an image from a function.
--- Minimal definition is 'fromFunction'.
 class FromFunction i where
     type FromFunctionPixel i
 
@@ -182,7 +183,7 @@ class FromFunction i where
     -- The first function is called for each column, generating a column
     -- invariant value.
     -- This function *can* be faster for some image representations as some
-    -- recurring computation can be cached. However, it may requires a vector
+    -- recurring computations can be cached. However, it may requires a vector
     -- allocation for these values. If the column invariant is cheap to
     -- compute, prefer 'fromFunction'.
     fromFunctionCol :: Storable b => Size -> (Int -> b)
@@ -209,15 +210,17 @@ class FromFunction i where
         fromFunction size (\pt@(Z :. y :. x) -> f (line y) (col x) pt)
     {-# INLINE fromFunctionCached #-}
 
+    {-# MINIMAL fromFunction #-}
+
 -- | Defines a class for images on which a function can be applied. The class is
--- different from 'Functor' as there could be some constraints on the pixel and
--- image types.
+-- different from 'Functor' as there could be some constraints and
+-- transformations the pixel and image types.
 class (MaskedImage src, MaskedImage res) => FunctorImage src res where
     map :: (ImagePixel src -> ImagePixel res) -> src -> res
 
 -- Manifest images -------------------------------------------------------------
 
--- | Stores the image\'s content in a 'Vector'.
+-- | Stores the image content in a 'Vector'.
 data Storable p => Manifest p = Manifest {
       manifestSize   :: !Size
     , manifestVector :: !(Vector p)
@@ -317,6 +320,7 @@ instance (Image src, Pixel p) => FunctorImage src (Manifest p) where
 -- Delayed images --------------------------------------------------------------
 
 -- | A delayed image is an image which is constructed using a function.
+--
 -- Usually, a delayed image maps each of its pixels over another image.
 -- Delayed images are useful by avoiding intermediate images in a
 -- transformation pipeline of images or by avoiding the computation of the whole
@@ -420,3 +424,13 @@ instance (Pixel p1, Pixel p2, Storable p1, Convertible p1 p2)
     => Convertible (Manifest p1) (Delayed  p2) where
     safeConvert = Right . map convert
     {-# INLINE safeConvert #-}
+
+-- Types helpers ---------------------------------------------------------------------
+
+-- | Forces an image to be in its delayed represenation. Does nothing.
+delayed :: Delayed p -> Delayed p
+delayed = id
+
+-- | Forces an image to be in its delayed represenation. Does nothing.
+manifest :: Manifest p -> Manifest p
+manifest = id

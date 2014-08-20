@@ -13,13 +13,14 @@ import Vision.Image.Type (ImagePixel, FunctorImage)
 import qualified Vision.Image.Type as I
 
 -- | Specifies what to do with pixels matching the threshold predicate.
+--
+-- @'BinaryThreshold' a b@ will replace matching pixels by @a@ and non-matchings
+-- pixels by @b@.
+--
+-- @'Truncate' a@ will replace matching pixels by @a@.
 data ThresholdType src res where
-    BinaryThreshold :: res -- ^ Pixel value if the predicate matches.
-                    -> res -- ^ Pixel value if the predicate doesn't
-                           -- match.
-                    -> ThresholdType src res
-    -- | Replaces the pixel by the given value only when the predicate matches.
-    Truncate        :: src -> ThresholdType src src
+    BinaryThreshold :: res -> res -> ThresholdType src res
+    Truncate        :: src        -> ThresholdType src src
 
 -- | Applies the given predicate and threshold policy on the image.
 threshold :: FunctorImage src res
@@ -31,16 +32,18 @@ threshold !cond !(Truncate        ifTrue)         !img =
     I.map (\pix -> if cond pix then ifTrue else pix)     img
 {-# INLINE threshold #-}
 
+-- | Defines how pixels of the kernel of the adaptive threshold will be
+-- weighted.
+--
+-- With 'MeanKernel', pixels of the kernel have the same weight.
+--
+-- With @'GaussianKernel' sigma@, pixels are weighted according to their distance
+-- from the thresholded pixel using a Gaussian function parametred by @sigma@.
+-- See 'gaussianBlur' for details.
 data AdaptiveThresholdKernel acc where
-    -- | Each pixel of the kernel has the same weight.
     MeanKernel     :: Integral acc => AdaptiveThresholdKernel acc
-    -- | Pixels are weighted according to their distance from the thresholded
-    -- pixel using a Gaussian function.
     GaussianKernel :: (Floating acc, RealFrac acc)
-                   -- | Sigma value of the Gaussian function.
-                   -- See 'gaussianBlur' for details.
-                   => Maybe acc
-                   -> AdaptiveThresholdKernel acc
+                   => Maybe acc -> AdaptiveThresholdKernel acc
 
 -- | Applies a thresholding adaptively.
 -- Compares every pixel to its surrounding ones in the kernel of the given

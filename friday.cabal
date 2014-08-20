@@ -1,29 +1,39 @@
 name:                   friday
 version:                0.0.0
-synopsis:               Fast image IO and transformations.
+synopsis:               A functionnal image processing library for Haskell.
 homepage:               https://github.com/RaphaelJ/friday
 license:                LGPL-3
 license-file:           LICENSE
 author:                 Raphael Javaux <raphaeljavaux[at]gmail.com>
 maintainer:             Raphael Javaux <raphaeljavaux[at]gmail.com>
-description:            Friday provides high performance image manipulation
-                        functions.
+
+description:            Friday provides functions to manipulate images in a
+                        functionnal way.
+                        The library is designed to be fast and generic.
                         .
                         The library uses FFI calls to the DevIL image library to
                         read images from a wide variety of formats, including
-                        BMP, JPG, PNG, GIF, ICO and PSD.
-                        .
+                        BMP, JPG, PNG, GIF, ICO and PSD. Except for I/Os, friday
+                        is entierly written in Haskell.
                         .
                         Images can be represented in two representations:
                         .
-                        * the @Manifest@ representation stores images in Haskell
-                        Vectors ;
+                        * the 'Manifest' representation stores images in Haskell
+                        'Vector's ;
                         .
-                        * the @Delayed@ representation uses functions to produce
+                        * the 'Delayed' representation uses functions to produce
                         image. These can be combined to produce complex
                         transformations. By some inlining, Haskell compilers are
                         able to produce fast algorithms by removing intermediate
                         structures.
+                        .
+                        The library currently support three color spaces: RGB,
+                        RGBA, HSV and grayscale images.
+                        .
+                        Please read our
+                        <https://github.com/RaphaelJ/friday/blob/master/README README>
+                        to get a detailed usage and some examples.
+
 category:               Graphics
 stability:              Experimental
 build-type:             Simple
@@ -33,21 +43,21 @@ library
     exposed-modules:    Vision.Detector.Edge
                         Vision.Histogram
                         Vision.Image
-                        Vision.Image.GreyImage
-                        Vision.Image.GreyImage.Conversion
-                        Vision.Image.GreyImage.Type
+                        Vision.Image.Grey
+                        Vision.Image.Grey.Conversion
+                        Vision.Image.Grey.Type
                         Vision.Image.Filter
-                        Vision.Image.HSVImage
-                        Vision.Image.HSVImage.Conversion
-                        Vision.Image.HSVImage.Type
+                        Vision.Image.HSV
+                        Vision.Image.HSV.Conversion
+                        Vision.Image.HSV.Type
                         Vision.Image.Interpolate
                         Vision.Image.Mutable
-                        Vision.Image.RGBAImage
-                        Vision.Image.RGBAImage.Conversion
-                        Vision.Image.RGBAImage.Type
-                        Vision.Image.RGBImage
-                        Vision.Image.RGBImage.Conversion
-                        Vision.Image.RGBImage.Type
+                        Vision.Image.RGBA
+                        Vision.Image.RGBA.Conversion
+                        Vision.Image.RGBA.Type
+                        Vision.Image.RGB
+                        Vision.Image.RGB.Conversion
+                        Vision.Image.RGB.Type
                         Vision.Image.Storage
                         Vision.Image.Threshold
                         Vision.Image.Transform
@@ -80,7 +90,7 @@ Benchmark benchmark
     default-language:   Haskell2010
 
     build-depends:      base                    >= 4            && < 5
-                      , criterion               >= 0.8          && < 1.0
+                      , criterion               >= 1.0          && < 2.0
                       , friday
 
 Test-Suite test

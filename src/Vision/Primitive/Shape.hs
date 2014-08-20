@@ -1,11 +1,21 @@
 {-# LANGUAGE BangPatterns, FlexibleInstances, TypeOperators #-}
 
+-- | 'Shape's are similar to what you could found in @repa@. 'Shape' are used
+-- both for indexes and shapes.
+--
+-- To create a shape/index, use the 'ix1', 'ix2', 'ix3' ... helpers :
+--
+-- > size = ix2 200 100
+--
+-- To pull values from a shape, use the 'Z' and ':.' constructors :
+--
+-- > Z :. h :. w = size
 module Vision.Primitive.Shape (
       Shape (..), Z (..), (:.) (..)
     -- * Common dimensions.
     , DIM0, DIM1, DIM2, DIM3, DIM4, DIM5, DIM6, DIM7, DIM8, DIM9
     -- * Helpers
-    ,ix1, ix2, ix3, ix4, ix5, ix6, ix7, ix8, ix9
+    , ix1, ix2, ix3, ix4, ix5, ix6, ix7, ix8, ix9
 ) where
 
 import Control.Applicative
@@ -19,7 +29,7 @@ class Eq sh => Shape sh where
     -- | Gets the number of dimensions in a shape.
     shapeRank :: sh -> Int
 
-    -- | Gets the total number of elements in an array with this shape.
+    -- | Gets the total number of elements in an array of this shape.
     shapeLength :: sh -> Int
 
     -- | Gives the first index of an array.

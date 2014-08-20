@@ -1,15 +1,15 @@
 {-# LANGUAGE BangPatterns, MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Vision.Image.GreyImage.Conversion () where
+module Vision.Image.Grey.Conversion () where
 
 import Data.Convertible (Convertible (..))
 import qualified Data.Vector.Storable as V
 import Data.Word
 
-import Vision.Image.GreyImage.Type (GreyPixel (..))
-import Vision.Image.RGBAImage.Type (RGBAPixel (..))
-import Vision.Image.RGBImage.Type (RGBPixel (..))
+import Vision.Image.Grey.Type (GreyPixel (..))
+import Vision.Image.RGBA.Type (RGBAPixel (..))
+import Vision.Image.RGB.Type (RGBPixel (..))
 
 instance Convertible GreyPixel GreyPixel where
     safeConvert = Right
@@ -39,7 +39,9 @@ blueLookupTable  = V.generate 256 (\val -> round $ double val * 0.114)
 
 double :: Integral a => a -> Double
 double = fromIntegral
+
 int :: Integral a => a -> Int
 int = fromIntegral
+
 word8 :: Integral a => a -> Word8
 word8 = fromIntegral

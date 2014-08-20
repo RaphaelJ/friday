@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, TypeFamilies
            , UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Test.Vision.Image (tests) where
 
 import Control.Applicative ((<*>), (<$>))
@@ -12,8 +13,9 @@ import Test.QuickCheck (Arbitrary (..), choose)
 import Vision.Image (
       MaskedImage (..), Image (..), Interpolable, FromFunction (..)
     , ImageChannel, Manifest (..), Delayed (..)
-    , GreyImage, GreyPixel (..), HSVPixel, RGBAImage, RGBAPixel (..)
-    , RGBADelayed, RGBImage, RGBPixel (..), InterpolMethod (..)
+    , Grey, GreyPixel (..), HSVPixel
+    , RGBA, RGBAPixel (..), RGBADelayed
+    , RGB, RGBPixel (..), InterpolMethod (..)
     , convert, resize, horizontalFlip, verticalFlip
     )
 import Vision.Primitive (Z (..), (:.) (..), Size)
@@ -45,35 +47,26 @@ tests = [
         , testProperty "RGB to/from HSV"  $ propRGBHSV
         ]
     , testGroup "Nearest-neighbor resize" [
-          testProperty "Grey"
-            (propImageResize :: GreyImage -> Bool)
-        , testProperty "RGBA"
-            (propImageResize :: RGBAImage -> Bool)
-        , testProperty "RGB"
-            (propImageResize :: RGBImage -> Bool)
+          testProperty "Grey" (propImageResize :: Grey -> Bool)
+        , testProperty "RGBA" (propImageResize :: RGBA -> Bool)
+        , testProperty "RGB"  (propImageResize :: RGB  -> Bool)
         ]
     , testGroup "Horizontal flip is symetric" [
-          testProperty "Grey"
-            (propHorizontalFlip :: GreyImage -> Bool)
-        , testProperty "RGBA"
-            (propHorizontalFlip :: RGBAImage -> Bool)
-        , testProperty "RGB"
-            (propHorizontalFlip :: RGBImage -> Bool)
+          testProperty "Grey" (propHorizontalFlip :: Grey -> Bool)
+        , testProperty "RGBA" (propHorizontalFlip :: RGBA -> Bool)
+        , testProperty "RGB"  (propHorizontalFlip :: RGB  -> Bool)
         ]
     , testGroup "Vertical flip is symetric" [
-          testProperty "Grey"
-            (propVerticalFlip :: GreyImage -> Bool)
-        , testProperty "RGBA"
-            (propVerticalFlip :: RGBAImage -> Bool)
-        , testProperty "RGB"
-            (propVerticalFlip :: RGBImage -> Bool)
+          testProperty "Grey" (propVerticalFlip :: Grey -> Bool)
+        , testProperty "RGBA" (propVerticalFlip :: RGBA -> Bool)
+        , testProperty "RGB"  (propVerticalFlip :: RGB  -> Bool)
         ]
     ]
 
 -- | Tests if the conversions between RGB and RGBA images give the same images.
-propRGBRGBA :: RGBImage -> Bool
+propRGBRGBA :: RGB -> Bool
 propRGBRGBA img =
-    let img' = convert (convert img :: RGBADelayed) :: RGBImage
+    let img' = convert (convert img :: RGBADelayed) :: RGB
     in img == img'
 
 -- | Tests if the conversions between RGB and HSV images give the same images.

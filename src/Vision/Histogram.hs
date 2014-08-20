@@ -3,11 +3,11 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- | Contains functions to compute and manipulate histograms as well as some
--- images transformations which are histograms-based.
+-- images transformations which are histogram-based.
 --
 -- Every polymorphic function is specialised for histograms of 'Int32', 'Double'
--- and 'Float'. Other types could be specialized as every polymorphic function
--- is declared @INLINABLE@.
+-- and 'Float'. Other types can be specialized as every polymorphic function is
+-- declared @INLINABLE@.
 module Vision.Histogram (
     -- * Types & helpers
       Histogram (..), HistogramShape (..), ToHistogram (..)
@@ -28,8 +28,8 @@ import Prelude hiding (map)
 
 import Vision.Image (
       Pixel, MaskedImage, Image, ImagePixel, FunctorImage
-    , GreyImage, GreyPixel (..), HSVImage, HSVPixel (..)
-    , RGBAImage, RGBAPixel (..), RGBImage, RGBPixel (..)
+    , Grey, GreyPixel (..), HSV, HSVPixel (..), RGBA, RGBAPixel (..)
+    , RGB, RGBPixel (..)
     )
 import qualified Vision.Image as I
 import Vision.Primitive (
@@ -56,8 +56,7 @@ data Histogram sh a = Histogram {
 -- | Subclass of 'Shape' which defines how to resize a shape so it will fit
 -- inside a resized histogram.
 class Shape sh => HistogramShape sh where
-    -- | Given a number of bins, reduces an index value so it will be mapped to
-    -- a bin.
+    -- | Given a number of bins, reduces an index so it will be mapped to a bin.
     toBin :: sh -- ^ The number of bins we are mapping to.
           -> sh -- ^ The number of possible values of the original index.
           -> sh -- ^ The original index.
@@ -83,6 +82,7 @@ class (Pixel p, Shape (PixelValueSpace p)) => ToHistogram p where
     -- This is used to determine the rank of the generated histogram.
     type PixelValueSpace p
 
+    -- | Converts a pixel to an index.
     pixToIndex :: p -> PixelValueSpace p
 
     -- | Returns the maximum number of different values an index can take for
@@ -145,8 +145,10 @@ assocs !(Histogram sh vec) = [ (ix, v) | ix <- shapeList sh
 {-# INLINE assocs #-}
 
 -- | Computes an histogram from a (possibly) multi-channel image.
+--
 -- If the size of the histogram is not given, there will be as many bins as the
 -- range of values of pixels of the original image (see 'domainSize').
+--
 -- If the size of the histogram is specified, every bin of a given dimension
 -- will be of the same size (uniform histogram).
 histogram :: (MaskedImage i, ToHistogram (ImagePixel i), Storable a, Num a
@@ -170,24 +172,28 @@ histogram mSize img =
         case mSize of Just _  -> toBin size maxSize $! pixToIndex p
                       Nothing -> pixToIndex p
     {-# INLINE toIndex #-}
-{-# SPECIALIZE histogram :: Maybe DIM1 -> GreyImage -> Histogram DIM1 Int32
-                         ,  Maybe DIM1 -> GreyImage -> Histogram DIM1 Double
-                         ,  Maybe DIM1 -> GreyImage -> Histogram DIM1 Float
-                         ,  Maybe DIM3 -> HSVImage  -> Histogram DIM3 Int32
-                         ,  Maybe DIM3 -> HSVImage  -> Histogram DIM3 Double
-                         ,  Maybe DIM3 -> HSVImage  -> Histogram DIM3 Float
-                         ,  Maybe DIM4 -> RGBAImage -> Histogram DIM4 Int32
-                         ,  Maybe DIM4 -> RGBAImage -> Histogram DIM4 Double
-                         ,  Maybe DIM4 -> RGBAImage -> Histogram DIM4 Float
-                         ,  Maybe DIM3 -> RGBImage  -> Histogram DIM3 Int32
-                         ,  Maybe DIM3 -> RGBImage  -> Histogram DIM3 Double
-                         ,  Maybe DIM3 -> RGBImage  -> Histogram DIM3 Float  #-}
+{-# SPECIALIZE histogram :: Maybe DIM1 -> Grey -> Histogram DIM1 Int32
+                         ,  Maybe DIM1 -> Grey -> Histogram DIM1 Double
+                         ,  Maybe DIM1 -> Grey -> Histogram DIM1 Float
+                         ,  Maybe DIM3 -> HSV  -> Histogram DIM3 Int32
+                         ,  Maybe DIM3 -> HSV  -> Histogram DIM3 Double
+                         ,  Maybe DIM3 -> HSV  -> Histogram DIM3 Float
+                         ,  Maybe DIM4 -> RGBA -> Histogram DIM4 Int32
+                         ,  Maybe DIM4 -> RGBA -> Histogram DIM4 Double
+                         ,  Maybe DIM4 -> RGBA -> Histogram DIM4 Float
+                         ,  Maybe DIM3 -> RGB  -> Histogram DIM3 Int32
+                         ,  Maybe DIM3 -> RGB  -> Histogram DIM3 Double
+                         ,  Maybe DIM3 -> RGB  -> Histogram DIM3 Float  #-}
 {-# INLINABLE histogram #-}
 
 -- | Similar to 'histogram' but adds two dimensions for the y and x-coordinates
 -- of the sampled points. This way, the histogram will map different regions of
--- the original image. For example, an RGB image will be mapped as
--- @Z :. red channel :. green channel :. blue channel :. y region :. x region@.
+-- the original image.
+--
+-- For example, an 'RGB' image will be mapped as
+-- @'Z' ':.' red channel ':.' green channel ':.' blue channel ':.' y region
+-- ':.' x region@.
+--
 -- As there is no reason to create an histogram as large as the number of pixels
 -- of the image, a size is always needed.
 histogram2D :: (Image i, ToHistogram (ImagePixel i), Storable a, Num a
@@ -211,25 +217,26 @@ histogram2D size img =
         let !ix = (pixToIndex p) :. y :. x
         in toLinearIndex size $! toBin size maxSize ix
     {-# INLINE toIndex #-}
-{-# SPECIALIZE histogram2D :: DIM3 -> GreyImage -> Histogram DIM3 Int32
-                           ,  DIM3 -> GreyImage -> Histogram DIM3 Double
-                           ,  DIM3 -> GreyImage -> Histogram DIM3 Float
-                           ,  DIM5 -> HSVImage  -> Histogram DIM5 Int32
-                           ,  DIM5 -> HSVImage  -> Histogram DIM5 Double
-                           ,  DIM5 -> HSVImage  -> Histogram DIM5 Float
-                           ,  DIM6 -> RGBAImage -> Histogram DIM6 Int32
-                           ,  DIM6 -> RGBAImage -> Histogram DIM6 Double
-                           ,  DIM6 -> RGBAImage -> Histogram DIM6 Float
-                           ,  DIM5 -> RGBImage  -> Histogram DIM5 Int32
-                           ,  DIM5 -> RGBImage  -> Histogram DIM5 Double
-                           ,  DIM5 -> RGBImage  -> Histogram DIM5 Float  #-}
+{-# SPECIALIZE histogram2D :: DIM3 -> Grey -> Histogram DIM3 Int32
+                           ,  DIM3 -> Grey -> Histogram DIM3 Double
+                           ,  DIM3 -> Grey -> Histogram DIM3 Float
+                           ,  DIM5 -> HSV  -> Histogram DIM5 Int32
+                           ,  DIM5 -> HSV  -> Histogram DIM5 Double
+                           ,  DIM5 -> HSV  -> Histogram DIM5 Float
+                           ,  DIM6 -> RGBA -> Histogram DIM6 Int32
+                           ,  DIM6 -> RGBA -> Histogram DIM6 Double
+                           ,  DIM6 -> RGBA -> Histogram DIM6 Float
+                           ,  DIM5 -> RGB  -> Histogram DIM5 Int32
+                           ,  DIM5 -> RGB  -> Histogram DIM5 Double
+                           ,  DIM5 -> RGB  -> Histogram DIM5 Float  #-}
 {-# INLINABLE histogram2D #-}
 
 -- Reshaping -------------------------------------------------------------------
 
 -- | Reduces a 2D histogram to its linear representation. See 'resize' for a
 -- reduction of the number of bins of an histogram.
--- > histogram == reduce . histogram2D
+--
+-- @'histogram' == 'reduce' . 'histogram2D'@
 reduce :: (HistogramShape sh, Storable a, Num a)
        => Histogram (sh :. Int :. Int) a -> Histogram sh a
 reduce !(Histogram sh vec) =
@@ -263,6 +270,7 @@ resize !sh' (Histogram sh vec) =
 -- Normalisation ---------------------------------------------------------------
 
 -- | Computes the cumulative histogram of another single dimension histogram.
+--
 -- @C(i) = SUM H(j)@ for each @j@ in @[0..i]@ where @C@ is the cumulative
 -- histogram, and @H@ the original histogram.
 cumulative :: (Storable a, Num a) => Histogram DIM1 a -> Histogram DIM1 a
@@ -274,6 +282,7 @@ cumulative (Histogram sh vec) = Histogram sh (V.scanl1' (+) vec)
 
 -- | Normalizes the histogram so that the sum of the histogram bins is equal to
 -- the given value (normalisation by the @L1@ norm).
+--
 -- This is useful to compare two histograms which have been computed from images
 -- with a different number of pixels.
 normalize :: (Storable a, Real a, Storable b, Fractional b)
@@ -293,13 +302,15 @@ normalize norm !hist@(Histogram _ vec) =
 {-# INLINABLE normalize #-}
 
 -- | Equalizes a single channel image by equalising its histogram.
+--
 -- The algorithm equalizes the brightness and increases the contrast of the
--- image by mapping each pixels values to the value at the index of the
+-- image by mapping each pixel values to the value at the index of the
 -- cumulative @L1@-normalized histogram :
+--
 -- @N(x, y) = H(I(x, y))@ where @N@ is the equalized image, @I@ is the image and
--- @H@ the cumulative of the histogram normalized over a @L1@ norm equals to the
--- index range of the image (@255@ for a greyscale image).
--- See <https://en.wikipedia.org/wiki/Histogram_equalization>
+-- @H@ the cumulative of the histogram normalized over an @L1@ norm.
+--
+-- See <https://en.wikipedia.org/wiki/Histogram_equalization>.
 equalizeImage :: (FunctorImage i i, Integral (ImagePixel i)
                  , ToHistogram (ImagePixel i)
                  , PixelValueSpace (ImagePixel i) ~ DIM1) => i -> i
@@ -313,19 +324,23 @@ equalizeImage img =
     equalizePixel !val = fromIntegral $ cumNormalized' `index` ix1 (int val)
     {-# INLINE equalizePixel #-}
 -- FIXME: GHC 7.8.2 fails to specialize
-{-# SPECIALIZE equalizeImage :: GreyImage -> GreyImage #-}
+{-# SPECIALIZE equalizeImage :: Grey -> Grey #-}
 {-# INLINABLE equalizeImage #-}
 
 -- Comparisons -----------------------------------------------------------------
 
 -- | Computes the /Pearson\'s correlation coefficient/ between each
 -- corresponding bins of the two histograms.
+--
 -- A value of 1 implies a perfect correlation, a value of -1 a perfect
 -- opposition and a value of 0 no correlation at all.
--- @corr = SUM  [ (H1(i) - µ(H1)) (H1(2) - µ(H2)) ]
---       / (   SQRT [ SUM [ (H1(i) - µ(H1))^2 ] ]
---           * SQRT [ SUM [ (H2(i) - µ(H2))^2 ] ] )@
+--
+-- @'compareCorrel' = SUM  [ (H1(i) - µ(H1)) (H1(2) - µ(H2)) ]
+--                  / (   SQRT [ SUM [ (H1(i) - µ(H1))^2 ] ]
+--                      * SQRT [ SUM [ (H2(i) - µ(H2))^2 ] ] )@
+--
 -- Where @µ(H)@ is the average value of the histogram @H@.
+--
 -- See <http://en.wikipedia.org/wiki/Pearson_correlation_coefficient>.
 compareCorrel :: (Shape sh, Storable a, Real a, Storable b, Eq b, Floating b)
               => Histogram sh a -> Histogram sh a -> b
@@ -353,9 +368,11 @@ compareCorrel (Histogram sh1 vec1) (Histogram sh2 vec2)
 {-# INLINABLE compareCorrel #-}
 
 -- | Computes the Chi-squared distance between two histograms.
+--
 -- A value of 0 indicates a perfect match.
--- @d(i) = 2 * ((H1(i) - H2(i))^2 / (H1(i) + H2(i)))@
--- @chi = SUM (d(i))@ for each indice @i@ of the histograms.
+--
+-- @'compareChi' = SUM (d(i))@ for each indice @i@ of the histograms where
+-- @d(i) = 2 * ((H1(i) - H2(i))^2 / (H1(i) + H2(i)))@.
 compareChi :: (Shape sh, Storable a, Real a, Storable b, Fractional b)
            => Histogram sh a -> Histogram sh a -> b
 compareChi (Histogram sh1 vec1) (Histogram sh2 vec2)
@@ -377,8 +394,11 @@ compareChi (Histogram sh1 vec1) (Histogram sh2 vec2)
 {-# INLINABLE compareChi #-}
 
 -- | Computes the intersection of the two histograms.
+--
 -- The higher the score is, the best the match is.
--- @intersec = SUM min(H1(i), H2(i))@ for each indice @i@ of the histograms.
+--
+-- @'compareIntersect' = SUM (min(H1(i), H2(i))@ for each indice @i@ of the
+-- histograms.
 compareIntersect :: (Shape sh, Storable a, Num a, Ord a)
                  => Histogram sh a -> Histogram sh a -> a
 compareIntersect (Histogram sh1 vec1) (Histogram sh2 vec2)
@@ -391,7 +411,9 @@ compareIntersect (Histogram sh1 vec1) (Histogram sh2 vec2)
 {-# INLINABLE compareIntersect #-}
 
 -- | Computed the /Earth mover's distance/ between two histograms.
+--
 -- Current algorithm only supports histograms of one dimension.
+--
 -- See <https://en.wikipedia.org/wiki/Earth_mover's_distance>
 compareEMD :: (Num a, Storable a)
            => Histogram DIM1 a -> Histogram DIM1 a -> a
@@ -411,5 +433,6 @@ square a = a * a
 
 double :: Integral a => a -> Double
 double= fromIntegral
+
 int :: Integral a => a -> Int
 int = fromIntegral

@@ -19,8 +19,7 @@ import Vision.Primitive (
     )
 
 -- | Class for images which can be constructed from a mutable image.
--- Minimal definition is 'new', 'new'', ('read' || 'linearRead'),
--- ('write' || 'linearWrite'), 'freeze' and 'thaw'.
+
 class Image (Freezed i) => MutableImage i where
     -- | The type of the immutable version of the mutable image 'i'.
     type Freezed i
@@ -37,7 +36,7 @@ class Image (Freezed i) => MutableImage i where
     -- given value.
     new' :: PrimMonad m => Size -> ImagePixel (Freezed i) -> m (i (PrimState m))
 
-    -- | Returns the pixel value at 'Z :. y :. x'.
+    -- | Returns the pixel value at @Z :. y :. x@.
     read :: PrimMonad m => i (PrimState m) -> DIM2 -> m (ImagePixel (Freezed i))
     read !img !ix = img `linearRead` toLinearIndex (mShape img) ix
     {-# INLINE read #-}
@@ -49,7 +48,7 @@ class Image (Freezed i) => MutableImage i where
     linearRead !img !ix = img `read` fromLinearIndex (mShape img) ix
     {-# INLINE linearRead #-}
 
-    -- | Overrides the value of the pixel at 'Z :. y :. x'.
+    -- | Overrides the value of the pixel at @Z :. y :. x@.
     write :: PrimMonad m => i (PrimState m) -> DIM2 -> ImagePixel (Freezed i)
           -> m ()
     write !img !ix !val = linearWrite img (toLinearIndex (mShape img) ix) val
@@ -72,8 +71,10 @@ class Image (Freezed i) => MutableImage i where
     -- | Returns a mutable copy of the immutable image.
     thaw :: PrimMonad m => Freezed i -> m (i (PrimState m))
 
+    {-# MINIMAL mShape, new, new', (read | linearRead)
+              , (write | linearWrite), freeze, thaw #-}
+
 -- | Creates an immutable image from an 'ST' action creating a mutable image.
--- create :: (ST s i
 create :: (MutableImage i) => (forall s. ST s (i s)) -> Freezed i
 create action =
     runST $ do

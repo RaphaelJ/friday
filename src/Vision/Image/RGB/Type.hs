@@ -1,7 +1,7 @@
 {-# LANGUAGE BangPatterns, RecordWildCards, TypeFamilies, TypeOperators #-}
 
-module Vision.Image.RGBImage.Type (
-      RGBPixel (..), RGBImage, RGBDelayed
+module Vision.Image.RGB.Type (
+      RGB, RGBPixel (..), RGBDelayed
     ) where
 
 import Control.Applicative ((<$>), (<*>))
@@ -21,7 +21,7 @@ data RGBPixel = RGBPixel {
     , rgbBlue  :: {-# UNPACK #-} !Word8
     } deriving (Eq, Show)
 
-type RGBImage = Manifest RGBPixel
+type RGB = Manifest RGBPixel
 
 type RGBDelayed = Delayed RGBPixel
 
@@ -66,7 +66,7 @@ instance Interpolable RGBPixel where
             }
     {-# INLINE interpol #-}
 
-{-# SPECIALIZE crop :: Rect -> RGBImage -> RGBImage #-}
-{-# SPECIALIZE resize :: InterpolMethod -> Size -> RGBImage -> RGBImage #-}
-{-# SPECIALIZE horizontalFlip :: RGBImage -> RGBImage #-}
-{-# SPECIALIZE verticalFlip :: RGBImage -> RGBImage #-}
+{-# SPECIALIZE crop           :: Rect -> RGB -> RGB #-}
+{-# SPECIALIZE resize         :: InterpolMethod -> Size -> RGB -> RGB #-}
+{-# SPECIALIZE horizontalFlip :: RGB -> RGB #-}
+{-# SPECIALIZE verticalFlip   :: RGB -> RGB #-}

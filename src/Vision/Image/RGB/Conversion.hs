@@ -1,14 +1,14 @@
 {-# LANGUAGE BangPatterns, MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Vision.Image.RGBImage.Conversion () where
+module Vision.Image.RGB.Conversion () where
 
 import Data.Convertible (Convertible (..))
 import Data.Word
 
-import Vision.Image.GreyImage.Type (GreyPixel (..))
-import Vision.Image.RGBAImage.Type (RGBAPixel (..))
-import Vision.Image.RGBImage.Type (RGBPixel (..))
+import Vision.Image.Grey.Type (GreyPixel (..))
+import Vision.Image.RGBA.Type (RGBAPixel (..))
+import Vision.Image.RGB.Type (RGBPixel (..))
 
 instance Convertible RGBPixel RGBPixel where
     safeConvert = Right
@@ -29,5 +29,6 @@ instance Convertible RGBAPixel RGBPixel where
 
 int :: Integral a => a -> Int
 int = fromIntegral
+
 word8 :: Integral a => a -> Word8
 word8 = fromIntegral

@@ -28,14 +28,13 @@ import Foreign.Ptr (Ptr, castPtr)
 import Foreign.Storable (peek)
 import System.IO.Unsafe (unsafePerformIO)
 
-import Vision.Image.GreyImage (GreyImage, GreyPixel)
-import Vision.Image.RGBAImage (RGBAImage, RGBAPixel)
-import Vision.Image.RGBImage (RGBImage, RGBPixel)
+import Vision.Image.Grey (Grey, GreyPixel)
+import Vision.Image.RGBA (RGBA, RGBAPixel)
+import Vision.Image.RGB (RGB, RGBPixel)
 import Vision.Image.Type (Manifest (..), nChannels)
 import Vision.Primitive (Z (..), (:.) (..), ix2)
 
-data StorageImage = GreyStorage GreyImage
-                  | RGBAStorage RGBAImage | RGBStorage RGBImage
+data StorageImage = GreyStorage Grey | RGBAStorage RGBA | RGBStorage RGB
 
 data ImageType = BMP | CUT
                | DDS         -- ^ DirectDraw Surface (.dds).
