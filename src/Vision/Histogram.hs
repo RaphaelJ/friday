@@ -87,7 +87,7 @@ class (Pixel p, Shape (PixelValueSpace p)) => ToHistogram p where
 
     -- | Returns the maximum number of different values an index can take for
     -- each dimension of the histogram (aka. the maximum index returned by
-    -- 'pixToIndex' minus one).
+    -- 'pixToIndex' plus one).
     domainSize :: p -> PixelValueSpace p
 
 instance ToHistogram GreyPixel where
