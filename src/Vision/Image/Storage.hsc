@@ -31,7 +31,7 @@ import System.IO.Unsafe (unsafePerformIO)
 import Vision.Image.Grey (Grey, GreyPixel)
 import Vision.Image.RGBA (RGBA, RGBAPixel)
 import Vision.Image.RGB (RGB, RGBPixel)
-import Vision.Image.Type (Manifest (..), nChannels)
+import Vision.Image.Type (Manifest (..), Delayed (..), delay, nChannels)
 import Vision.Primitive (Z (..), (:.) (..), ix2)
 
 data StorageImage = GreyStorage Grey | RGBAStorage RGBA | RGBStorage RGB
@@ -92,6 +92,21 @@ instance Convertible StorageImage (Manifest RGBPixel) where
     safeConvert (GreyStorage img) = Right $ convert img
     safeConvert (RGBAStorage img) = Right $ convert img
     safeConvert (RGBStorage img)  = Right img
+
+instance Convertible StorageImage (Delayed GreyPixel) where
+    safeConvert (GreyStorage img) = Right $ delay img
+    safeConvert (RGBAStorage img) = Right $ convert img
+    safeConvert (RGBStorage img)  = Right $ convert img
+
+instance Convertible StorageImage (Delayed RGBAPixel) where
+    safeConvert (GreyStorage img) = Right $ convert img
+    safeConvert (RGBAStorage img) = Right $ delay img
+    safeConvert (RGBStorage img)  = Right $ convert img
+
+instance Convertible StorageImage (Delayed RGBPixel) where
+    safeConvert (GreyStorage img) = Right $ convert img
+    safeConvert (RGBAStorage img) = Right $ convert img
+    safeConvert (RGBStorage img)  = Right $ delay img
 
 instance Error StorageError where
     noMsg  = UnknownError Nothing
