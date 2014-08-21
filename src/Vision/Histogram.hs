@@ -414,7 +414,7 @@ compareIntersect (Histogram sh1 vec1) (Histogram sh2 vec2)
 --
 -- Current algorithm only supports histograms of one dimension.
 --
--- See <https://en.wikipedia.org/wiki/Earth_mover's_distance>
+-- See <https://en.wikipedia.org/wiki/Earth_mover's_distance>.
 compareEMD :: (Num a, Storable a)
            => Histogram DIM1 a -> Histogram DIM1 a -> a
 compareEMD hist1@(Histogram sh1 _) hist2@(Histogram sh2 _)

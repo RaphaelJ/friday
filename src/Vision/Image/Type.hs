@@ -16,7 +16,7 @@ module Vision.Image.Type (
     -- * Functions
     , nChannels, pixel
     -- * Conversion
-    , convert, delay, compute
+    , Convertible (..), convert, delay, compute
     -- * Types helpers
     , delayed, manifest
     ) where

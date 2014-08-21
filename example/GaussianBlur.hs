@@ -23,9 +23,9 @@ main = do
 
                 -- Creates a Gaussian filter with a 21x21 kernel (kernel radius
                 -- of 10px).
-                filter = gaussianBlur 9 Nothing :: SeparableFilter GreyPixel
-                                                                   Float
-                                                                   GreyPixel
+                filter = gaussianBlur 10 Nothing :: SeparableFilter GreyPixel
+                                                                    Float
+                                                                    GreyPixel
 
                 -- Applies the filter to the grey-scale image.
                 blurred = apply filter grey     :: Grey

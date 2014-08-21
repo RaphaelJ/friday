@@ -14,7 +14,8 @@ import qualified Vision.Histogram as H
 import Vision.Primitive
 
 path :: FilePath
-path = "bench/image.jpg"
+-- path = "bench/image.jpg"
+path = "/home/rapha/Common_Kingfisher_Alcedo_atthis.jpg"
 
 main :: IO ()
 main = do
@@ -136,25 +137,25 @@ main = do
     canny' !img = D.canny 2 256 1024 img
 
     erode' :: Grey -> Grey
-    erode' !img = img `I.apply` I.erode 1
+    erode' !img = I.erode 1 `I.apply` img
 
     blur'  :: Grey -> Grey
     blur' !img =
         let filt = I.blur 1 :: I.SeparableFilter I.GreyPixel Word32 I.GreyPixel
-        in img `I.apply` filt
+        in filt `I.apply` img
 
     gaussianBlur' :: Grey -> Grey
     gaussianBlur' !img =
         let filt = I.gaussianBlur 1 Nothing :: I.SeparableFilter I.GreyPixel
                                                                  Float
                                                                  I.GreyPixel
-        in img `I.apply` filt
+        in filt `I.apply` img
 
     sobel' :: Grey -> I.Manifest Int16
-    sobel' !img = img `I.apply` I.sobel 1 I.DerivativeX
+    sobel' !img = I.sobel 1 I.DerivativeX `I.apply` img
 
     scharr' :: Grey -> I.Manifest Int16
-    scharr' !img = img `I.apply` I.scharr I.DerivativeX
+    scharr' !img = I.scharr I.DerivativeX `I.apply` img
 
     floodFill' :: Grey -> I.Grey
     floodFill' img =
@@ -174,7 +175,7 @@ main = do
         let filt :: I.SeparableFilter I.GreyPixel Float I.GreyPixel
             filt = I.adaptiveThreshold (I.GaussianKernel Nothing) 1 0
                                        (I.BinaryThreshold 0 255)
-        in img `I.apply` filt
+        in filt `I.apply` img
 
     miniature !rgb =
         let Z :. h :. w = I.shape rgb
