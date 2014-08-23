@@ -13,9 +13,7 @@ import Control.Monad.Primitive (PrimMonad (..))
 import Data.RatioInt (RatioInt, (%))
 
 import Vision.Image.Interpolate (Interpolable, bilinearInterpol)
-import Vision.Image.Mutable (
-      MutableImage (Freezed, mShape, linearRead, linearWrite)
-    )
+import Vision.Image.Mutable (MutableImage (..))
 import Vision.Image.Type (
       MaskedImage (..), Image (..), ImageChannel, FromFunction (..)
     )
