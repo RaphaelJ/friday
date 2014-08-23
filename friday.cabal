@@ -1,5 +1,5 @@
 name:                   friday
-version:                0.0.0
+version:                0.1
 synopsis:               A functionnal image processing library for Haskell.
 homepage:               https://github.com/RaphaelJ/friday
 license:                LGPL-3
