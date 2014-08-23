@@ -174,5 +174,5 @@ as reference:
 
 ![Benchmark results](bench_results.png)
 
-The main reason that performances are currently bellow OpenCV is that OpenCV
+The main reason that performances are currently below OpenCV is that OpenCV
 relies heavily on SIMD instructions.
