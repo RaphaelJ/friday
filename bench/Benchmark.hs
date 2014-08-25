@@ -14,7 +14,8 @@ import qualified Vision.Histogram as H
 import Vision.Primitive
 
 path :: FilePath
-path = "bench/image.jpg"
+path = "/home/rapha/Common_Kingfisher_Alcedo_atthis.jpg"
+-- path = "bench/image.jpg"
 
 main :: IO ()
 main = do

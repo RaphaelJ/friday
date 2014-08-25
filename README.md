@@ -15,7 +15,7 @@ images from a wide variety of formats, including BMP, JPG, PNG, GIF, ICO and
 PSD.
 
 The library currently support four color-spaces: RGB, RGBA, HSV and gray-scale
-images. Images can be converted between these color-paces.
+images. Images can be converted between these color-spaces.
 
 At this moment, the following features and algorithms have been implemented:
 
@@ -66,9 +66,9 @@ intermediate structures when working with delayed images.
 images.
 
 The `convert` method from the `convertible` package can be used to convert
-images between color spaces and representations.
+images between color-spaces and representations.
 
-As most functions work with both representations and all color spaces, you need
+As most functions work with both representations and all color-spaces, you need
 to help the type checker to choose the correct return type.
 
 For example, if you want to convert an RGBA image to a greyscale image, use a

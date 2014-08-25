@@ -48,9 +48,9 @@ resize !method !size'@(Z :. h' :. w') !img =
                 !widthMiddle  = (widthRatio - 1) / 2
                 !heightRatio  = double h / double h'
                 !heightMiddle = (heightRatio - 1) / 2
-                line !y' = truncate $ double y' * heightRatio + heightMiddle
+                line !y' = truncate $ (double y' + 0.5) * heightRatio - 0.5
                 {-# INLINE line #-}
-                col  !x' = truncate $ double x' * widthRatio  + widthMiddle
+                col  !x' = truncate $ (double x' + 0.5) * widthRatio  - 0.5
                 {-# INLINE col #-}
                 f !y !(Z :. _ :. x') = let !x = col x'
                                        in img `index` ix2 y x
@@ -61,9 +61,9 @@ resize !method !size'@(Z :. h' :. w') !img =
                 !widthMiddle  = (widthRatio - 1) / 2
                 !heightRatio  = double h / double h'
                 !heightMiddle = (heightRatio - 1) / 2
-                line !y' = round $ double y' * heightRatio + heightMiddle
+                line !y' = round $ (double y' + 0.5) * heightRatio - 0.5
                 {-# INLINE line #-}
-                col  !x' = round $ double x' * widthRatio  + widthMiddle
+                col  !x' = round $ (double x' + 0.5) * widthRatio  - 0.5
                 {-# INLINE col #-}
                 f !y !(Z :. _ :. x') = let !x = col x'
                                        in img `index` ix2 y x
@@ -71,20 +71,20 @@ resize !method !size'@(Z :. h' :. w') !img =
             in fromFunctionLine size' line f
         Bilinear ->
             let !widthRatio  = w % w'
-                !widthMiddle = (widthRatio - 1) / 2
                 !maxWidth = ratio (w - 1)
                 !heightRatio = (h - 1) % (h' - 1)
-                !heightMiddle = (heightRatio - 1) / 2
                 !maxHeight = ratio (h - 1)
+
                 -- Limits the interpolation to inner pixel as first and last
                 -- pixels can have out of bound coordinates.
                 bound !limit = min limit . max 0
                 {-# INLINE bound #-}
-                line !y' = bound maxHeight $   ratio y' * heightRatio
-                                             + heightMiddle
+
+                line !y' = bound maxHeight $   (ratio y' + 0.5) * heightRatio
+                                             - 0.5
                 {-# INLINE line #-}
-                col  !x' = bound maxWidth  $   ratio x' * widthRatio
-                                             + widthMiddle
+                col  !x' = bound maxWidth  $   (ratio x' + 0.5) * widthRatio
+                                             - 0.5
                 {-# INLINE col #-}
                 f !y !x _ = img `bilinearInterpol` RPoint x y
                 {-# INLINE f #-}
