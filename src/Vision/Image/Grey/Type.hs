@@ -16,8 +16,8 @@ import Vision.Image.Type (Pixel (..), Manifest, Delayed)
 import Vision.Primitive (Rect, Size)
 
 newtype GreyPixel = GreyPixel Word8
-    deriving (Bits, Bounded, Enum, Eq, FiniteBits, Integral, Num, Ord, Real
-            , Read, Show, Storable)
+    deriving (Bits, Bounded, Enum, Eq, Integral, Num, Ord, Real, Read, Show
+            , Storable)
 
 type Grey = Manifest GreyPixel
 

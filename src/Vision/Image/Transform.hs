@@ -45,9 +45,7 @@ resize !method !size'@(Z :. h' :. w') !img =
     case method of
         TruncateInteger ->
             let !widthRatio   = double w / double w'
-                !widthMiddle  = (widthRatio - 1) / 2
                 !heightRatio  = double h / double h'
-                !heightMiddle = (heightRatio - 1) / 2
                 line !y' = truncate $ (double y' + 0.5) * heightRatio - 0.5
                 {-# INLINE line #-}
                 col  !x' = truncate $ (double x' + 0.5) * widthRatio  - 0.5
@@ -58,9 +56,7 @@ resize !method !size'@(Z :. h' :. w') !img =
             in fromFunctionLine size' line f
         NearestNeighbor ->
             let !widthRatio   = double w / double w'
-                !widthMiddle  = (widthRatio - 1) / 2
                 !heightRatio  = double h / double h'
-                !heightMiddle = (heightRatio - 1) / 2
                 line !y' = round $ (double y' + 0.5) * heightRatio - 0.5
                 {-# INLINE line #-}
                 col  !x' = round $ (double x' + 0.5) * widthRatio  - 0.5
