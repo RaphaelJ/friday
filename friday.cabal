@@ -1,5 +1,5 @@
 name:                   friday
-version:                0.0.0
+version:                0.1.2
 synopsis:               A functionnal image processing library for Haskell.
 homepage:               https://github.com/RaphaelJ/friday
 license:                LGPL-3
@@ -8,13 +8,14 @@ author:                 Raphael Javaux <raphaeljavaux[at]gmail.com>
 maintainer:             Raphael Javaux <raphaeljavaux[at]gmail.com>
 
 description:            Friday provides functions to manipulate images in a
-                        functionnal way.
-                        The library is designed to be fast and generic.
+                        functional way.
+                        The library is designed to be fast, generic and
+                        type-safe.
                         .
                         The library uses FFI calls to the DevIL image library to
                         read images from a wide variety of formats, including
                         BMP, JPG, PNG, GIF, ICO and PSD. Except for I/Os, friday
-                        is entierly written in Haskell.
+                        is entirely written in Haskell.
                         .
                         Images can be represented in two representations:
                         .
@@ -22,22 +23,26 @@ description:            Friday provides functions to manipulate images in a
                         'Vector's ;
                         .
                         * the 'Delayed' representation uses functions to produce
-                        image. These can be combined to produce complex
-                        transformations. By some inlining, Haskell compilers are
-                        able to produce fast algorithms by removing intermediate
-                        structures.
+                        images pixels. These images can be combined to produce
+                        complex transformations. By some inlining, Haskell
+                        compilers are able to produce fast algorithms by
+                        removing intermediate structures.
                         .
-                        The library currently support three color spaces: RGB,
-                        RGBA, HSV and grayscale images.
+                        The library currently support four color spaces: RGB,
+                        RGBA, HSV and gray-scale images.
                         .
                         Please read our
-                        <https://github.com/RaphaelJ/friday/blob/master/README README>
+                        <https://github.com/RaphaelJ/friday/blob/master/README.md README>
                         to get a detailed usage and some examples.
 
 category:               Graphics
 stability:              Experimental
 build-type:             Simple
 cabal-version:          >= 1.10
+
+Flag examples
+    Description:   Compiles examples from the example/ directory.
+    Default:       False
 
 library
     exposed-modules:    Vision.Detector.Edge
@@ -81,7 +86,68 @@ library
 
     Extra-Libraries:    IL
 
-Benchmark benchmark
+executable      delayed
+    if !flag(examples)
+        Buildable: False
+
+    main-is:            Delayed.hs
+    ghc-options:        -Wall -O2 -rtsopts
+    hs-source-dirs:     example/
+    default-language:   Haskell2010
+
+    build-depends:      base                    >= 4            && < 5
+                      , friday
+
+executable      canny
+    if !flag(examples)
+        Buildable: False
+
+    main-is:            Canny.hs
+    ghc-options:        -Wall -O2 -rtsopts
+    hs-source-dirs:     example/
+    default-language:   Haskell2010
+
+    build-depends:      base                    >= 4            && < 5
+                      , friday
+
+executable      gaussian_blur
+    if !flag(examples)
+        Buildable: False
+
+    main-is:            GaussianBlur.hs
+    ghc-options:        -Wall -O2 -rtsopts
+    hs-source-dirs:     example/
+    default-language:   Haskell2010
+
+    build-depends:      base                    >= 4            && < 5
+                      , friday
+
+executable      histogram
+    if !flag(examples)
+        Buildable: False
+
+    main-is:            Histogram.hs
+    ghc-options:        -Wall -O2 -rtsopts
+    hs-source-dirs:     example/
+    default-language:   Haskell2010
+
+    build-depends:      base                    >= 4            && < 5
+                      , friday
+
+executable      resize_image
+    if !flag(examples)
+        Buildable: False
+
+    main-is:            ResizeImage.hs
+    ghc-options:        -Wall -O2 -rtsopts
+    hs-source-dirs:     example/
+    default-language:   Haskell2010
+
+    build-depends:      base                    >= 4            && < 5
+                      , friday
+
+
+Benchmark       benchmark
     type:               exitcode-stdio-1.0
 
     main-is:            Benchmark.hs
@@ -93,7 +159,7 @@ Benchmark benchmark
                       , criterion               >= 1.0          && < 2.0
                       , friday
 
-Test-Suite test
+Test-Suite      test
     type:       exitcode-stdio-1.0
 
     main-is:            Test.hs

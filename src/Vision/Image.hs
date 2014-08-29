@@ -9,37 +9,9 @@
 -- The 'Delayed' image should be used as intermediate representations of
 -- complex image transformations.
 --
--- The following example reads an image from a file, applies a composition of
--- transformations to create a centred and squared miniature and then writes
--- the result to a file:
---
--- @
--- import Vision.Image
--- import Vision.Primitive (Z (..), (:.) (..), ix2)
---
--- main = do
---      io <- 'load' \"image.png\"
---
---      case io of
---          Left _err -> putStrLn "Error while reading the image."
---          Right img -> do
---              let rgb = 'convert' io :: 'RGB'
---                  Z :. h :. w  = 'shape' rgb
---                  miniature | w > h =
---                      resizeSquare $ 'crop' ('Rect' ((w - h) `quot` 2) 0 h h)
---                                            rgb
---                            | otherwise =
---                      resizeSquare $ 'crop' ('Rect' 0 ((h - w) `quot` 2) w w)
---                                            rgb
---
---              'save' \"miniature.png\" miniature
---   where
---      resizeSquare :: 'RGBDelayed' -> 'RGB'
---      resizeSquare !img = 'resize' 'Bilinear' ('ix2' 150 150) img
--- @
---
--- Notice as 'crop' returns a 'Delayed' image and thus doesn't allocate an
--- intermediate image.
+-- Please refer to our
+-- <https://github.com/RaphaelJ/friday/blob/master/README.md README file> for a
+-- detailed usage and examples.
 module Vision.Image (
       module Vision.Image.Grey
     , module Vision.Image.Filter
