@@ -11,7 +11,7 @@
 module Vision.Histogram (
     -- * Types & helpers
       Histogram (..), HistogramShape (..), ToHistogram (..)
-    , index, linearIndex, map, assocs
+    , index, linearIndex, map, assocs, pixToBin
     -- * Histogram computations
     , histogram,  histogram2D, reduce, resize, cumulative, normalize
     -- * Images processing
@@ -56,7 +56,8 @@ data Histogram sh a = Histogram {
 -- | Subclass of 'Shape' which defines how to resize a shape so it will fit
 -- inside a resized histogram.
 class Shape sh => HistogramShape sh where
-    -- | Given a number of bins, reduces an index so it will be mapped to a bin.
+    -- | Given a number of bins of an histogram, reduces an index so it will be
+    -- mapped to a bin.
     toBin :: sh -- ^ The number of bins we are mapping to.
           -> sh -- ^ The number of possible values of the original index.
           -> sh -- ^ The original index.
@@ -144,6 +145,13 @@ assocs !(Histogram sh vec) = [ (ix, v) | ix <- shapeList sh
                                        | v <- V.toList vec ]
 {-# INLINE assocs #-}
 
+-- | Given the number of bins of an histogram and a given pixel, returns the
+-- corresponding bin.
+pixToBin size p =
+    let domain = domainSize p
+    in toBin size domain $! pixToIndex p
+{-# INLINE pixToBin #-}
+
 -- | Computes an histogram from a (possibly) multi-channel image.
 --
 -- If the size of the histogram is not given, there will be as many bins as the
@@ -162,14 +170,13 @@ histogram mSize img =
     in Histogram size (V.accumulate_ (+) initial ixs ones)
   where
     !size = case mSize of Just s  -> s
-                          Nothing -> maxSize
-    !maxSize = domainSize (I.pixel img)
+                          Nothing -> domainSize (I.pixel img)
     !nChans = I.nChannels img
     !nPixs = shapeLength (I.shape img) * nChans
     !nBins = shapeLength size
 
     toIndex !p = toLinearIndex size $!
-        case mSize of Just _  -> toBin size maxSize $! pixToIndex p
+        case mSize of Just _  -> pixToBin   size p
                       Nothing -> pixToIndex p
     {-# INLINE toIndex #-}
 {-# SPECIALIZE histogram :: Maybe DIM1 -> Grey -> Histogram DIM1 Int32
