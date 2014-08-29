@@ -147,6 +147,8 @@ assocs !(Histogram sh vec) = [ (ix, v) | ix <- shapeList sh
 
 -- | Given the number of bins of an histogram and a given pixel, returns the
 -- corresponding bin.
+pixToBin :: (HistogramShape (PixelValueSpace p), ToHistogram p)
+         => PixelValueSpace p -> p -> PixelValueSpace p
 pixToBin size p =
     let domain = domainSize p
     in toBin size domain $! pixToIndex p
