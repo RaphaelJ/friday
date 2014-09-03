@@ -150,7 +150,7 @@ assocs !(Histogram sh vec) = [ (ix, v) | ix <- shapeList sh
 pixToBin :: (HistogramShape (PixelValueSpace p), ToHistogram p)
          => PixelValueSpace p -> p -> PixelValueSpace p
 pixToBin size p =
-    let domain = domainSize p
+    let !domain = domainSize p
     in toBin size domain $! pixToIndex p
 {-# INLINE pixToBin #-}
 
