@@ -6,7 +6,7 @@ module Vision.Image.RGBA.Specialize () where
 import Data.Int
 
 import Vision.Histogram (Histogram, histogram, histogram2D)
-import Vision.Image.RGBA.Type (RGBA, RGBAPixel)
+import Vision.Image.RGBA.Type (RGBA)
 import Vision.Image.Transform (
       InterpolMethod, crop, resize, horizontalFlip, verticalFlip
     )

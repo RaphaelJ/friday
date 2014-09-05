@@ -16,17 +16,9 @@ import Vision.Primitive (DIM3, DIM5, Rect, Size)
                          ,  Maybe DIM3 -> RGB  -> Histogram DIM3 Double
                          ,  Maybe DIM3 -> RGB  -> Histogram DIM3 Float  #-}
 
---                          ,  Maybe DIM4 -> RGBA -> Histogram DIM4 Int32
---                          ,  Maybe DIM4 -> RGBA -> Histogram DIM4 Double
---                          ,  Maybe DIM4 -> RGBA -> Histogram DIM4 Float
-
 {-# SPECIALIZE histogram2D :: DIM5 -> RGB  -> Histogram DIM5 Int32
                            ,  DIM5 -> RGB  -> Histogram DIM5 Double
                            ,  DIM5 -> RGB  -> Histogram DIM5 Float  #-}
-
---                            ,  DIM6 -> RGBA -> Histogram DIM6 Int32
---                            ,  DIM6 -> RGBA -> Histogram DIM6 Double
---                            ,  DIM6 -> RGBA -> Histogram DIM6 Float
 
 {-# SPECIALIZE crop           :: Rect -> RGB -> RGB #-}
 {-# SPECIALIZE resize         :: InterpolMethod -> Size -> RGB -> RGB #-}

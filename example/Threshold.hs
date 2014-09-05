@@ -11,7 +11,8 @@ main = do
     io <-     either (\x -> error $ "Load failed: " ++ show x) return
           =<< load Nothing input
 
-    let grey = convert io :: Grey
+    let grey        = convert io                        :: Grey
+        thresholded = otsu (BinaryThreshold 0 255) grey :: Grey
 
-    _ <- save output (otsu grey)
+    _ <- save output thresholded
     return ()

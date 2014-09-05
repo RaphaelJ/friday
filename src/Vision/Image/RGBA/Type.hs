@@ -10,11 +10,7 @@ import Foreign.Storable (Storable (..))
 import Foreign.Ptr (castPtr, plusPtr)
 
 import Vision.Image.Interpolate (Interpolable (..))
-import Vision.Image.Transform (
-      InterpolMethod, crop, resize, horizontalFlip, verticalFlip
-    )
 import Vision.Image.Type (Pixel (..), Manifest, Delayed)
-import Vision.Primitive (Rect, Size)
 
 data RGBAPixel = RGBAPixel {
       rgbaRed   :: {-# UNPACK #-} !Word8, rgbaGreen :: {-# UNPACK #-} !Word8
