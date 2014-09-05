@@ -67,8 +67,3 @@ instance Interpolable RGBAPixel where
             , rgbaBlue = f aBlue bBlue, rgbaAlpha = f aAlpha bAlpha
             }
     {-# INLINE interpol #-}
-
-{-# SPECIALIZE crop           :: Rect -> RGBA -> RGBA #-}
-{-# SPECIALIZE resize         :: InterpolMethod -> Size -> RGBA -> RGBA #-}
-{-# SPECIALIZE horizontalFlip :: RGBA -> RGBA #-}
-{-# SPECIALIZE verticalFlip   :: RGBA -> RGBA #-}

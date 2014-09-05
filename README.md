@@ -14,7 +14,7 @@ The library uses FFI calls to the *DevIL* image library (written in C) to read
 images from a wide variety of formats, including BMP, JPG, PNG, GIF, ICO and
 PSD.
 
-The library currently support four color-spaces: RGB, RGBA, HSV and gray-scale
+The library currently supports four color-spaces: RGB, RGBA, HSV and gray-scale
 images. Images can be converted between these color-spaces.
 
 At this moment, the following features and algorithms have been implemented:
@@ -161,7 +161,9 @@ toBlackAndWhite img =
 
 * [Detect edges using Canny's edge detector](example/Canny.hs) ;
 
-* [Resize an image](example/ResizeImage.hs).
+* [Resize an image](example/ResizeImage.hs) ;
+
+* [Thresholds an image using the Otsu's method](example/Threshold.hs).
 
 # Benchmarks
 

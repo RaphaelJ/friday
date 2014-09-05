@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, GADTs #-}
+{-# LANGUAGE BangPatterns, FlexibleContexts, GADTs #-}
 
 module Vision.Image.Threshold (
       ThresholdType (..)
@@ -13,8 +13,7 @@ import Vision.Image.Filter (Filter (..), SeparableFilter, blur, gaussianBlur)
 import Vision.Image.Type (ImagePixel, FunctorImage)
 import Vision.Histogram
 import Vision.Histogram as H
-import Vision.Image.Grey
-import Vision.Primitive.Shape (ix1, shapeLength)
+import Vision.Primitive.Shape (shapeLength)
 import qualified Vision.Image.Type as I
 
 import qualified Data.Vector.Storable as V
@@ -54,6 +53,7 @@ data AdaptiveThresholdKernel acc where
                    => Maybe acc -> AdaptiveThresholdKernel acc
 
 -- | Applies a thresholding adaptively.
+--
 -- Compares every pixel to its surrounding ones in the kernel of the given
 -- radius.
 adaptiveThreshold :: (Integral src, Num src, Ord src, Storable acc)
@@ -80,22 +80,40 @@ adaptiveThreshold !kernelType !radius !thres !thresType =
                 Truncate        ifTrue         -> if cond then ifTrue else pix
 {-# INLINE adaptiveThreshold #-}
 
-otsu :: Grey -> Grey
-otsu img = threshold (<=thresh) (BinaryThreshold minBound maxBound) img
+-- | Applies a clustering-based image thresholding using the Otsu's method.
+--
+-- See <https://en.wikipedia.org/wiki/Otsu's_method>.
+otsu :: ( HistogramShape (PixelValueSpace (ImagePixel src))
+        , ToHistogram (ImagePixel src), FunctorImage src res
+        , Ord (ImagePixel src), Num (ImagePixel src), Enum (ImagePixel src))
+     => ThresholdType (ImagePixel src) (ImagePixel res) -> src -> res
+otsu !thresType !img =
+    threshold (<= thresh) thresType img
  where
-  thresh =
-    let hist       = histogram (Just $ ix1 256) img
-        histV      = H.vector hist
-        tot        = shapeLength (I.shape img)
-        runningMul = V.zipWith (\v i -> v * i) histV (V.fromList [0..255])
-        sm         = fromIntegral (V.sum $ V.drop 1 runningMul) :: Double
-        wB         = V.scanl1 (+) histV
-        wF         = V.map (\x -> tot - x) wB
-        sumB       = V.scanl1 (+) runningMul
-        mB         = V.zipWith (\n d -> if d == 0 then 1 else fromIntegral n / fromIntegral d :: Double) sumB wB
-        mF         = V.zipWith (\b f -> if f == 0 then 1 else (sm - fromIntegral b) / fromIntegral f) sumB wF
-        between    = V.zipWith4 (\x y b f -> fromIntegral x * fromIntegral y * (b-f)^two) wB wF mB mF
-    in snd $ VU.maximum (VU.zip (VU.fromList $ V.toList between) (VU.fromList [0..255]))
-  two    = 2 :: Int
+    !thresh =
+        let hist       = histogram Nothing img
+            histV      = H.vector hist
+            tot        = shapeLength (I.shape img)
+            runningMul = V.zipWith (\v i -> v * i) histV (V.fromList [0..255])
+            sm         = double (V.sum $ V.drop 1 runningMul)
+            wB         = V.scanl1 (+) histV
+            wF         = V.map (\x -> tot - x) wB
+            sumB       = V.scanl1 (+) runningMul
+            mB         = V.zipWith (\n d -> if d == 0 then 1
+                                                      else double n / double d)
+                                   sumB wB
+            mF         = V.zipWith (\b f -> if f == 0 then 1
+                                                      else   (sm - double b)
+                                                           / double f)
+                                   sumB wF
+            between    = V.zipWith4 (\x y b f ->   double x * double y
+                                                 * (b - f)^two)
+                                    wB wF mB mF
+        in snd $ VU.maximum (VU.zip (VU.fromList $ V.toList between)
+                                    (VU.fromList [0..255]))
 
+    !two    = 2 :: Int
+{-# INLINABLE otsu #-}
 
+double :: Integral a => a -> Double
+double = fromIntegral

@@ -124,6 +124,7 @@ main = do
         , bgroup "threshold" [
               bench "simple threshold"   $ whnf threshold'         grey
             , bench "adaptive threshold" $ whnf adaptiveThreshold' grey
+            , bench "Otsu's method"      $ whnf otsu'              grey
             ]
 
 
@@ -175,6 +176,9 @@ main = do
             filt = I.adaptiveThreshold (I.GaussianKernel Nothing) 1 0
                                        (I.BinaryThreshold 0 255)
         in filt `I.apply` img
+
+    otsu' :: Grey -> Grey
+    otsu' !img = I.otsu (I.BinaryThreshold 0 255) img
 
     miniature !rgb =
         let Z :. h :. w = I.shape rgb

@@ -1,5 +1,5 @@
 name:                   friday
-version:                0.1.4
+version:                0.1.5
 synopsis:               A functionnal image processing library for Haskell.
 homepage:               https://github.com/RaphaelJ/friday
 license:                LGPL-3
@@ -50,18 +50,22 @@ library
                         Vision.Image
                         Vision.Image.Grey
                         Vision.Image.Grey.Conversion
+                        Vision.Image.Grey.Specialize
                         Vision.Image.Grey.Type
                         Vision.Image.Filter
                         Vision.Image.HSV
                         Vision.Image.HSV.Conversion
+                        Vision.Image.HSV.Specialize
                         Vision.Image.HSV.Type
                         Vision.Image.Interpolate
                         Vision.Image.Mutable
                         Vision.Image.RGBA
                         Vision.Image.RGBA.Conversion
+                        Vision.Image.RGBA.Specialize
                         Vision.Image.RGBA.Type
                         Vision.Image.RGB
                         Vision.Image.RGB.Conversion
+                        Vision.Image.RGB.Specialize
                         Vision.Image.RGB.Type
                         Vision.Image.Storage
                         Vision.Image.Threshold
@@ -146,6 +150,17 @@ executable      resize_image
     build-depends:      base                    >= 4            && < 5
                       , friday
 
+executable      threshold
+    if !flag(examples)
+        Buildable: False
+
+    main-is:            Threshold.hs
+    ghc-options:        -Wall -O2 -rtsopts
+    hs-source-dirs:     example/
+    default-language:   Haskell2010
+
+    build-depends:      base                    >= 4            && < 5
+                      , friday
 
 Benchmark       benchmark
     type:               exitcode-stdio-1.0

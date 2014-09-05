@@ -10,11 +10,7 @@ import Foreign.Storable (Storable (..))
 import Foreign.Ptr (castPtr, plusPtr)
 
 import Vision.Image.Interpolate (Interpolable (..))
-import Vision.Image.Transform (
-      InterpolMethod, crop, resize, horizontalFlip, verticalFlip
-    )
 import Vision.Image.Type (Pixel (..), Manifest, Delayed)
-import Vision.Primitive (Rect, Size)
 
 data HSVPixel = HSVPixel {
       hsvHue   :: {-# UNPACK #-} !Word8, hsvSat :: {-# UNPACK #-} !Word8
@@ -74,8 +70,3 @@ instance Interpolable HSVPixel where
             , hsvValue = f aVal bVal
             }
     {-# INLINE interpol #-}
-
-{-# SPECIALIZE crop           :: Rect -> HSV -> HSV #-}
-{-# SPECIALIZE resize         :: InterpolMethod -> Size -> HSV -> HSV #-}
-{-# SPECIALIZE horizontalFlip :: HSV -> HSV #-}
-{-# SPECIALIZE verticalFlip   :: HSV -> HSV #-}

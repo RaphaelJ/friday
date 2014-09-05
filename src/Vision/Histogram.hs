@@ -26,15 +26,14 @@ import qualified Data.Vector.Storable as V
 import Foreign.Storable (Storable)
 import Prelude hiding (map)
 
-import Vision.Image (
-      Pixel, MaskedImage, Image, ImagePixel, FunctorImage
-    , Grey, GreyPixel (..), HSV, HSVPixel (..), RGBA, RGBAPixel (..)
-    , RGB, RGBPixel (..)
-    )
-import qualified Vision.Image as I
+import Vision.Image.Grey.Type (GreyPixel (..))
+import Vision.Image.HSV.Type  (HSVPixel (..))
+import Vision.Image.RGBA.Type (RGBAPixel (..))
+import Vision.Image.RGB.Type  (RGBPixel (..))
+import Vision.Image.Type (Pixel, MaskedImage, Image, ImagePixel, FunctorImage)
+import qualified Vision.Image.Type as I
 import Vision.Primitive (
-      Z (..), (:.) (..), Shape (..), DIM1, DIM3, DIM4, DIM5, DIM6
-    , ix1, ix3, ix4
+      Z (..), (:.) (..), Shape (..), DIM1, DIM3, DIM4, DIM5, ix1, ix3, ix4
     )
 
 -- There is no rule to simplify the conversion from Int32 to Double and Float
@@ -161,8 +160,8 @@ pixToBin size p =
 --
 -- If the size of the histogram is specified, every bin of a given dimension
 -- will be of the same size (uniform histogram).
-histogram :: (MaskedImage i, ToHistogram (ImagePixel i), Storable a, Num a
-            , HistogramShape (PixelValueSpace (ImagePixel i)))
+histogram :: ( MaskedImage i, ToHistogram (ImagePixel i), Storable a, Num a
+             , HistogramShape (PixelValueSpace (ImagePixel i)))
          => Maybe (PixelValueSpace (ImagePixel i)) -> i
          -> Histogram (PixelValueSpace (ImagePixel i)) a
 histogram mSize img =
@@ -181,18 +180,6 @@ histogram mSize img =
         case mSize of Just _  -> pixToBin   size p
                       Nothing -> pixToIndex p
     {-# INLINE toIndex #-}
-{-# SPECIALIZE histogram :: Maybe DIM1 -> Grey -> Histogram DIM1 Int32
-                         ,  Maybe DIM1 -> Grey -> Histogram DIM1 Double
-                         ,  Maybe DIM1 -> Grey -> Histogram DIM1 Float
-                         ,  Maybe DIM3 -> HSV  -> Histogram DIM3 Int32
-                         ,  Maybe DIM3 -> HSV  -> Histogram DIM3 Double
-                         ,  Maybe DIM3 -> HSV  -> Histogram DIM3 Float
-                         ,  Maybe DIM4 -> RGBA -> Histogram DIM4 Int32
-                         ,  Maybe DIM4 -> RGBA -> Histogram DIM4 Double
-                         ,  Maybe DIM4 -> RGBA -> Histogram DIM4 Float
-                         ,  Maybe DIM3 -> RGB  -> Histogram DIM3 Int32
-                         ,  Maybe DIM3 -> RGB  -> Histogram DIM3 Double
-                         ,  Maybe DIM3 -> RGB  -> Histogram DIM3 Float  #-}
 {-# INLINABLE histogram #-}
 
 -- | Similar to 'histogram' but adds two dimensions for the y and x-coordinates
@@ -205,8 +192,8 @@ histogram mSize img =
 --
 -- As there is no reason to create an histogram as large as the number of pixels
 -- of the image, a size is always needed.
-histogram2D :: (Image i, ToHistogram (ImagePixel i), Storable a, Num a
-            , HistogramShape (PixelValueSpace (ImagePixel i)))
+histogram2D :: ( Image i, ToHistogram (ImagePixel i), Storable a, Num a
+               , HistogramShape (PixelValueSpace (ImagePixel i)))
             => (PixelValueSpace (ImagePixel i)) :. Int :. Int -> i
             -> Histogram ((PixelValueSpace (ImagePixel i)) :. Int :. Int) a
 histogram2D size img =
@@ -226,18 +213,6 @@ histogram2D size img =
         let !ix = (pixToIndex p) :. y :. x
         in toLinearIndex size $! toBin size maxSize ix
     {-# INLINE toIndex #-}
-{-# SPECIALIZE histogram2D :: DIM3 -> Grey -> Histogram DIM3 Int32
-                           ,  DIM3 -> Grey -> Histogram DIM3 Double
-                           ,  DIM3 -> Grey -> Histogram DIM3 Float
-                           ,  DIM5 -> HSV  -> Histogram DIM5 Int32
-                           ,  DIM5 -> HSV  -> Histogram DIM5 Double
-                           ,  DIM5 -> HSV  -> Histogram DIM5 Float
-                           ,  DIM6 -> RGBA -> Histogram DIM6 Int32
-                           ,  DIM6 -> RGBA -> Histogram DIM6 Double
-                           ,  DIM6 -> RGBA -> Histogram DIM6 Float
-                           ,  DIM5 -> RGB  -> Histogram DIM5 Int32
-                           ,  DIM5 -> RGB  -> Histogram DIM5 Double
-                           ,  DIM5 -> RGB  -> Histogram DIM5 Float  #-}
 {-# INLINABLE histogram2D #-}
 
 -- Reshaping -------------------------------------------------------------------
@@ -320,9 +295,10 @@ normalize norm !hist@(Histogram _ vec) =
 -- @H@ the cumulative of the histogram normalized over an @L1@ norm.
 --
 -- See <https://en.wikipedia.org/wiki/Histogram_equalization>.
-equalizeImage :: (FunctorImage i i, Integral (ImagePixel i)
+equalizeImage :: ( FunctorImage i i, Integral (ImagePixel i)
                  , ToHistogram (ImagePixel i)
-                 , PixelValueSpace (ImagePixel i) ~ DIM1) => i -> i
+                 , PixelValueSpace (ImagePixel i) ~ DIM1)
+              => i -> i
 equalizeImage img =
     I.map equalizePixel img
   where
@@ -332,8 +308,6 @@ equalizeImage img =
     !cumNormalized' = map round cumNormalized           :: Histogram DIM1 Int32
     equalizePixel !val = fromIntegral $ cumNormalized' `index` ix1 (int val)
     {-# INLINE equalizePixel #-}
--- FIXME: GHC 7.8.2 fails to specialize
-{-# SPECIALIZE equalizeImage :: Grey -> Grey #-}
 {-# INLINABLE equalizeImage #-}
 
 -- Comparisons -----------------------------------------------------------------
