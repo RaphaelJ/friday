@@ -26,12 +26,13 @@ import qualified Data.Vector.Storable as V
 import Foreign.Storable (Storable)
 import Prelude hiding (map)
 
-import Vision.Image (
-      Pixel, MaskedImage, Image, ImagePixel, FunctorImage
-    , Grey, GreyPixel (..), HSV, HSVPixel (..), RGBA, RGBAPixel (..)
-    , RGB, RGBPixel (..)
-    )
-import qualified Vision.Image as I
+import Vision.Image.Type (Pixel, MaskedImage, ImagePixel, FunctorImage, Image)
+import qualified Vision.Image.Type as I
+import Vision.Image.Grey (Grey, GreyPixel(..))
+import Vision.Image.HSV (HSV, HSVPixel(..))
+import Vision.Image.RGBA (RGBA, RGBAPixel(..))
+import Vision.Image.RGB (RGB, RGBPixel(..))
+
 import Vision.Primitive (
       Z (..), (:.) (..), Shape (..), DIM1, DIM3, DIM4, DIM5, DIM6
     , ix1, ix3, ix4
