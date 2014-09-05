@@ -4,13 +4,21 @@ module Vision.Image.Threshold (
       ThresholdType (..)
     , threshold
     , AdaptiveThresholdKernel (..), adaptiveThreshold
+    , otsu
     ) where
 
 import Foreign.Storable (Storable)
 
 import Vision.Image.Filter (Filter (..), SeparableFilter, blur, gaussianBlur)
 import Vision.Image.Type (ImagePixel, FunctorImage)
+import Vision.Histogram
+import Vision.Histogram as H
+import Vision.Image.Grey
+import Vision.Primitive.Shape (ix1, shapeLength)
 import qualified Vision.Image.Type as I
+
+import qualified Data.Vector.Storable as V
+import qualified Data.Vector as VU
 
 -- | Specifies what to do with pixels matching the threshold predicate.
 --
@@ -71,3 +79,23 @@ adaptiveThreshold !kernelType !radius !thres !thresType =
                                                           else ifFalse
                 Truncate        ifTrue         -> if cond then ifTrue else pix
 {-# INLINE adaptiveThreshold #-}
+
+otsu :: Grey -> Grey
+otsu img = threshold (<=thresh) (BinaryThreshold minBound maxBound) img
+ where
+  thresh =
+    let hist       = histogram (Just $ ix1 256) img
+        histV      = H.vector hist
+        tot        = shapeLength (I.shape img)
+        runningMul = V.zipWith (\v i -> v * i) histV (V.fromList [0..255])
+        sm         = fromIntegral (V.sum $ V.drop 1 runningMul) :: Double
+        wB         = V.scanl1 (+) histV
+        wF         = V.map (\x -> tot - x) wB
+        sumB       = V.scanl1 (+) runningMul
+        mB         = V.zipWith (\n d -> if d == 0 then 1 else fromIntegral n / fromIntegral d :: Double) sumB wB
+        mF         = V.zipWith (\b f -> if f == 0 then 1 else (sm - fromIntegral b) / fromIntegral f) sumB wF
+        between    = V.zipWith4 (\x y b f -> fromIntegral x * fromIntegral y * (b-f)^two) wB wF mB mF
+    in snd $ VU.maximum (VU.zip (VU.fromList $ V.toList between) (VU.fromList [0..255]))
+  two    = 2 :: Int
+
+
