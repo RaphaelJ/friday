@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns, FlexibleContexts, FlexibleInstances, GADTs
-           , MultiParamTypeClasses, TypeFamilies #-}
+           , MultiParamTypeClasses, TypeFamilies, TupleSections
+           , ScopedTypeVariables #-}
 
 -- | Provides high level functions to define and apply filters on images.
 --
@@ -41,6 +42,8 @@ module Vision.Image.Filter (
     , blur, gaussianBlur
     -- ** Derivation
     , Derivative (..), scharr, sobel
+    -- ** ROI
+    , scwFilter
     ) where
 
 import Data.List
@@ -49,6 +52,7 @@ import qualified Data.Vector.Storable as V
 import Data.Word
 import Foreign.Storable (Storable)
 
+import qualified Vision.Image.Type as I
 import Vision.Image.Type (
       MaskedImage (..), Image (..), FromFunction (..)
     , Manifest, Delayed
@@ -92,6 +96,10 @@ type SeparableFilter src acc res = Filter src (SeparableKernel src acc)
 -- | Separable 2D filters which are not initialized with a value.
 type SeparableFilter1 src res    = Filter src (SeparableKernel src src)
                                           FilterFold1 src res
+
+-- | Separable 2D filters which are initialized based on the position.
+type SeparableFilter2 src acc res = Filter src (SeparableKernel src acc)
+                                          (FilterFoldWith acc) acc res
 
 -- | Defines how the center of the kernel will be determined.
 data KernelAnchor = KernelAnchor !DIM2 | KernelAnchorCenter
@@ -142,6 +150,12 @@ data FilterFold acc = FilterFold acc
 --
 -- This kind of initialization is needed by morphological filters.
 data FilterFold1 = FilterFold1
+
+-- | Uses the result of the provided function as the initial value.
+--
+-- This kind of initialization is needed by many sliding concurrent window
+-- (SCW) filters.
+data FilterFoldWith pix = FilterFoldWith (DIM2 -> pix)
 
 -- | Defines how image boundaries are extrapolated by the algorithms.
 --
@@ -489,6 +503,89 @@ instance (Image src, FromFunction res, SeparatelyFiltrable src res src_p
         {-# INLINE wrapper #-}
     {-# INLINE apply #-}
 
+-- | Separable filters initialized with a given value.
+instance (Image src, FromFunction res, SeparatelyFiltrable src res acc
+        , src_p ~ ImagePixel src, res_p ~ FromFunctionPixel res
+        , FromFunction      (SeparableFilterAccumulator src res acc)
+        , FromFunctionPixel (SeparableFilterAccumulator src res acc) ~ acc
+        , Image             (SeparableFilterAccumulator src res acc)
+        , ImagePixel        (SeparableFilterAccumulator src res acc) ~ acc
+        )
+        => Filterable src res (SeparableFilter2 src_p acc res_p)
+            where
+    apply !f !img =
+        fst $! wrapper img f
+      where
+        wrapper :: (Image src, FromFunction res
+            , FromFunction (SeparableFilterAccumulator src res acc)
+            , FromFunctionPixel (SeparableFilterAccumulator src res acc) ~ acc
+            , Image             (SeparableFilterAccumulator src res acc)
+            , ImagePixel        (SeparableFilterAccumulator src res acc) ~ acc)
+            => src
+            -> SeparableFilter2 (ImagePixel src) acc (FromFunctionPixel res)
+            -> (res, SeparableFilterAccumulator src res acc)
+        wrapper !src !(Filter ksize anchor kernel ini post interpol) =
+            (res, tmp)
+          where
+            !size@(Z :. ih :. iw) = shape src
+
+            !(Z :. kh  :. kw)  = ksize
+            !(Z :. kcy :. kcx) = kernelAnchor anchor ksize
+
+            !(SeparableKernel vert horiz) = kernel
+            !(FilterFoldWith iniF)            = ini
+
+            !tmp = fromFunction size $ \(!pt@(Z :. iy :. ix)) ->
+                        let !iy0 = iy - kcy
+                        in if iy0 >= 0 && iy0 + kh <= ih
+                              then goColumnSafe iy0 ix 0 (iniF pt)
+                              else goColumn     iy0 ix 0 (iniF pt)
+
+            !res = fromFunction size $ \(!pt@(Z :. iy :. ix)) ->
+                        let !ix0 = ix - kcx
+                            !pix = src `index` pt
+                        in post pix $! if ix0 >= 0 && ix0 + kw <= iw
+                                            then goLineSafe (iy * iw) ix0 0 (iniF pt)
+                                            else goLine     (iy * iw) ix0 0 (iniF pt)
+
+            goColumn !iy !ix !ky !acc
+                | ky < kh   =
+                    let !val  = case borderInterpolate interpol ih iy of
+                                    Left  iy'  -> src `index` ix2 iy' ix
+                                    Right val' -> val'
+                        !acc' = vert (ix1 ky) val acc
+                    in goColumn (iy + 1) ix (ky + 1) acc'
+                | otherwise = acc
+
+            goColumnSafe !iy !ix !ky !acc
+                | ky < kh   =
+                    let !val  = src `index` ix2 iy ix
+                        !acc' = vert (ix1 ky) val acc
+                    in goColumnSafe (iy + 1) ix (ky + 1) acc'
+                | otherwise = acc
+
+            goLine !linearIY !ix !kx !acc
+                | kx < kw   =
+                    let !val =
+                            case borderInterpolate interpol iw ix of
+                                Left  ix'-> tmp `linearIndex` (linearIY + ix')
+                                Right _  -> constLine acc
+                        !acc' = horiz (ix1 kx) val acc
+                    in goLine linearIY (ix + 1) (kx + 1) acc'
+                | otherwise = acc
+
+            goLineSafe !linearIY !ix !kx !acc
+                | kx < kw   =
+                    let !val = tmp `linearIndex` (linearIY + ix)
+                        !acc' = horiz (ix1 kx) val acc
+                    in goLineSafe linearIY (ix + 1) (kx + 1) acc'
+                | otherwise = acc
+
+            constLine acc0 | BorderConstant val <- interpol =
+                             foldl' (\acc ky -> vert (ix1 ky) val acc) acc0 [0..kh-1]
+                           | otherwise                      = undefined
+        {-# INLINE wrapper #-}
+    {-# INLINE apply #-}
 -- Functions -------------------------------------------------------------------
 
 -- | Given a method to compute the kernel anchor and the size of the kernel,
@@ -682,6 +779,59 @@ sobel radius der =
              in V.fromList $ pows ++ (tail (reverse pows))
     !vec2' = V.fromList $ map negate [1..radius'] ++ [0] ++ [1..radius']
 {-# INLINE sobel #-}
+
+-- |This is a sliding concentric window filter that uses the ratio of the
+-- standard deviations.  It is a basis that needs generalized prior to
+-- upstreaming.
+--
+--   * Abstract out stddev (applyStd) ~~> f
+--   * Abstract out Ratio (applyGT)   ~~> g
+scwFilter :: forall img. ( Image img, FromFunctionPixel img ~  ImagePixel img
+                              , FromFunction img, Integral (FromFunctionPixel img)) => DIM2 -> DIM2 -> Double -> img -> img
+scwFilter szS szL beta img = applyGT (applyStd szS img) (applyStd szL img) img
+  where
+   -- If the standard deviation of the small ROI is greater than the stddev
+   -- of the large ROI then keep the original image.
+   applyGT smallROI largeROI origImg =
+       fromFunction (shape img) (\p -> (fromIntegral . fromEnum) ((index smallROI p / index largeROI p) < beta) * index origImg p)
+
+   applyStd :: DIM2 -> img -> Delayed Double
+   applyStd sz orig =
+       let meanImg   = apply (filterMean sz) orig :: Manifest Double
+           varImg    = mkVar sz orig meanImg      :: Manifest Double
+       in I.map sqrt varImg
+
+   -- given a mean image and an original, compute `average [(origPix - mean)^2 | origPix <- roi]`
+   mkVar :: ( Image imgDouble, ImagePixel imgDouble ~ Double, FromFunctionPixel imgDouble ~ Double
+            , Filterable img imgDouble (SeparableFilter2 (ImagePixel img) (Double,Double) Double)
+            , FromFunction imgDouble) =>
+            DIM2 -> img -> imgDouble -> imgDouble
+   mkVar (Z :. h :. w) orig meanImg = apply filterVar orig
+     where
+         filterVar :: SeparableFilter2 (ImagePixel img) (Double,Double) Double
+         filterVar = Filter (ix2 h w) KernelAnchorCenter (SeparableKernel vert horiz)
+                                    (FilterFoldWith ((0::Double,) . (meanImg `index`))) post BorderReplicate
+         vert _ !val !(!acc,!mean) = let acc' = acc + (fromIntegral val - mean)^two in acc' `seq` (acc',mean)
+         horiz _ !(!acc',m) !(!acc,_) = (acc + acc',m)
+
+         post _ !(!acc,_)           = acc / fromIntegral nPixs
+
+         !nPixs                   = h * w
+
+
+   two           = 2 :: Int
+
+   -- Notice this is identical to 'blur'
+   filterMean :: DIM2 -> SeparableFilter (ImagePixel img) Int Double
+   filterMean sz@(Z :. h :. w)
+            = Filter sz KernelAnchorCenter (SeparableKernel vert horiz)
+                       (FilterFold 0) post BorderReplicate
+        where
+            !nPixs             = h * w
+            vert  _ !val  !acc = acc + fromIntegral val
+            horiz _ !acc' !acc = acc + acc'
+            post _ acc = fromIntegral (acc `div` nPixs) :: Double
+{-# INLINE scwFilter #-}
 
 square :: Num a => a -> a
 square a = a * a

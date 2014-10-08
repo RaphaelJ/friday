@@ -11,7 +11,8 @@ import Vision.Image.Threshold (ThresholdType, otsu)
 import Vision.Image.Transform (
       InterpolMethod, crop, resize, horizontalFlip, verticalFlip
     )
-import Vision.Primitive (DIM1, DIM3, Rect, Size)
+import Vision.Primitive (DIM1, DIM2, DIM3, Rect, Size)
+import Vision.Image.Filter (scwFilter)
 
 {-# SPECIALIZE histogram :: Maybe DIM1 -> Grey -> Histogram DIM1 Int32
                          ,  Maybe DIM1 -> Grey -> Histogram DIM1 Double
@@ -31,3 +32,4 @@ import Vision.Primitive (DIM1, DIM3, Rect, Size)
 
 {-# SPECIALIZE otsu           :: ThresholdType GreyPixel GreyPixel -> Grey
                               -> Grey #-}
+{-# SPECIALISE scwFilter :: DIM2 -> DIM2 -> Double -> Grey -> Grey #-}

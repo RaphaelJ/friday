@@ -1,6 +1,6 @@
 {-# LANGUAGE BangPatterns, FlexibleContexts, FlexibleInstances
            , MultiParamTypeClasses, PatternGuards, TypeFamilies
-           , UndecidableInstances #-}
+           , UndecidableInstances, DatatypeContexts #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Vision.Image.Type (
@@ -29,7 +29,8 @@ import Data.Vector.Storable (
     )
 import Data.Vector.Storable.Mutable (new, write)
 import Data.Word
-import Foreign.Storable (Storable)
+import Foreign.Storable (Storable(..))
+import Foreign.Ptr (castPtr)
 import Prelude hiding (map, read)
 
 import Vision.Primitive (
@@ -79,6 +80,19 @@ instance Pixel Word32 where
     type PixelChannel Word32 = Word32
     pixNChannels _   = 1
     pixIndex     p _ = p
+
+instance Pixel (Double, Double) where
+    type PixelChannel (Double,Double) = (Double,Double)
+    pixNChannels _ = 1
+    pixIndex p _ = p
+
+instance Storable (Double,Double) where
+    poke ptr (a,b) = poke (castPtr ptr) a >> pokeByteOff (castPtr ptr) (sizeOf a) b
+    peek ptr = do a <- peek (castPtr ptr)
+                  b <- peekByteOff (castPtr ptr) (sizeOf a)
+                  return (a,b)
+    sizeOf ~(a,b) = sizeOf a + sizeOf b
+    alignment ~(a,_) = alignment a
 
 instance Pixel Word where
     type PixelChannel Word = Word
@@ -221,7 +235,7 @@ class (MaskedImage src, MaskedImage res) => FunctorImage src res where
 -- Manifest images -------------------------------------------------------------
 
 -- | Stores the image content in a 'Vector'.
-data Storable p => Manifest p = Manifest {
+data Storable p => Manifest p = Manifest { -- XXX TMD
       manifestSize   :: !Size
     , manifestVector :: !(Vector p)
     } deriving (Eq, Ord, Show)

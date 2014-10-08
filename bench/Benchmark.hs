@@ -55,6 +55,7 @@ main = do
             , bench "gaussian blur" $ whnf gaussianBlur' grey
             , bench "scharr"        $ whnf scharr' grey
             , bench "sobel"         $ whnf sobel' grey
+            , bench "scw"           $ whnf scw' grey
             ]
         , bgroup "flip" [
               bench "horizontal" $ whnf (I.horizontalFlip :: RGB -> RGB) rgb
@@ -156,6 +157,9 @@ main = do
 
     scharr' :: Grey -> I.Manifest Int16
     scharr' !img = I.scharr I.DerivativeX `I.apply` img
+
+    scw' :: Grey -> Grey
+    scw' !img = I.scwFilter (Z :. 5 :. 5) (Z :. 15 :. 15) 0.9 img
 
     floodFill' :: Grey -> I.Grey
     floodFill' img =
