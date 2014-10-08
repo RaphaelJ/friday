@@ -151,12 +151,12 @@ otsu !thresType !img =
 --
 -- > scw sizeWindowA sizeWindowB beta thresType img
 --
--- Let @σA@ be the standard deviation of the window A around a pixel and @σB@
+-- Let @σA@ be the standard deviation of a fist window around a pixel and @σB@
 -- be the standard deviation of another window around the same pixel.
 -- Then the pixel will match the threshold if @σB / σA >= beta@, and will be
 -- thresholded according to the given 'ThresholdType'.
 --
--- See <http://www.academypublisher.com/jcp/vol04/no08/jcp0408771777.pdf>
+-- See <http://www.academypublisher.com/jcp/vol04/no08/jcp0408771777.pdf>.
 scw :: ( Image src, Integral (ImagePixel src), FromFunction dst
        , Floating stdev, Fractional stdev, Ord stdev, Storable stdev)
     => Size -> Size -> stdev

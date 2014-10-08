@@ -156,8 +156,8 @@ instance SeparatelyFiltrable src (Delayed p) acc where
 -- kernel's accumulator, depending on the center coordinates in the image.
 --
 -- For most filters, the function will always return the same value (i.e.
--- defined as @const 0@), but this kind of initialization is needed by sliding
--- concurrent window (SCW) filters.
+-- defined as @const 0@), but this kind of initialization could be required for
+-- some filters.
 data FilterFold acc = FilterFold (DIM2 -> acc)
 
 -- | Uses the first pixel in the kernel as initial value. The kernel must not be
