@@ -4,7 +4,7 @@ import Vision.Image
 
 -- Thresholds an image by applying the Otsu's method.
 --
--- usage: ./threshold .png output.png
+-- usage: ./otsu .png output.png
 main :: IO ()
 main = do
     [input, output] <- getArgs

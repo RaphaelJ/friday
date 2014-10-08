@@ -1,19 +1,30 @@
 {-# LANGUAGE BangPatterns, FlexibleContexts, GADTs #-}
 
 module Vision.Image.Threshold (
-      ThresholdType (..)
+      ThresholdType (..), thresholdType
     , threshold
-    , AdaptiveThresholdKernel (..), adaptiveThreshold
+    , AdaptiveThresholdKernel (..), AdaptiveThreshold, adaptiveThreshold
     , otsu
+    , scw
     ) where
 
+import Data.Int
 import Foreign.Storable (Storable)
 
-import Vision.Image.Filter (Filter (..), SeparableFilter, blur, gaussianBlur)
-import Vision.Image.Type (ImagePixel, FunctorImage)
-import Vision.Histogram
-import Vision.Histogram as H
-import Vision.Primitive.Shape (shapeLength)
+import Vision.Image.Filter (
+      Filter (..), BoxFilter, SeparableFilter, Kernel (..)
+    , KernelAnchor (KernelAnchorCenter), FilterFold (..)
+    , BorderInterpolate (BorderReplicate)
+    , apply, blur, gaussianBlur, Mean, mean)
+import Vision.Image.Type (
+      Image, ImagePixel, FromFunction (..), FunctorImage, Manifest
+    , (!), shape, delayed, manifest
+    )
+import Vision.Histogram (
+      HistogramShape, PixelValueSpace, ToHistogram, histogram
+    )
+import qualified Vision.Histogram as H
+import Vision.Primitive (Z (..), (:.) (..), Size, shapeLength)
 import qualified Vision.Image.Type as I
 
 import qualified Data.Vector.Storable as V
@@ -25,19 +36,37 @@ import qualified Data.Vector as VU
 -- pixels by @b@.
 --
 -- @'Truncate' a@ will replace matching pixels by @a@.
+--
+-- @'TruncateInv' a@ will replace non-matching pixels by @a@.
 data ThresholdType src res where
     BinaryThreshold :: res -> res -> ThresholdType src res
     Truncate        :: src        -> ThresholdType src src
+    TruncateInv     :: src        -> ThresholdType src src
+
+-- | Given the thresholding method, a boolean indicating if the pixel match the
+-- thresholding condition and the pixel, returns the new pixel value.
+thresholdType :: ThresholdType src res -> Bool -> src -> res
+thresholdType (BinaryThreshold ifTrue ifFalse) match _   | match     = ifTrue
+                                                         | otherwise = ifFalse
+thresholdType (Truncate        ifTrue)         match pix | match     = ifTrue
+                                                         | otherwise = pix
+thresholdType (TruncateInv     ifFalse)        match pix | match     = pix
+                                                         | otherwise = ifFalse
+{-# INLINE thresholdType #-}
+
+-- -----------------------------------------------------------------------------
 
 -- | Applies the given predicate and threshold policy on the image.
 threshold :: FunctorImage src res
           => (ImagePixel src -> Bool)
           -> ThresholdType (ImagePixel src) (ImagePixel res) -> src -> res
-threshold !cond !(BinaryThreshold ifTrue ifFalse) !img =
-    I.map (\pix -> if cond pix then ifTrue else ifFalse) img
-threshold !cond !(Truncate        ifTrue)         !img =
-    I.map (\pix -> if cond pix then ifTrue else pix)     img
+threshold !cond !thresType =
+    I.map (\pix -> thresholdType thresType (cond pix) pix)
 {-# INLINE threshold #-}
+
+-- -----------------------------------------------------------------------------
+
+type AdaptiveThreshold src acc res = SeparableFilter src () acc res
 
 -- | Defines how pixels of the kernel of the adaptive threshold will be
 -- weighted.
@@ -52,7 +81,7 @@ data AdaptiveThresholdKernel acc where
     GaussianKernel :: (Floating acc, RealFrac acc)
                    => Maybe acc -> AdaptiveThresholdKernel acc
 
--- | Applies a thresholding adaptively.
+-- | Creates an adaptive thresholding filter.
 --
 -- Compares every pixel to its surrounding ones in the kernel of the given
 -- radius.
@@ -63,7 +92,7 @@ adaptiveThreshold :: (Integral src, Num src, Ord src, Storable acc)
                          -- kernel average. The pixel is thresholded if
                          -- @pixel_value - kernel_mean > difference@ where
                          -- difference if this number. Can be negative.
-                  -> ThresholdType src res -> SeparableFilter src acc res
+                  -> ThresholdType src res -> AdaptiveThreshold src acc res
 adaptiveThreshold !kernelType !radius !thres !thresType =
     kernelFilter { fPost = post }
   where
@@ -71,14 +100,13 @@ adaptiveThreshold !kernelType !radius !thres !thresType =
         case kernelType of MeanKernel         -> blur         radius
                            GaussianKernel sig -> gaussianBlur radius sig
 
-    post !pix !acc =
-        let !acc' = (fPost kernelFilter) pix acc
+    post ix pix ini acc =
+        let !acc' = (fPost kernelFilter) ix pix ini acc
             !cond = (pix - acc') > thres
-        in case thresType of
-                BinaryThreshold ifTrue ifFalse -> if cond then ifTrue
-                                                          else ifFalse
-                Truncate        ifTrue         -> if cond then ifTrue else pix
+        in thresholdType thresType cond pix
 {-# INLINE adaptiveThreshold #-}
+
+-- -----------------------------------------------------------------------------
 
 -- | Applies a clustering-based image thresholding using the Otsu's method.
 --
@@ -114,6 +142,62 @@ otsu !thresType !img =
 
     !two    = 2 :: Int
 {-# INLINABLE otsu #-}
+
+-- -----------------------------------------------------------------------------
+
+-- | This is a sliding concentric window filter (SCW) that uses the ratio of the
+-- standard deviations of two sliding windows centered on a same point to detect
+-- regions of interest (ROI).
+--
+-- > scw sizeWindowA sizeWindowB beta thresType img
+--
+-- Let @σA@ be the standard deviation of the window A around a pixel and @σB@
+-- be the standard deviation of another window around the same pixel.
+-- Then the pixel will match the threshold if @σB / σA >= beta@, and will be
+-- thresholded according to the given 'ThresholdType'.
+--
+-- See <http://www.academypublisher.com/jcp/vol04/no08/jcp0408771777.pdf>
+scw :: ( Image src, Integral (ImagePixel src), FromFunction dst
+       , Floating stdev, Fractional stdev, Ord stdev, Storable stdev)
+    => Size -> Size -> stdev
+    -> ThresholdType (ImagePixel src) (FromFunctionPixel dst) -> src -> dst
+scw !sizeA !sizeB !beta !thresType !img =
+    betaThreshold (stdDev sizeA) (stdDev sizeB)
+  where
+    betaThreshold a b =
+        fromFunction (shape img) $ \pt ->
+            let !cond = (b ! pt) / (a ! pt) < beta
+            in thresholdType thresType cond (img ! pt)
+
+    stdDev size =
+       let filt :: (Integral src, Fractional res) => Mean src Int16 res
+           filt     = mean size
+           !meanImg = manifest $ apply filt img
+           !varImg  = manifest $ apply (variance size meanImg) img
+       in delayed $ I.map sqrt varImg
+{-# INLINABLE scw #-}
+
+-- | Given a mean image and an original image, computes the variance of the
+-- kernel of the given size.
+--
+-- @average [ (origPix - mean)^2 | origPix <- kernel pixels on original ]@.
+variance :: (Integral src, Fractional res, Storable res)
+         => Size -> Manifest res -> BoxFilter src res res res
+variance !size@(Z :. h :. w) !meanImg =
+    Filter size KernelAnchorCenter (Kernel kernel) (\pt _ -> meanImg ! pt)
+           (FilterFold (const 0)) post BorderReplicate
+  where
+    kernel !kernelMean _ !val !acc =
+        acc + square (fromIntegral val - kernelMean)
+
+    !nPixsFactor = 1 / (fromIntegral $! h * w)
+    post _ _ _ !acc  = acc * nPixsFactor
+{-# INLINABLE variance #-}
+
+-- -----------------------------------------------------------------------------
+
+square :: Num a => a -> a
+square a = a * a
 
 double :: Integral a => a -> Double
 double = fromIntegral

@@ -34,7 +34,7 @@ operators) ;
 
 * support for mutable and masked images ;
 
-* both adaptive and non-adaptive thresholding ;
+* non-adaptive, adaptive, Otsu and SCW thresholding methods ;
 
 * edge detection using
 [Canny's algorithm](http://en.wikipedia.org/wiki/Canny_edge_detector) ;

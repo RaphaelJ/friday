@@ -13,7 +13,7 @@ import qualified Data.Vector.Storable.Mutable as MV
 import Foreign.Storable (Storable)
 import Prelude hiding (read)
 
-import Vision.Image.Type (Image, Pixel, ImagePixel, Manifest (..))
+import Vision.Image.Type (Image, ImagePixel, Manifest (..))
 import Vision.Primitive (
       DIM2, Size, fromLinearIndex, toLinearIndex, shapeLength
     )
@@ -83,12 +83,12 @@ create action =
 
 -- Instances -------------------------------------------------------------------
 
-data Storable p => MutableManifest p s = MutableManifest {
+data MutableManifest p s = MutableManifest {
       mmSize   :: !Size
     , mmVector :: !(MVector s p)
     }
 
-instance (Pixel p, Storable p) => MutableImage (MutableManifest p) where
+instance Storable p => MutableImage (MutableManifest p) where
     type Freezed (MutableManifest p) = Manifest p
 
     mShape = mmSize

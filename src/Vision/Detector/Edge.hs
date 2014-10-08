@@ -6,10 +6,11 @@ import Control.Monad (when)
 import Control.Monad.ST.Safe (ST)
 import Data.Int
 import Data.Vector.Storable (enumFromN, forM_)
+import Foreign.Storable (Storable)
 
 import Vision.Image (
-      Image, Pixel, ImagePixel, Manifest, MutableManifest, Grey, Derivative (..)
-    , shape, index, linearIndex, fromFunction
+      Image, ImagePixel, Manifest, MutableManifest, Grey, DerivativeType (..)
+    , (!), shape, linearIndex, fromFunction
     , create, new', linearRead, linearWrite
     , apply, sobel
     )
@@ -34,7 +35,8 @@ data EdgeDirection = NorthSouth         -- ^ |
 --
 -- This function is specialized for 'Grey' images but is declared @INLINABLE@
 -- to be further specialized for new image types.
-canny :: (Image src, Integral (ImagePixel src), Bounded res, Eq res, Pixel res)
+canny :: ( Image src, Integral (ImagePixel src), Bounded res, Eq res
+         , Storable res)
       => Int
       -- ^ Radius of the Sobel's filter.
       -> Int32
@@ -68,10 +70,10 @@ canny !derivSize !lowThres !highThres !img =
     -- Gradient magnitude, squared.
     dxy :: Manifest Int32
     !dxy = fromFunction size $ \pt ->
-                  square (fromIntegral $ dx `index` pt)
-                + square (fromIntegral $ dy `index` pt)
+                  square (fromIntegral $ dx ! pt)
+                + square (fromIntegral $ dy ! pt)
 
-    newManifest :: (Pixel p, Bounded p) => ST s (MutableManifest p s)
+    newManifest :: (Storable p, Bounded p) => ST s (MutableManifest p s)
     newManifest = new' size minBound
 
     -- Visits a point and compares its gradient magnitude to the given
@@ -118,7 +120,7 @@ canny !derivSize !lowThres !highThres !img =
         in tryCompare ptDxy (>) (x1, y1) && tryCompare ptDxy (>=) (x2, y2)
 
     tryCompare !ptDxy op !(x, y)
-        | inShape size (ix2 y x) = ptDxy `op` fromIntegral (dxy `index` ix2 y x)
+        | inShape size (ix2 y x) = ptDxy `op` fromIntegral (dxy ! ix2 y x)
         | otherwise              = True
 
     -- Returns the direction of the edge, not to be confused with the direction

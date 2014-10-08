@@ -1,5 +1,5 @@
 name:                   friday
-version:                0.1.5
+version:                0.2.0
 synopsis:               A functionnal image processing library for Haskell.
 homepage:               https://github.com/RaphaelJ/friday
 license:                LGPL-3
@@ -90,6 +90,8 @@ library
 
     Extra-Libraries:    IL
 
+-- Examples --------------------------------------------------------------------
+
 executable      delayed
     if !flag(examples)
         Buildable: False
@@ -138,6 +140,18 @@ executable      histogram
     build-depends:      base                    >= 4            && < 5
                       , friday
 
+executable      otsu
+    if !flag(examples)
+        Buildable: False
+
+    main-is:            Otsu.hs
+    ghc-options:        -Wall -O2 -rtsopts
+    hs-source-dirs:     example/
+    default-language:   Haskell2010
+
+    build-depends:      base                    >= 4            && < 5
+                      , friday
+
 executable      resize_image
     if !flag(examples)
         Buildable: False
@@ -150,17 +164,19 @@ executable      resize_image
     build-depends:      base                    >= 4            && < 5
                       , friday
 
-executable      threshold
+executable      scw
     if !flag(examples)
         Buildable: False
 
-    main-is:            Threshold.hs
+    main-is:            SCW.hs
     ghc-options:        -Wall -O2 -rtsopts
     hs-source-dirs:     example/
     default-language:   Haskell2010
 
     build-depends:      base                    >= 4            && < 5
                       , friday
+
+-- Benchmarks & tests ----------------------------------------------------------
 
 Benchmark       benchmark
     type:               exitcode-stdio-1.0

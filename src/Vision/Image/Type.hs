@@ -1,6 +1,6 @@
 {-# LANGUAGE BangPatterns, FlexibleContexts, FlexibleInstances
            , MultiParamTypeClasses, PatternGuards, TypeFamilies
-           , UndecidableInstances, DatatypeContexts #-}
+           , UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Vision.Image.Type (
@@ -14,7 +14,7 @@ module Vision.Image.Type (
     -- * Delayed masked images
     , DelayedMask (..)
     -- * Functions
-    , nChannels, pixel
+    , (!), (!?), nChannels, pixel
     -- * Conversion
     , Convertible (..), convert, delay, compute
     -- * Types helpers
@@ -25,12 +25,12 @@ import Control.Applicative ((<$>))
 import Data.Convertible (Convertible (..), convert)
 import Data.Int
 import Data.Vector.Storable (
-      Vector, (!), create, enumFromN, forM_, generate, unfoldr
+      Vector, create, enumFromN, forM_, generate, unfoldr
     )
+import qualified Data.Vector.Storable as V
 import Data.Vector.Storable.Mutable (new, write)
 import Data.Word
-import Foreign.Storable (Storable(..))
-import Foreign.Ptr (castPtr)
+import Foreign.Storable (Storable)
 import Prelude hiding (map, read)
 
 import Vision.Primitive (
@@ -42,7 +42,7 @@ import Vision.Primitive (
 
 -- | Determines the number of channels and the type of each pixel of the image
 -- and how images are represented.
-class Storable p => Pixel p where
+class Pixel p where
     type PixelChannel p
 
     -- | Returns the number of channels of the pixel.
@@ -81,19 +81,6 @@ instance Pixel Word32 where
     pixNChannels _   = 1
     pixIndex     p _ = p
 
-instance Pixel (Double, Double) where
-    type PixelChannel (Double,Double) = (Double,Double)
-    pixNChannels _ = 1
-    pixIndex p _ = p
-
-instance Storable (Double,Double) where
-    poke ptr (a,b) = poke (castPtr ptr) a >> pokeByteOff (castPtr ptr) (sizeOf a) b
-    peek ptr = do a <- peek (castPtr ptr)
-                  b <- peekByteOff (castPtr ptr) (sizeOf a)
-                  return (a,b)
-    sizeOf ~(a,b) = sizeOf a + sizeOf b
-    alignment ~(a,_) = alignment a
-
 instance Pixel Word where
     type PixelChannel Word = Word
     pixNChannels _   = 1
@@ -117,8 +104,9 @@ instance Pixel Bool where
 -- | Provides an abstraction for images which are not defined for each of their
 -- pixels. The interface is similar to 'Image' except that indexing functions
 -- don't always return.
+--
 -- Image origin is located in the lower left corner.
-class Pixel (ImagePixel i) => MaskedImage i where
+class Storable (ImagePixel i) => MaskedImage i where
     type ImagePixel i
 
     shape :: i -> Size
@@ -235,25 +223,25 @@ class (MaskedImage src, MaskedImage res) => FunctorImage src res where
 -- Manifest images -------------------------------------------------------------
 
 -- | Stores the image content in a 'Vector'.
-data Storable p => Manifest p = Manifest { -- XXX TMD
+data Manifest p = Manifest {
       manifestSize   :: !Size
     , manifestVector :: !(Vector p)
     } deriving (Eq, Ord, Show)
 
-instance Pixel p => MaskedImage (Manifest p) where
+instance Storable p => MaskedImage (Manifest p) where
     type ImagePixel (Manifest p) = p
 
     shape = manifestSize
     {-# INLINE shape #-}
 
-    Manifest _ vec `maskedLinearIndex` ix = Just $! vec ! ix
+    Manifest _ vec `maskedLinearIndex` ix = Just $! vec V.! ix
     {-# INLINE maskedLinearIndex #-}
 
     values = manifestVector
     {-# INLINE values #-}
 
-instance Pixel p => Image (Manifest p) where
-    Manifest _ vec `linearIndex` ix = vec ! ix
+instance Storable p => Image (Manifest p) where
+    Manifest _ vec `linearIndex` ix = vec V.! ix
     {-# INLINE linearIndex #-}
 
     vector = manifestVector
@@ -301,7 +289,7 @@ instance Storable p => FromFunction (Manifest p) where
                 let !lineOffset = y * w
                 forM_ (enumFromN 0 w) $ \x -> do
                     let !offset = lineOffset + x
-                        !val    = f (cols ! x) (ix2 y x)
+                        !val    = f (cols V.! x) (ix2 y x)
                     write arr offset val
 
             return arr
@@ -319,7 +307,7 @@ instance Storable p => FromFunction (Manifest p) where
                     !lineOffset = y * w
                 forM_ (enumFromN 0 w) $ \x -> do
                     let !offset = lineOffset + x
-                        !val    = f lineVal (cols ! x) (ix2 y x)
+                        !val    = f lineVal (cols V.! x) (ix2 y x)
                     write arr offset val
 
             return arr
@@ -327,8 +315,8 @@ instance Storable p => FromFunction (Manifest p) where
         !cols = generate w col
     {-# INLINE fromFunctionCached #-}
 
-instance (Image src, Pixel p) => FunctorImage src (Manifest p) where
-    map f img = fromFunction (shape img) (f . (img `index`))
+instance (Image src, Storable p) => FunctorImage src (Manifest p) where
+    map f img = fromFunction (shape img) (f . (img !))
     {-# INLINE map #-}
 
 -- Delayed images --------------------------------------------------------------
@@ -344,7 +332,7 @@ data Delayed p = Delayed {
     , delayedFun  :: !(Point -> p)
     }
 
-instance Pixel p => MaskedImage (Delayed p) where
+instance Storable p => MaskedImage (Delayed p) where
     type ImagePixel (Delayed p) = p
 
     shape = delayedSize
@@ -353,7 +341,7 @@ instance Pixel p => MaskedImage (Delayed p) where
     maskedIndex img = Just . delayedFun img
     {-# INLINE maskedIndex #-}
 
-instance Pixel p => Image (Delayed p) where
+instance Storable p => Image (Delayed p) where
     index = delayedFun
     {-# INLINE index #-}
 
@@ -363,8 +351,8 @@ instance FromFunction (Delayed p) where
     fromFunction = Delayed
     {-# INLINE fromFunction #-}
 
-instance (Image src, Pixel p) => FunctorImage src (Delayed p) where
-    map f img = fromFunction (shape img) (f . (img `index`))
+instance (Image src, Storable p) => FunctorImage src (Delayed p) where
+    map f img = fromFunction (shape img) (f . (img !))
     {-# INLINE map #-}
 
 -- Masked delayed images -------------------------------------------------------
@@ -374,7 +362,7 @@ data DelayedMask p = DelayedMask {
     , delayedMaskFun  :: !(Point -> Maybe p)
     }
 
-instance Pixel p => MaskedImage (DelayedMask p) where
+instance Storable p => MaskedImage (DelayedMask p) where
     type ImagePixel (DelayedMask p) = p
 
     shape = delayedMaskSize
@@ -383,20 +371,30 @@ instance Pixel p => MaskedImage (DelayedMask p) where
     maskedIndex = delayedMaskFun
     {-# INLINE maskedIndex #-}
 
-instance Pixel p => FromFunction (DelayedMask p) where
+instance Storable p => FromFunction (DelayedMask p) where
     type FromFunctionPixel (DelayedMask p) = Maybe p
 
     fromFunction = DelayedMask
     {-# INLINE fromFunction #-}
 
-instance (MaskedImage src, Pixel p) => FunctorImage src (DelayedMask p) where
+instance (MaskedImage src, Storable p) => FunctorImage src (DelayedMask p) where
     map f img = fromFunction (shape img) (\pt -> f <$> (img `maskedIndex` pt))
     {-# INLINE map #-}
 
 -- Functions -------------------------------------------------------------------
 
+-- | Alias of 'maskedIndex'.
+(!?) :: MaskedImage i => i -> Point -> Maybe (ImagePixel i)
+(!?) = maskedIndex
+{-# INLINE (!?) #-}
+
+-- | Alias of 'index'.
+(!) :: Image i => i -> Point -> ImagePixel i
+(!) = index
+{-# INLINE (!) #-}
+
 -- | Returns the number of channels of an image.
-nChannels :: MaskedImage i => i -> Int
+nChannels :: (Pixel (ImagePixel i), MaskedImage i) => i -> Int
 nChannels img = pixNChannels (pixel img)
 {-# INLINE nChannels #-}
 
@@ -419,22 +417,22 @@ compute :: (Image i, Storable (ImagePixel i)) => i -> Manifest (ImagePixel i)
 compute = map id
 {-# INLINE compute #-}
 
-instance (Pixel p1, Pixel p2, Storable p1, Storable p2, Convertible p1 p2)
+instance (Storable p1, Storable p2, Convertible p1 p2)
     => Convertible (Manifest p1) (Manifest p2) where
     safeConvert = Right . map convert
     {-# INLINE safeConvert #-}
 
-instance (Pixel p1, Pixel p2, Convertible p1 p2)
+instance (Storable p1, Storable p2, Convertible p1 p2)
     => Convertible (Delayed p1) (Delayed p2) where
     safeConvert = Right . map convert
     {-# INLINE safeConvert #-}
 
-instance (Pixel p1, Pixel p2, Storable p2, Convertible p1 p2)
+instance (Storable p1, Storable p2, Convertible p1 p2)
     => Convertible (Delayed p1) (Manifest p2) where
     safeConvert = Right . map convert
     {-# INLINE safeConvert #-}
 
-instance (Pixel p1, Pixel p2, Storable p1, Convertible p1 p2)
+instance (Storable p1, Storable p2, Convertible p1 p2)
     => Convertible (Manifest p1) (Delayed  p2) where
     safeConvert = Right . map convert
     {-# INLINE safeConvert #-}

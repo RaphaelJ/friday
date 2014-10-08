@@ -2,7 +2,6 @@
 import Control.Monad.ST.Safe (ST)
 import Criterion.Main
 import Data.Int
-import Data.Word
 
 import Vision.Image (
       Grey, HSV, RGBA, RGB, RGBDelayed, InterpolMethod
@@ -55,7 +54,7 @@ main = do
             , bench "gaussian blur" $ whnf gaussianBlur' grey
             , bench "scharr"        $ whnf scharr' grey
             , bench "sobel"         $ whnf sobel' grey
-            , bench "scw"           $ whnf scw' grey
+            , bench "mean"          $ whnf mean' grey
             ]
         , bgroup "flip" [
               bench "horizontal" $ whnf (I.horizontalFlip :: RGB -> RGB) rgb
@@ -126,6 +125,7 @@ main = do
               bench "simple threshold"   $ whnf threshold'         grey
             , bench "adaptive threshold" $ whnf adaptiveThreshold' grey
             , bench "Otsu's method"      $ whnf otsu'              grey
+            , bench "SCW"                $ whnf scw'               grey
             ]
 
 
@@ -142,14 +142,13 @@ main = do
 
     blur'  :: Grey -> Grey
     blur' !img =
-        let filt = I.blur 1 :: I.SeparableFilter I.GreyPixel Word32 I.GreyPixel
+        let filt = I.blur 1 :: I.Blur I.GreyPixel Int16 I.GreyPixel
         in filt `I.apply` img
 
     gaussianBlur' :: Grey -> Grey
     gaussianBlur' !img =
-        let filt = I.gaussianBlur 1 Nothing :: I.SeparableFilter I.GreyPixel
-                                                                 Float
-                                                                 I.GreyPixel
+        let filt = I.gaussianBlur 1 Nothing :: I.Blur I.GreyPixel Float
+                                                      I.GreyPixel
         in filt `I.apply` img
 
     sobel' :: Grey -> I.Manifest Int16
@@ -158,8 +157,10 @@ main = do
     scharr' :: Grey -> I.Manifest Int16
     scharr' !img = I.scharr I.DerivativeX `I.apply` img
 
-    scw' :: Grey -> Grey
-    scw' !img = I.scwFilter (Z :. 5 :. 5) (Z :. 15 :. 15) 0.9 img
+    mean' :: Grey -> I.Manifest Float
+    mean' !img =
+        let filt = I.mean (ix2 3 3) :: I.Mean I.GreyPixel Int16 Float
+        in filt `I.apply` img
 
     floodFill' :: Grey -> I.Grey
     floodFill' img =
@@ -176,13 +177,17 @@ main = do
 
     adaptiveThreshold' :: Grey -> Grey
     adaptiveThreshold' !img =
-        let filt :: I.SeparableFilter I.GreyPixel Float I.GreyPixel
+        let filt :: I.AdaptiveThreshold I.GreyPixel Float I.GreyPixel
             filt = I.adaptiveThreshold (I.GaussianKernel Nothing) 1 0
                                        (I.BinaryThreshold 0 255)
         in filt `I.apply` img
 
     otsu' :: Grey -> Grey
     otsu' !img = I.otsu (I.BinaryThreshold 0 255) img
+
+    scw' :: Grey -> Grey
+    scw' !img = I.scw (ix2 5 5) (ix2 15 15) (5 :: Double)
+                      (I.BinaryThreshold 255 0) img
 
     miniature !rgb =
         let Z :. h :. w = I.shape rgb

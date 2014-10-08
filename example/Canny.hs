@@ -23,9 +23,8 @@ main = do
 
                 -- Creates a Gaussian filter with a 3x3 kernel to remove small
                 -- noises.
-                filter = gaussianBlur 1 Nothing :: SeparableFilter GreyPixel
-                                                                   Float
-                                                                   GreyPixel
+                filter = gaussianBlur 1 Nothing :: Blur GreyPixel Float
+                                                        GreyPixel
 
                 -- Applies the Gaussian filter to the grey-scale image.
                 blurred = apply filter grey     :: Grey
