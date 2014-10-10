@@ -431,6 +431,6 @@ instance (Pixel p1, Pixel p2, Storable p1, Convertible p1 p2)
 delayed :: Delayed p -> Delayed p
 delayed = id
 
--- | Forces an image to be in its delayed represenation. Does nothing.
+-- | Forces an image to be in its manifest represenation. Does nothing.
 manifest :: Manifest p -> Manifest p
 manifest = id
