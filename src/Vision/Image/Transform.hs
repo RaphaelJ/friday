@@ -34,7 +34,7 @@ crop :: (Image i1, FromFunction i2, ImagePixel i1 ~ FromFunctionPixel i2)
      => Rect -> i1 -> i2
 crop !(Rect rx ry rw rh) !img =
     fromFunction (Z :. rh :. rw) $ \(Z :. y :. x) ->
-        img `index` ix2 (ry + y) (rx + x)
+        img ! ix2 (ry + y) (rx + x)
 {-# INLINABLE crop #-}
 
 -- | Resizes the 'Image' using the given interpolation method.
@@ -51,7 +51,7 @@ resize !method !size'@(Z :. h' :. w') !img =
                 col  !x' = truncate $ (double x' + 0.5) * widthRatio  - 0.5
                 {-# INLINE col #-}
                 f !y !(Z :. _ :. x') = let !x = col x'
-                                       in img `index` ix2 y x
+                                       in img ! ix2 y x
                 {-# INLINE f #-}
             in fromFunctionLine size' line f
         NearestNeighbor ->
@@ -62,7 +62,7 @@ resize !method !size'@(Z :. h' :. w') !img =
                 col  !x' = round $ (double x' + 0.5) * widthRatio  - 0.5
                 {-# INLINE col #-}
                 f !y !(Z :. _ :. x') = let !x = col x'
-                                       in img `index` ix2 y x
+                                       in img ! ix2 y x
                 {-# INLINE f #-}
             in fromFunctionLine size' line f
         Bilinear ->
@@ -95,7 +95,7 @@ horizontalFlip :: (Image i1, FromFunction i2
                => i1 -> i2
 horizontalFlip !img =
     let f !(Z :. y :. x') = let !x = maxX - x'
-                            in img `index` ix2 y x
+                            in img ! ix2 y x
         {-# INLINE f #-}
     in fromFunction size f
   where
@@ -110,7 +110,7 @@ verticalFlip :: (Image i1, FromFunction i2
 verticalFlip !img =
     let line !y' = maxY - y'
         {-# INLINE line #-}
-        f !y !(Z :. _ :. x) = img `index` ix2 y x
+        f !y !(Z :. _ :. x) = img ! ix2 y x
         {-# INLINE f #-}
     in fromFunctionLine size line f
   where

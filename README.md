@@ -163,7 +163,9 @@ toBlackAndWhite img =
 
 * [Resize an image](example/ResizeImage.hs) ;
 
-* [Thresholds an image using the Otsu's method](example/Threshold.hs).
+* [Thresholds an image using the Otsu's method](example/Otsu.hs).
+
+See the [example/](example/) directory for more examples.
 
 # Benchmarks
 
