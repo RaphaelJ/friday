@@ -13,7 +13,8 @@
 -- <https://github.com/RaphaelJ/friday/blob/master/README.md README file> for a
 -- detailed usage and examples.
 module Vision.Image (
-      module Vision.Image.Grey
+      module Vision.Image.Class
+    , module Vision.Image.Grey
     , module Vision.Image.Filter
     , module Vision.Image.HSV
     , module Vision.Image.Interpolate
@@ -26,6 +27,7 @@ module Vision.Image (
     , module Vision.Image.Type
     ) where
 
+import Vision.Image.Class
 import Vision.Image.Grey
 import Vision.Image.Filter
 import Vision.Image.HSV

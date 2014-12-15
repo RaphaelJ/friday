@@ -8,8 +8,9 @@ import Data.Bits
 import Data.Word
 import Foreign.Storable (Storable)
 
+import Vision.Image.Class (Pixel (..))
 import Vision.Image.Interpolate (Interpolable (..))
-import Vision.Image.Type (Pixel (..), Manifest, Delayed)
+import Vision.Image.Type (Manifest, Delayed)
 
 newtype GreyPixel = GreyPixel Word8
     deriving (Bits, Bounded, Enum, Eq, Integral, Num, Ord, Real, Read, Show

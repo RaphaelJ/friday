@@ -12,11 +12,11 @@ import Control.Monad (when)
 import Control.Monad.Primitive (PrimMonad (..))
 import Data.RatioInt (RatioInt, (%))
 
+import Vision.Image.Class (
+      MaskedImage (..), Image (..), ImageChannel, FromFunction (..), (!)
+    )
 import Vision.Image.Interpolate (Interpolable, bilinearInterpol)
 import Vision.Image.Mutable (MutableImage (..))
-import Vision.Image.Type (
-      MaskedImage (..), Image (..), ImageChannel, FromFunction (..)
-    )
 import Vision.Primitive (
       Z (..), (:.) (..), Point, RPoint (..), Rect (..), Size, ix2, toLinearIndex
     )

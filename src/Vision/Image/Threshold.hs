@@ -11,24 +11,25 @@ module Vision.Image.Threshold (
 import Data.Int
 import Foreign.Storable (Storable)
 
+import qualified Data.Vector.Storable as V
+import qualified Data.Vector as VU
+
+import Vision.Image.Class (
+      Image, ImagePixel, FromFunction (..), FunctorImage, (!), shape
+    )
 import Vision.Image.Filter (
       Filter (..), BoxFilter, SeparableFilter, Kernel (..)
     , KernelAnchor (KernelAnchorCenter), FilterFold (..)
     , BorderInterpolate (BorderReplicate)
     , apply, blur, gaussianBlur, Mean, mean)
-import Vision.Image.Type (
-      Image, ImagePixel, FromFunction (..), FunctorImage, Manifest
-    , (!), shape, delayed, manifest
-    )
+import Vision.Image.Type (Manifest, delayed, manifest)
 import Vision.Histogram (
       HistogramShape, PixelValueSpace, ToHistogram, histogram
     )
-import qualified Vision.Histogram as H
 import Vision.Primitive (Z (..), (:.) (..), Size, shapeLength)
-import qualified Vision.Image.Type as I
 
-import qualified Data.Vector.Storable as V
-import qualified Data.Vector as VU
+import qualified Vision.Histogram as H
+import qualified Vision.Image.Class as I
 
 -- | Specifies what to do with pixels matching the threshold predicate.
 --

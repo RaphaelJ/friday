@@ -14,8 +14,6 @@ import Control.Concurrent.MVar (MVar, newMVar, takeMVar, putMVar)
 import Control.Monad (when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Error (Error (..), ErrorT, runErrorT, throwError)
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Unsafe as BS
 import Data.Convertible (Convertible (..), convert)
 import Data.Int
 import Data.Vector.Storable (unsafeFromForeignPtr0, unsafeWith)
@@ -28,10 +26,14 @@ import Foreign.Ptr (Ptr, castPtr)
 import Foreign.Storable (peek)
 import System.IO.Unsafe (unsafePerformIO)
 
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Unsafe as BS
+
+import Vision.Image.Class (nChannels)
 import Vision.Image.Grey (Grey, GreyPixel)
 import Vision.Image.RGBA (RGBA, RGBAPixel)
 import Vision.Image.RGB (RGB, RGBPixel)
-import Vision.Image.Type (Manifest (..), Delayed (..), delay, nChannels)
+import Vision.Image.Type (Manifest (..), Delayed (..), delay)
 import Vision.Primitive (Z (..), (:.) (..), ix2)
 
 data StorageImage = GreyStorage Grey | RGBAStorage RGBA | RGBStorage RGB

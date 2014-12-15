@@ -1,0 +1,15 @@
+-*-change-log-*-
+
+v0.2 2014
+ BREAKING CHANGES:
+   * New Filter interface
+
+ * SCW thresholding
+ * New types aliases for filters
+ * New (!) and (!?) operators for image indexing
+ * Pixel instance is no more required for MaskedImage and Image instances
+ * Classes and image types are in two different files (Vision.Image.Class and
+   Vision.Image.Type)
+
+v0.1 August 2014
+ * Initial release

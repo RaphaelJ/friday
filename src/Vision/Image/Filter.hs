@@ -50,15 +50,13 @@ module Vision.Image.Filter (
 
 import Data.List
 import Data.Ratio
-import qualified Data.Vector.Storable as V
 import Data.Word
 import Foreign.Storable (Storable)
 
-import Vision.Image.Type (
-      MaskedImage (..), Image (..), FromFunction (..)
-    , Manifest, Delayed
-    , (!)
-    )
+import qualified Data.Vector.Storable as V
+
+import Vision.Image.Class (MaskedImage (..), Image (..), FromFunction (..), (!))
+import Vision.Image.Type (Manifest, Delayed)
 import Vision.Primitive (Z (..), (:.) (..), DIM1, DIM2, Size, ix1, ix2)
 
 -- Types -----------------------------------------------------------------------

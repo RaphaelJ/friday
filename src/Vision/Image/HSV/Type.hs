@@ -9,8 +9,9 @@ import Data.Word
 import Foreign.Storable (Storable (..))
 import Foreign.Ptr (castPtr, plusPtr)
 
+import Vision.Image.Class (Pixel (..))
 import Vision.Image.Interpolate (Interpolable (..))
-import Vision.Image.Type (Pixel (..), Manifest, Delayed)
+import Vision.Image.Type (Manifest, Delayed)
 
 data HSVPixel = HSVPixel {
       hsvHue   :: {-# UNPACK #-} !Word8, hsvSat :: {-# UNPACK #-} !Word8

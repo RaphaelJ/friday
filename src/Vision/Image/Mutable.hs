@@ -8,18 +8,19 @@ module Vision.Image.Mutable (
 import Control.Monad.Primitive (PrimMonad (..))
 import Control.Monad.ST.Safe (ST, runST)
 import Data.Vector.Storable (MVector)
-import qualified Data.Vector.Storable as V
-import qualified Data.Vector.Storable.Mutable as MV
 import Foreign.Storable (Storable)
 import Prelude hiding (read)
 
-import Vision.Image.Type (Image, ImagePixel, Manifest (..))
+import qualified Data.Vector.Storable as V
+import qualified Data.Vector.Storable.Mutable as MV
+
+import Vision.Image.Class (Image, ImagePixel)
+import Vision.Image.Type (Manifest (..))
 import Vision.Primitive (
       DIM2, Size, fromLinearIndex, toLinearIndex, shapeLength
     )
 
 -- | Class for images which can be constructed from a mutable image.
-
 class Image (Freezed i) => MutableImage i where
     -- | The type of the immutable version of the mutable image 'i'.
     type Freezed i

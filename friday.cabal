@@ -48,6 +48,7 @@ library
     exposed-modules:    Vision.Detector.Edge
                         Vision.Histogram
                         Vision.Image
+                        Vision.Image.Class
                         Vision.Image.Grey
                         Vision.Image.Grey.Conversion
                         Vision.Image.Grey.Specialize

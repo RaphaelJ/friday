@@ -10,7 +10,7 @@ import Data.Int
 import Data.RatioInt (denominator, numerator)
 import Data.Word
 
-import Vision.Image.Type (Pixel (..), Image (..), ImagePixel, ImageChannel)
+import Vision.Image.Class (Pixel (..), Image (..), ImagePixel, ImageChannel)
 import Vision.Primitive (RPoint (..), ix2)
 
 -- | Provides a way to apply the interpolation to every component of a pixel.

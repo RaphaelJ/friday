@@ -22,19 +22,21 @@ module Vision.Histogram (
 
 import Data.Int
 import Data.Vector.Storable (Vector, (!))
-import qualified Data.Vector.Storable as V
 import Foreign.Storable (Storable)
 import Prelude hiding (map)
 
+import qualified Data.Vector.Storable as V
+
+import Vision.Image.Class (Pixel, MaskedImage, Image, ImagePixel, FunctorImage)
 import Vision.Image.Grey.Type (GreyPixel (..))
 import Vision.Image.HSV.Type  (HSVPixel (..))
 import Vision.Image.RGBA.Type (RGBAPixel (..))
 import Vision.Image.RGB.Type  (RGBPixel (..))
-import Vision.Image.Type (Pixel, MaskedImage, Image, ImagePixel, FunctorImage)
-import qualified Vision.Image.Type as I
 import Vision.Primitive (
       Z (..), (:.) (..), Shape (..), DIM1, DIM3, DIM4, DIM5, ix1, ix3, ix4
     )
+
+import qualified Vision.Image.Class as I
 
 -- There is no rule to simplify the conversion from Int32 to Double and Float
 -- when using realToFrac. Both conversions are using a temporary yet useless
