@@ -11,7 +11,7 @@
 module Vision.Histogram (
     -- * Types & helpers
       Histogram (..), HistogramShape (..), ToHistogram (..)
-    , index, linearIndex, map, assocs, pixToBin
+    , index, (!), linearIndex, map, assocs, pixToBin
     -- * Histogram computations
     , histogram,  histogram2D, reduce, resize, cumulative, normalize
     -- * Images processing
@@ -21,7 +21,7 @@ module Vision.Histogram (
     ) where
 
 import Data.Int
-import Data.Vector.Storable (Vector, (!))
+import Data.Vector.Storable (Vector)
 import Foreign.Storable (Storable)
 import Prelude hiding (map)
 
@@ -130,10 +130,15 @@ index :: (Shape sh, Storable a) => Histogram sh a -> sh -> a
 index !hist = linearIndex hist . toLinearIndex (shape hist)
 {-# INLINE index #-}
 
+-- | Alias of 'index'.
+(!) :: (Shape sh, Storable a) => Histogram sh a -> sh -> a
+(!) = index
+{-# INLINE (!) #-}
+
 -- | Returns the value at the index as if the histogram was a single dimension
 -- vector (row-major representation).
 linearIndex :: (Shape sh, Storable a) => Histogram sh a -> Int -> a
-linearIndex !hist = (!) (vector hist)
+linearIndex !hist = (V.!) (vector hist)
 {-# INLINE linearIndex #-}
 
 map :: (Storable a, Storable b) => (a -> b) -> Histogram sh a -> Histogram sh b
@@ -308,7 +313,7 @@ equalizeImage img =
     Z :. nBins      = shape hist
     cumNormalized   = cumulative $ normalize (double nBins) hist
     !cumNormalized' = map round cumNormalized           :: Histogram DIM1 Int32
-    equalizePixel !val = fromIntegral $ cumNormalized' `index` ix1 (int val)
+    equalizePixel !val = fromIntegral $ cumNormalized' ! ix1 (int val)
     {-# INLINE equalizePixel #-}
 {-# INLINABLE equalizeImage #-}
 

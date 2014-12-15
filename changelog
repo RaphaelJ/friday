@@ -6,7 +6,7 @@ v0.2 2014
 
  * SCW thresholding
  * New types aliases for filters
- * New (!) and (!?) operators for image indexing
+ * New (!) and (!?) operators for image and histogram indexing
  * Pixel instance is no more required for MaskedImage and Image instances
  * Classes and image types are in two different files (Vision.Image.Class and
    Vision.Image.Type)
