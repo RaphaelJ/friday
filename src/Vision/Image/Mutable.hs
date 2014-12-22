@@ -17,7 +17,7 @@ import qualified Data.Vector.Storable.Mutable as MV
 import Vision.Image.Class (Image, ImagePixel)
 import Vision.Image.Type (Manifest (..))
 import Vision.Primitive (
-      DIM2, Size, fromLinearIndex, toLinearIndex, shapeLength
+      Point, Size, fromLinearIndex, toLinearIndex, shapeLength
     )
 
 -- | Class for images which can be constructed from a mutable image.
@@ -38,19 +38,20 @@ class Image (Freezed i) => MutableImage i where
     new' :: PrimMonad m => Size -> ImagePixel (Freezed i) -> m (i (PrimState m))
 
     -- | Returns the pixel value at @Z :. y :. x@.
-    read :: PrimMonad m => i (PrimState m) -> DIM2 -> m (ImagePixel (Freezed i))
+    read :: PrimMonad m => i (PrimState m) -> Point
+         -> m (ImagePixel (Freezed i))
     read !img !ix = img `linearRead` toLinearIndex (mShape img) ix
     {-# INLINE read #-}
 
     -- | Returns the pixel value as if the image was a single dimension vector
     -- (row-major representation).
-    linearRead :: PrimMonad m => i (PrimState m) -> Int
-               -> m (ImagePixel (Freezed i))
+    linearRead :: PrimMonad m
+               => i (PrimState m) -> Int -> m (ImagePixel (Freezed i))
     linearRead !img !ix = img `read` fromLinearIndex (mShape img) ix
     {-# INLINE linearRead #-}
 
     -- | Overrides the value of the pixel at @Z :. y :. x@.
-    write :: PrimMonad m => i (PrimState m) -> DIM2 -> ImagePixel (Freezed i)
+    write :: PrimMonad m => i (PrimState m) -> Point -> ImagePixel (Freezed i)
           -> m ()
     write !img !ix !val = linearWrite img (toLinearIndex (mShape img) ix) val
     {-# INLINE write #-}

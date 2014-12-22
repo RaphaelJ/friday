@@ -57,7 +57,7 @@ import qualified Data.Vector.Storable as V
 
 import Vision.Image.Class (MaskedImage (..), Image (..), FromFunction (..), (!))
 import Vision.Image.Type (Manifest, Delayed)
-import Vision.Primitive (Z (..), (:.) (..), DIM1, DIM2, Size, ix1, ix2)
+import Vision.Primitive (Z (..), (:.) (..), DIM1, Point, Size, ix1, ix2)
 
 -- Types -----------------------------------------------------------------------
 
@@ -78,7 +78,7 @@ data Filter src kernel init fold acc res = Filter {
     -- This value will be passed to 'fKernel' functions and to the 'fPost'
     -- function.
     -- For most filters, @fInit@ will be @\_ _ -> ()@.
-    , fInit         :: !(DIM2 -> src -> init)
+    , fInit         :: !(Point -> src -> init)
     -- | Defines how the accumulated value is initialized.
     --
     -- See 'FilterFold' and 'FilterFold1'.
@@ -87,7 +87,7 @@ data Filter src kernel init fold acc res = Filter {
     -- given point.
     --
     -- Can be used to normalize the accumulated value, for example.
-    , fPost         :: !(DIM2 -> src -> init -> acc -> res)
+    , fPost         :: !(Point -> src -> init -> acc -> res)
     , fInterpol     :: !(BorderInterpolate src)
     }
 
@@ -110,7 +110,7 @@ type SeparableFilter1 src init res    = Filter src
                                                init FilterFold1 src res
 
 -- | Defines how the center of the kernel will be determined.
-data KernelAnchor = KernelAnchor !DIM2 | KernelAnchorCenter
+data KernelAnchor = KernelAnchor !Point | KernelAnchorCenter
 
 -- | A simple 2D kernel.
 --
@@ -120,7 +120,7 @@ data KernelAnchor = KernelAnchor !DIM2 | KernelAnchorCenter
 --
 -- Non-separable filters computational complexity grows quadratically according
 -- to the size of the sides of the kernel.
-newtype Kernel src init acc = Kernel (init -> DIM2 -> src -> acc -> acc)
+newtype Kernel src init acc = Kernel (init -> Point -> src -> acc -> acc)
 
 -- | Some kernels can be factorized in two uni-dimensional kernels (horizontal
 -- and vertical).
@@ -156,7 +156,7 @@ instance SeparatelyFiltrable src (Delayed p) acc where
 -- For most filters, the function will always return the same value (i.e.
 -- defined as @const 0@), but this kind of initialization could be required for
 -- some filters.
-data FilterFold acc = FilterFold (DIM2 -> acc)
+data FilterFold acc = FilterFold (Point -> acc)
 
 -- | Uses the first pixel in the kernel as initial value. The kernel must not be
 -- empty and the accumulator type must be the same as the source pixel type.
@@ -530,7 +530,7 @@ instance (Image src, FromFunction res, SeparatelyFiltrable src res src_p
 
 -- | Given a method to compute the kernel anchor and the size of the kernel,
 -- returns the anchor of the kernel as coordinates.
-kernelAnchor :: KernelAnchor -> Size -> DIM2
+kernelAnchor :: KernelAnchor -> Size -> Point
 kernelAnchor (KernelAnchor ix)    _               = ix
 kernelAnchor (KernelAnchorCenter) (Z :. kh :. kw) = ix2 (round $ (kh - 1) % 2)
                                                         (round $ (kw - 1) % 2)

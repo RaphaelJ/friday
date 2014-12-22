@@ -90,7 +90,7 @@ instance Pixel Bool where
 -- pixels. The interface is similar to 'Image' except that indexing functions
 -- don't always return.
 --
--- Image origin is located in the lower left corner.
+-- Image origin (@'ix2' 0 0@) is located in the upper left corner.
 class Storable (ImagePixel i) => MaskedImage i where
     type ImagePixel i
 

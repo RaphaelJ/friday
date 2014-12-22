@@ -2,18 +2,19 @@
 
 v0.2 2014
  BREAKING CHANGES:
-   * New Filter interface
+   * Origin is on the upper left corner of the image (was bottom left).
+   * New Filter interface.
    * DevIL bindings (Vision.Image.Storage) are now in a separate package
-     (friday-devil)
-   * Benchmarks are now in a separate package (friday-bench)
-   * Examples are now in a separate package (friday-examples)
+     (friday-devil).
+   * Benchmarks are now in a separate package (friday-bench).
+   * Examples are now in a separate package (friday-examples).
 
- * SCW thresholding
- * New types aliases for filters
- * New (!) and (!?) operators for image and histogram indexing
- * Pixel instance is no more required for MaskedImage and Image instances
+ * SCW thresholding.
+ * New types aliases for filters.
+ * New (!) and (!?) operators for image and histogram indexing.
+ * Pixel instance is no more required for MaskedImage and Image instances.
  * Classes and image types are in two different files (Vision.Image.Class and
-   Vision.Image.Type)
+   Vision.Image.Type).
 
 v0.1 August 2014
  * Initial release

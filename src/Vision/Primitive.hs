@@ -12,7 +12,8 @@ import Vision.Primitive.Shape
 -- | Coordinates inside the image.
 --
 -- Can be constructed using 'ix2'. The first parameter is the y coordinate while
--- the second is the x coordinate (i.e. @ix2 y x@).
+-- the second is the x coordinate (i.e. @'ix2' y x@). Image origin (@'ix2' 0 0@)
+-- is located in the upper left corner.
 type Point = DIM2
 
 -- | Size of an object.
