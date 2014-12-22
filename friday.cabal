@@ -1,6 +1,6 @@
 name:                   friday
 version:                0.2.0
-synopsis:               A functionnal image processing library for Haskell.
+synopsis:               A functional image processing library for Haskell.
 homepage:               https://github.com/RaphaelJ/friday
 license:                LGPL-3
 license-file:           LICENSE
@@ -11,11 +11,6 @@ description:            Friday provides functions to manipulate images in a
                         functional way.
                         The library is designed to be fast, generic and
                         type-safe.
-                        .
-                        The library uses FFI calls to the DevIL image library to
-                        read images from a wide variety of formats, including
-                        BMP, JPG, PNG, GIF, ICO and PSD. Except for I/Os, friday
-                        is entirely written in Haskell.
                         .
                         Images can be represented in two representations:
                         .
@@ -39,10 +34,6 @@ category:               Graphics
 stability:              Experimental
 build-type:             Simple
 cabal-version:          >= 1.10
-
-Flag examples
-    Description:   Compiles examples from the example/ directory.
-    Default:       False
 
 library
     exposed-modules:    Vision.Detector.Edge
@@ -68,7 +59,6 @@ library
                         Vision.Image.RGB.Conversion
                         Vision.Image.RGB.Specialize
                         Vision.Image.RGB.Type
-                        Vision.Image.Storage
                         Vision.Image.Threshold
                         Vision.Image.Transform
                         Vision.Image.Type
@@ -86,110 +76,6 @@ library
                       , ratio-int               >= 0.1.2        && < 0.2
                       , vector                  >= 0.10.0.1     && < 1.0
                       , transformers            >= 0.3          && < 0.5
-
-    Build-tools:        hsc2hs
-
-    Extra-Libraries:    IL
-
--- Examples --------------------------------------------------------------------
-
-executable      delayed
-    if !flag(examples)
-        Buildable: False
-
-    main-is:            Delayed.hs
-    ghc-options:        -Wall -O2 -rtsopts
-    hs-source-dirs:     example/
-    default-language:   Haskell2010
-
-    build-depends:      base                    >= 4            && < 5
-                      , friday
-
-executable      canny
-    if !flag(examples)
-        Buildable: False
-
-    main-is:            Canny.hs
-    ghc-options:        -Wall -O2 -rtsopts
-    hs-source-dirs:     example/
-    default-language:   Haskell2010
-
-    build-depends:      base                    >= 4            && < 5
-                      , friday
-
-executable      gaussian_blur
-    if !flag(examples)
-        Buildable: False
-
-    main-is:            GaussianBlur.hs
-    ghc-options:        -Wall -O2 -rtsopts
-    hs-source-dirs:     example/
-    default-language:   Haskell2010
-
-    build-depends:      base                    >= 4            && < 5
-                      , friday
-
-executable      histogram
-    if !flag(examples)
-        Buildable: False
-
-    main-is:            Histogram.hs
-    ghc-options:        -Wall -O2 -rtsopts
-    hs-source-dirs:     example/
-    default-language:   Haskell2010
-
-    build-depends:      base                    >= 4            && < 5
-                      , friday
-
-executable      otsu
-    if !flag(examples)
-        Buildable: False
-
-    main-is:            Otsu.hs
-    ghc-options:        -Wall -O2 -rtsopts
-    hs-source-dirs:     example/
-    default-language:   Haskell2010
-
-    build-depends:      base                    >= 4            && < 5
-                      , friday
-
-executable      resize_image
-    if !flag(examples)
-        Buildable: False
-
-    main-is:            ResizeImage.hs
-    ghc-options:        -Wall -O2 -rtsopts
-    hs-source-dirs:     example/
-    default-language:   Haskell2010
-
-    build-depends:      base                    >= 4            && < 5
-                      , friday
-
-executable      scw
-    if !flag(examples)
-        Buildable: False
-
-    main-is:            SCW.hs
-    ghc-options:        -Wall -O2 -rtsopts
-    hs-source-dirs:     example/
-    default-language:   Haskell2010
-
-    build-depends:      base                    >= 4            && < 5
-                      , friday
-
--- Benchmarks & tests ----------------------------------------------------------
-
-Benchmark       benchmark
-    type:               exitcode-stdio-1.0
-
-    main-is:            Benchmark.hs
-    ghc-options:        -Wall -O2 -rtsopts
-    hs-source-dirs:     bench/
-    default-language:   Haskell2010
-
-    build-depends:      base                    >= 4            && < 5
-                      , criterion               >= 1.0          && < 2.0
-                      , friday
 
 Test-Suite      test
     type:       exitcode-stdio-1.0

@@ -87,25 +87,9 @@ except enforcing types.
 makeMiniature = delayed . resize Bilinear (ix2 150 150)
 ```
 
-See [this file](example/Delayed.hs) for an example of a pipeline of delayed
-images.
-
-## Storage images
-
-When you use the `load` function to read an image from a file, the returned
-image is a `StorageImage`:
-
-```haskell
-data StorageImage = GreyStorage Grey | RGBAStorage RGBA | RGBStorage RGB
-```
-
-Before using an image loaded from a file, you need to convert it into an usable
-representation such as RGB:
-
-```haskell
-toRGB :: StorageImage -> RGB
-toRGB = convert
-```
+See
+[this file](https://github.com/RaphaelJ/friday-examples/blob/master/src/Delayed.hs)
+for an example of a pipeline of delayed images.
 
 ## Masked images
 
@@ -151,21 +135,19 @@ toBlackAndWhite img =
     in map (\pix -> if pix > 127 then 255 else 0) grey
 ```
 
+## Load and save images from and to files
+
+For modularity, storage operations are provided by separate packages.
+
+The *[friday-devil](https://hackage.haskell.org/package/friday-devil)* package
+provides FFI calls to the *DevIL* image library. The library is written in C and
+supports a wide variety of image formats, including BMP, JPG, PNG, GIF, ICO and
+PSD.
+
 # Examples
 
-* [Apply a Gaussian blur](example/GaussianBlur.hs) ;
-
-* [Compare two images by their color histograms](example/Histogram.hs) ;
-
-* [Create a pipeline of delayed images](example/Delayed.hs) ;
-
-* [Detect edges using Canny's edge detector](example/Canny.hs) ;
-
-* [Resize an image](example/ResizeImage.hs) ;
-
-* [Thresholds an image using the Otsu's method](example/Otsu.hs).
-
-See the [example/](example/) directory for more examples.
+See the *[friday-examples](https://github.com/RaphaelJ/friday-examples)*
+package for a set of examples.
 
 # Benchmarks
 

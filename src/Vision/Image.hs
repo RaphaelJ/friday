@@ -21,7 +21,6 @@ module Vision.Image (
     , module Vision.Image.Mutable
     , module Vision.Image.RGB
     , module Vision.Image.RGBA
-    , module Vision.Image.Storage
     , module Vision.Image.Threshold
     , module Vision.Image.Transform
     , module Vision.Image.Type
@@ -35,7 +34,6 @@ import Vision.Image.Interpolate
 import Vision.Image.Mutable
 import Vision.Image.RGB
 import Vision.Image.RGBA
-import Vision.Image.Storage
 import Vision.Image.Threshold
 import Vision.Image.Transform
 import Vision.Image.Type
