@@ -15,6 +15,7 @@ module Vision.Image.Type (
     ) where
 
 import Control.Applicative ((<$>))
+import Control.DeepSeq (NFData (..), deepseq)
 import Data.Vector.Storable (Vector, create, enumFromN, forM_, generate)
 import Data.Vector.Storable.Mutable (new, write)
 import Foreign.Storable (Storable)
@@ -35,6 +36,9 @@ data Manifest p = Manifest {
       manifestSize   :: !Size
     , manifestVector :: !(Vector p)
     } deriving (Eq, Ord, Show)
+
+instance NFData (Manifest p) where
+    rnf !_ = ()
 
 instance Storable p => MaskedImage (Manifest p) where
     type ImagePixel (Manifest p) = p
