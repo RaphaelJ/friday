@@ -1,5 +1,8 @@
 name:                   friday
-version:                0.2.0
+--                      +-+------- breaking API changes
+--                      | | +----- non-breaking API additions
+--                      | | | +--- code changes with no API change
+version:                0.2.0.1
 synopsis:               A functional image processing library for Haskell.
 homepage:               https://github.com/RaphaelJ/friday
 license:                LGPL-3
@@ -34,6 +37,10 @@ category:               Graphics
 stability:              Experimental
 build-type:             Simple
 cabal-version:          >= 1.10
+
+source-repository       head
+    type:               git
+    location:           https://github.com/RaphaelJ/friday
 
 library
     exposed-modules:    Vision.Detector.Edge

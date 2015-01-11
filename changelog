@@ -1,6 +1,9 @@
 -*-change-log-*-
 
-v0.2 December 2014
+v0.2.0.1 January 2014
+ * Setup.hs script.
+
+v0.2 January 2014
  BREAKING CHANGES:
    * Origin is on the upper left corner of the image (was bottom left).
    * New simplified filters interface. The old interface is still used
