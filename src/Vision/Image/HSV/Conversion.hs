@@ -1,4 +1,6 @@
-{-# LANGUAGE BangPatterns, MultiParamTypeClasses, PatternGuards #-}
+{-# LANGUAGE BangPatterns
+           , MultiParamTypeClasses
+           , PatternGuards #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Vision.Image.HSV.Conversion () where

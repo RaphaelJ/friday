@@ -1,11 +1,16 @@
-{-# LANGUAGE BangPatterns, FlexibleContexts, GADTs #-}
+{-# LANGUAGE BangPatterns
+           , FlexibleContexts
+           , GADTs #-}
 
 module Vision.Image.Threshold (
+    -- * Simple threshold
       ThresholdType (..), thresholdType
     , threshold
-    , AdaptiveThresholdKernel (..), AdaptiveThreshold, adaptiveThreshold
-    , otsu
-    , scw
+    -- * Adaptive threshold
+    , AdaptiveThresholdKernel (..), AdaptiveThreshold
+    , adaptiveThreshold, adaptiveThresholdFilter
+    -- * Other methods
+    , otsu, scw
     ) where
 
 import Data.Int
@@ -17,11 +22,12 @@ import qualified Data.Vector as VU
 import Vision.Image.Class (
       Image, ImagePixel, FromFunction (..), FunctorImage, (!), shape
     )
-import Vision.Image.Filter (
-      Filter (..), BoxFilter, SeparableFilter, Kernel (..)
+import Vision.Image.Filter.Internal (
+      Filter (..), BoxFilter, Kernel (..), SeparableFilter, SeparatelyFiltrable
     , KernelAnchor (KernelAnchorCenter), FilterFold (..)
     , BorderInterpolate (BorderReplicate)
-    , apply, blur, gaussianBlur, Mean, mean)
+    , apply, blur, gaussianBlur, Mean, mean
+    )
 import Vision.Image.Type (Manifest, delayed, manifest)
 import Vision.Histogram (
       HistogramShape, PixelValueSpace, ToHistogram, histogram
@@ -67,8 +73,6 @@ threshold !cond !thresType =
 
 -- -----------------------------------------------------------------------------
 
-type AdaptiveThreshold src acc res = SeparableFilter src () acc res
-
 -- | Defines how pixels of the kernel of the adaptive threshold will be
 -- weighted.
 --
@@ -82,19 +86,48 @@ data AdaptiveThresholdKernel acc where
     GaussianKernel :: (Floating acc, RealFrac acc)
                    => Maybe acc -> AdaptiveThresholdKernel acc
 
--- | Creates an adaptive thresholding filter.
+-- | Compares every pixel to its surrounding ones in the kernel of the given
+-- radius.
+adaptiveThreshold :: ( Image src, Integral (ImagePixel src)
+                     , Ord (ImagePixel src)
+                     , FromFunction res, Integral (FromFunctionPixel res)
+                     , Storable acc
+                     , SeparatelyFiltrable src res acc)
+                  => AdaptiveThresholdKernel acc
+                  -> Int
+                  -- ^ Kernel radius.
+                  -> ImagePixel src
+                  -- ^ Minimum difference between the pixel and the kernel
+                  -- average. The pixel is thresholded if
+                  -- @pixel_value - kernel_mean > difference@ where difference
+                  -- is this number. Can be negative.
+                  -> ThresholdType (ImagePixel src) (FromFunctionPixel res)
+                  -> src
+                  -> res
+adaptiveThreshold kernelType radius thres thresType img =
+    adaptiveThresholdFilter kernelType radius thres thresType `apply` img
+{-# INLINABLE adaptiveThreshold #-}
+
+type AdaptiveThreshold src acc res = SeparableFilter src () acc res
+
+-- | Creates an adaptive thresholding filter to be used with 'apply'.
+--
+-- Use 'adaptiveThreshold' if you only want to apply the filter on the image.
 --
 -- Compares every pixel to its surrounding ones in the kernel of the given
 -- radius.
-adaptiveThreshold :: (Integral src, Num src, Ord src, Storable acc)
-                  => AdaptiveThresholdKernel acc
-                  -> Int -- ^ Kernel radius.
-                  -> src -- ^ Minimum difference between the pixel and the
-                         -- kernel average. The pixel is thresholded if
-                         -- @pixel_value - kernel_mean > difference@ where
-                         -- difference if this number. Can be negative.
-                  -> ThresholdType src res -> AdaptiveThreshold src acc res
-adaptiveThreshold !kernelType !radius !thres !thresType =
+adaptiveThresholdFilter :: (Integral src, Ord src, Storable acc)
+                        => AdaptiveThresholdKernel acc
+                        -> Int
+                        -- ^ Kernel radius.
+                        -> src
+                        -- ^ Minimum difference between the pixel and the kernel
+                        -- average. The pixel is thresholded if
+                        -- @pixel_value - kernel_mean > difference@ where
+                        -- difference is this number. Can be negative.
+                        -> ThresholdType src res
+                        -> AdaptiveThreshold src acc res
+adaptiveThresholdFilter !kernelType !radius !thres !thresType =
     kernelFilter { fPost = post }
   where
     !kernelFilter =
@@ -105,7 +138,7 @@ adaptiveThreshold !kernelType !radius !thres !thresType =
         let !acc' = (fPost kernelFilter) ix pix ini acc
             !cond = (pix - acc') > thres
         in thresholdType thresType cond pix
-{-# INLINE adaptiveThreshold #-}
+{-# INLINE adaptiveThresholdFilter #-}
 
 -- -----------------------------------------------------------------------------
 

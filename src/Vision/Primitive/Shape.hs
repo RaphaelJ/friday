@@ -1,4 +1,6 @@
-{-# LANGUAGE BangPatterns, FlexibleInstances, TypeOperators #-}
+{-# LANGUAGE BangPatterns
+           , FlexibleInstances
+           , TypeOperators #-}
 
 -- | 'Shape's are similar to what you could found in @repa@. 'Shape' are used
 -- both for indexes and shapes.

@@ -45,6 +45,7 @@ library
                         Vision.Image.Grey.Specialize
                         Vision.Image.Grey.Type
                         Vision.Image.Filter
+                        Vision.Image.Filter.Internal
                         Vision.Image.HSV
                         Vision.Image.HSV.Conversion
                         Vision.Image.HSV.Specialize

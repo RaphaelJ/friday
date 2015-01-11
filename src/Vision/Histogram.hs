@@ -1,5 +1,9 @@
-{-# LANGUAGE BangPatterns, FlexibleContexts, FlexibleInstances
-           , ParallelListComp, TypeFamilies, TypeOperators #-}
+{-# LANGUAGE BangPatterns
+           , FlexibleContexts
+           , FlexibleInstances
+           , ParallelListComp
+           , TypeFamilies
+           , TypeOperators #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- | Contains functions to compute and manipulate histograms as well as some

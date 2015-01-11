@@ -1,4 +1,5 @@
-{-# LANGUAGE BangPatterns, MultiParamTypeClasses #-}
+{-# LANGUAGE BangPatterns
+           , MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Vision.Image.RGB.Conversion () where

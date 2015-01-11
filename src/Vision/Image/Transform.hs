@@ -1,4 +1,6 @@
-{-# LANGUAGE BangPatterns, FlexibleContexts, TypeFamilies #-}
+{-# LANGUAGE BangPatterns
+           , FlexibleContexts
+           , TypeFamilies #-}
 
 -- | Provides high level functions to do geometric transformations on images.
 --

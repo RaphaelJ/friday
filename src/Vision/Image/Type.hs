@@ -1,5 +1,9 @@
-{-# LANGUAGE BangPatterns, FlexibleContexts, FlexibleInstances
-           , MultiParamTypeClasses, PatternGuards, TypeFamilies
+{-# LANGUAGE BangPatterns
+           , FlexibleContexts
+           , FlexibleInstances
+           , MultiParamTypeClasses
+           , PatternGuards
+           , TypeFamilies
            , UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -15,7 +19,7 @@ module Vision.Image.Type (
     ) where
 
 import Control.Applicative ((<$>))
-import Control.DeepSeq (NFData (..), deepseq)
+import Control.DeepSeq (NFData (..))
 import Data.Vector.Storable (Vector, create, enumFromN, forM_, generate)
 import Data.Vector.Storable.Mutable (new, write)
 import Foreign.Storable (Storable)

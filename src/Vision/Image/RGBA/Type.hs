@@ -1,4 +1,7 @@
-{-# LANGUAGE BangPatterns, RecordWildCards, TypeFamilies, TypeOperators #-}
+{-# LANGUAGE BangPatterns
+           , RecordWildCards
+           , TypeFamilies
+           , TypeOperators #-}
 
 module Vision.Image.RGBA.Type (
       RGBA, RGBAPixel (..), RGBADelayed

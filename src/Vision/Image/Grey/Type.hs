@@ -1,4 +1,6 @@
-{-# LANGUAGE BangPatterns, GeneralizedNewtypeDeriving, TypeFamilies #-}
+{-# LANGUAGE BangPatterns
+           , GeneralizedNewtypeDeriving
+           , TypeFamilies #-}
 
 module Vision.Image.Grey.Type (
       Grey, GreyPixel (..), GreyDelayed

@@ -1,5 +1,9 @@
-{-# LANGUAGE BangPatterns, FlexibleContexts, RankNTypes, TypeFamilies #-}
+{-# LANGUAGE BangPatterns
+           , FlexibleContexts
+           , RankNTypes
+           , TypeFamilies #-}
 
+-- | Contains an stateful image type which can be modified inside a 'ST' monad.
 module Vision.Image.Mutable (
       MutableImage (..), create
     , MutableManifest (..)

@@ -1,4 +1,7 @@
-{-# LANGUAGE BangPatterns, RecordWildCards, TypeFamilies, TypeOperators #-}
+{-# LANGUAGE BangPatterns
+           , RecordWildCards
+           , TypeFamilies
+           , TypeOperators #-}
 
 module Vision.Image.RGB.Type (
       RGB, RGBPixel (..), RGBDelayed

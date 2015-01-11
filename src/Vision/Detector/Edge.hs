@@ -1,4 +1,6 @@
-{-# LANGUAGE BangPatterns, FlexibleContexts, MultiWayIf #-}
+{-# LANGUAGE BangPatterns
+           , FlexibleContexts
+           , MultiWayIf #-}
 
 module Vision.Detector.Edge (canny) where
 
@@ -12,7 +14,7 @@ import Vision.Image (
       Image, ImagePixel, Manifest, MutableManifest, Grey, DerivativeType (..)
     , (!), shape, linearIndex, fromFunction
     , create, new', linearRead, linearWrite
-    , apply, sobel
+    , sobel
     )
 import Vision.Primitive (Z (..), (:.) (..), inShape, ix2)
 
@@ -64,8 +66,8 @@ canny !derivSize !lowThres !highThres !img =
     (!lowThres', !highThres') = (square lowThres, square highThres)
 
     dx, dy :: Manifest Int16
-    !dx = sobel derivSize DerivativeX `apply` img
-    !dy = sobel derivSize DerivativeY `apply` img
+    !dx = sobel derivSize DerivativeX img
+    !dy = sobel derivSize DerivativeY img
 
     -- Gradient magnitude, squared.
     dxy :: Manifest Int32

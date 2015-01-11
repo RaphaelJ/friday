@@ -1,4 +1,7 @@
-{-# LANGUAGE BangPatterns, RecordWildCards, TypeFamilies, TypeOperators #-}
+{-# LANGUAGE BangPatterns
+           , RecordWildCards
+           , TypeFamilies
+           , TypeOperators #-}
 
 module Vision.Image.HSV.Type (
       HSV, HSVPixel (..), HSVDelayed

@@ -3,7 +3,9 @@
 v0.2 December 2014
  BREAKING CHANGES:
    * Origin is on the upper left corner of the image (was bottom left).
-   * New Filter interface.
+   * New simplified filters interface. The old interface is still used
+     internally to create filters and is available in
+     Vision.Image.Filter.Internal.
    * DevIL bindings (Vision.Image.Storage) are now in a separate package
      (friday-devil) and with an improved interface.
    * Benchmarks are now in a separate package (friday-bench).
