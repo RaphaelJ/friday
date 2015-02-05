@@ -2,7 +2,7 @@ name:                   friday
 --                      +-+------- breaking API changes
 --                      | | +----- non-breaking API additions
 --                      | | | +--- code changes with no API change
-version:                0.2.0.1
+version:                0.2.0.2
 synopsis:               A functional image processing library for Haskell.
 homepage:               https://github.com/RaphaelJ/friday
 license:                LGPL-3

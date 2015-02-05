@@ -31,6 +31,7 @@ class Pixel p where
     type PixelChannel p
 
     -- | Returns the number of channels of the pixel.
+    --
     -- Must not consume 'p' (could be 'undefined').
     pixNChannels :: p -> Int
 
@@ -124,6 +125,7 @@ class Storable (ImagePixel i) => MaskedImage i where
 type ImageChannel i = PixelChannel (ImagePixel i)
 
 -- | Provides an abstraction over the internal representation of an image.
+--
 -- Image origin is located in the lower left corner.
 class MaskedImage i => Image i where
     -- | Returns the pixel value at 'Z :. y :. x'.
@@ -155,8 +157,10 @@ class FromFunction i where
 
     -- | Generates an image by calling the last function for each pixel of the
     -- constructed image.
+    --
     -- The first function is called for each line, generating a line invariant
     -- value.
+    --
     -- This function is faster for some image representations as some recurring
     -- computation can be cached.
     fromFunctionLine :: Size -> (Int -> a)
@@ -167,8 +171,10 @@ class FromFunction i where
 
     -- | Generates an image by calling the last function for each pixel of the
     -- constructed image.
+    --
     -- The first function is called for each column, generating a column
     -- invariant value.
+    --
     -- This function *can* be faster for some image representations as some
     -- recurring computations can be cached. However, it may requires a vector
     -- allocation for these values. If the column invariant is cheap to
@@ -181,8 +187,10 @@ class FromFunction i where
 
     -- | Generates an image by calling the last function for each pixel of the
     -- constructed image.
+    --
     -- The two first functions are called for each line and for each column,
     -- respectively, generating common line and column invariant values.
+    --
     -- This function is faster for some image representations as some recurring
     -- computation can be cached. However, it may requires a vector
     -- allocation for column values. If the column invariant is cheap to
