@@ -14,6 +14,7 @@
 -- detailed usage and examples.
 module Vision.Image (
       module Vision.Image.Class
+    , module Vision.Image.Conversion
     , module Vision.Image.Grey
     , module Vision.Image.Filter
     , module Vision.Image.HSV
@@ -27,6 +28,7 @@ module Vision.Image (
     ) where
 
 import Vision.Image.Class
+import Vision.Image.Conversion
 import Vision.Image.Grey
 import Vision.Image.Filter
 import Vision.Image.HSV
