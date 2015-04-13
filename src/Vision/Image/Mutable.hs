@@ -10,7 +10,7 @@ module Vision.Image.Mutable (
     ) where
 
 import Control.Monad.Primitive (PrimMonad (..))
-import Control.Monad.ST.Safe (ST, runST)
+import Control.Monad.ST (ST, runST)
 import Data.Vector.Storable (MVector)
 import Foreign.Storable (Storable)
 import Prelude hiding (read)

@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns
+           , CPP
            , FlexibleContexts
            , FlexibleInstances
            , GADTs
@@ -53,9 +54,12 @@ module Vision.Image.Filter.Internal (
     , Mean, mean
     ) where
 
+#if __GLASGOW_HASKELL__ < 710
+import Data.Word
+#endif
+
 import Data.List
 import Data.Ratio
-import Data.Word
 import Foreign.Storable (Storable)
 
 import qualified Data.Vector.Storable as V

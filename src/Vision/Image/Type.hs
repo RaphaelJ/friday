@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns
+           , CPP
            , FlexibleContexts
            , FlexibleInstances
            , MultiParamTypeClasses
@@ -18,7 +19,10 @@ module Vision.Image.Type (
     , delay, compute, delayed, manifest
     ) where
 
+#if __GLASGOW_HASKELL__ < 710
 import Control.Applicative ((<$>))
+#endif
+
 import Control.DeepSeq (NFData (..))
 import Data.Convertible (Convertible (..), convert)
 import Data.Vector.Storable (Vector, create, enumFromN, forM_, generate)

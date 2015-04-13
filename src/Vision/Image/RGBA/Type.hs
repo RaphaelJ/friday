@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns
+           , CPP
            , RecordWildCards
            , TypeFamilies
            , TypeOperators #-}
@@ -7,7 +8,10 @@ module Vision.Image.RGBA.Type (
       RGBA, RGBAPixel (..), RGBADelayed
     ) where
 
+#if __GLASGOW_HASKELL__ < 710
 import Control.Applicative ((<$>), (<*>))
+#endif
+
 import Data.Word
 import Foreign.Storable (Storable (..))
 import Foreign.Ptr (castPtr, plusPtr)

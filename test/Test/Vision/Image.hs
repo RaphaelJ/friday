@@ -1,10 +1,16 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, TypeFamilies
+{-# LANGUAGE CPP
+           , FlexibleContexts
+           , FlexibleInstances
+           , TypeFamilies
            , UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Test.Vision.Image (tests) where
 
+#if __GLASGOW_HASKELL__ < 710
 import Control.Applicative ((<*>), (<$>))
+#endif
+
 import Data.Vector.Storable (Storable, replicateM)
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)

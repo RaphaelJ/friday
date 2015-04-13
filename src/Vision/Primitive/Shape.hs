@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns
+           , CPP
            , FlexibleInstances
            , TypeOperators #-}
 
@@ -20,8 +21,10 @@ module Vision.Primitive.Shape (
     , ix1, ix2, ix3, ix4, ix5, ix6, ix7, ix8, ix9
 ) where
 
+#if __GLASGOW_HASKELL__ < 710
 import Control.Applicative
 import Data.Word
+#endif
 
 import Foreign.Storable (Storable (..))
 import Foreign.Ptr (castPtr, plusPtr)

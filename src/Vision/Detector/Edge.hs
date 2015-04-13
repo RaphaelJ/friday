@@ -5,7 +5,7 @@
 module Vision.Detector.Edge (canny) where
 
 import Control.Monad (when)
-import Control.Monad.ST.Safe (ST)
+import Control.Monad.ST (ST)
 import Data.Int
 import Data.Vector.Storable (enumFromN, forM_)
 import Foreign.Storable (Storable)

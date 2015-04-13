@@ -1,9 +1,16 @@
-{-# LANGUAGE BangPatterns, FlexibleContexts, FlexibleInstances
+{-# LANGUAGE BangPatterns
+           , CPP
+           , FlexibleContexts
+           , FlexibleInstances
            , UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Test.Vision.Histogram (tests) where
 
+#if __GLASGOW_HASKELL__ < 710
 import Control.Applicative ((<$>))
+#endif
+
 import Data.Int
 import qualified Data.Vector.Storable as V
 import Test.Framework (Test)
@@ -30,8 +37,7 @@ tests = [
     , testProperty "The reduction of a 2D histogram gives the linear one."
                    propReduceHist
 
-    , testProperty "Resizing an histogram equals the computation of the \
-                   \smallest one."
+    , testProperty "Resizing an histogram equals computing the smallest one."
                    propResizeHist
 
     , testProperty "Cumulative histogram last bin equals original's sum"
@@ -44,9 +50,9 @@ tests = [
                    propCorrelation
     , testProperty "Comparing the same histogram returns a 0 chi-square value"
                    propChiSquare
-    , testProperty "Comparing the same histogram returns an intersection value \
-                   \equals to the sum of the values of the histogram"
-                   propIntersec
+    , testProperty
+        "The intersection of an histogram with itself is the sum of its values."
+        propIntersec
     , testProperty "Comparing the same histogram returns a 0 EMD value"
                    propEMD
     ]
