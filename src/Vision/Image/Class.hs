@@ -7,11 +7,8 @@ module Vision.Image.Class (
     , FunctorImage (..)
     -- * Functions
     , (!), (!?), nChannels, pixel
-    -- * Conversion
-    , Convertible (..), convert
     ) where
 
-import Data.Convertible (Convertible (..), convert)
 import Data.Int
 import Data.Vector.Storable (Vector, generate, unfoldr)
 import Data.Word

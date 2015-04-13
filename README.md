@@ -43,6 +43,55 @@ operators) ;
 
 # Quick tour
 
+## Modules
+
+The library is divided in three main modules: `Vision.Primitive`, `Vision.Image`
+and `Vision.Histogram`.
+
+You can directly import sub-modules (such as `Vision.Image.Transform`), but the
+backward-compatibility is *not* enforced. That is, some functions could be moved
+to another sub-module in a newer backward-compatible advertised version.
+
+### Vision.Primitive
+
+`Vision.Primitive` contains types used all over the library, such as `Shape`
+which is used to define shapes and indices in images and histograms.
+
+The module is usually imported unqualified:
+
+```haskell
+import Vision.Primitive
+```
+
+### Vision.Image
+
+`Vision.Image` contains functions and types to manage and transform images.
+
+The module can be imported unqualified but it's often better use a qualified
+import as some function names (such as `map`) can conflict with `Prelude` and
+`Vision.Histogram`:
+
+```haskell
+import Vision.Image
+-- or
+import qualified Vision.Image as I
+```
+
+### Vision.Histogram
+
+`Vision.Histogram` contains functions and types to create and compare
+histograms.
+
+The module can be imported unqualified but it's often better use a qualified
+import as some function names (such as `map`) can conflict with `Prelude` and
+`Vision.Image`:
+
+```haskell
+import Vision.Histogram
+-- or
+import qualified Vision.Histogram as H
+```
+
 ## The Image type-class
 
 Images implement the `Image` type-class.

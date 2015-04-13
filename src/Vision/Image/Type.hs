@@ -20,6 +20,7 @@ module Vision.Image.Type (
 
 import Control.Applicative ((<$>))
 import Control.DeepSeq (NFData (..))
+import Data.Convertible (Convertible (..), convert)
 import Data.Vector.Storable (Vector, create, enumFromN, forM_, generate)
 import Data.Vector.Storable.Mutable (new, write)
 import Foreign.Storable (Storable)
@@ -28,8 +29,7 @@ import Prelude hiding (map, read)
 import qualified Data.Vector.Storable as V
 
 import Vision.Image.Class (
-      MaskedImage (..), Image (..), FromFunction (..), FunctorImage (..)
-    , Convertible (..), (!), convert
+      MaskedImage (..), Image (..), FromFunction (..), FunctorImage (..), (!)
     )
 import Vision.Primitive (Z (..), (:.) (..), Point, Size, ix2)
 

@@ -1,5 +1,8 @@
 -*-change-log-*-
 
+v0.2.1.0 March 2014
+ * Grey to HSV conversion.
+
 v0.2.0.2 February 2014
  * Minor documentation improvements.
 
