@@ -126,7 +126,7 @@ type ImageChannel i = PixelChannel (ImagePixel i)
 
 -- | Provides an abstraction over the internal representation of an image.
 --
--- Image origin is located in the lower left corner.
+-- Image origin (@'ix2' 0 0@) is located in the upper left corner.
 class MaskedImage i => Image i where
     -- | Returns the pixel value at 'Z :. y :. x'.
     index :: i -> Point -> ImagePixel i
