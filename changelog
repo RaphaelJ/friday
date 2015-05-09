@@ -1,5 +1,8 @@
 -*-change-log-*-
 
+v0.2.1.2 May 2015
+ * Add test modules under `other-modules`.
+
 v0.2.1.1 April 2015
  * Removes an orphan dependency to bytetring.
  * Fixes some warning when compiled with GHC 7.10.
