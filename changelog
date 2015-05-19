@@ -1,22 +1,30 @@
 -*-change-log-*-
 
-v0.2.1.2 May 2015
+v0.3        May 2014
+ BREAKING CHANGES:
+   * MaskedImage instances are required to provide an implementation for the
+     lineConstant and columnConstant methods.
+
+ * Image instances are no more required to provide an implementation for index
+   nor linearIndex.
+
+v0.2.1.2    May 2015
  * Add test modules under `other-modules`.
 
-v0.2.1.1 April 2015
+v0.2.1.1    April 2015
  * Removes an orphan dependency to bytetring.
  * Fixes some warning when compiled with GHC 7.10.
 
-v0.2.1.0 March 2015
+v0.2.1.0    March 2015
  * Grey to HSV conversion.
 
-v0.2.0.2 February 2015
+v0.2.0.2    February 2015
  * Minor documentation improvements.
 
-v0.2.0.1 January 2015
+v0.2.0.1    January 2015
  * Setup.hs script.
 
-v0.2 January 2015
+v0.2        January 2015
  BREAKING CHANGES:
    * Origin is on the upper left corner of the image (was bottom left).
    * New simplified filters interface. The old interface is still used
@@ -35,5 +43,5 @@ v0.2 January 2015
    Vision.Image.Type).
  * NFData instance for Manifest images.
 
-v0.1 August 2014
+v0.1        August 2014
  * Initial release

@@ -10,6 +10,7 @@ module Vision.Image.Class (
     ) where
 
 import Data.Int
+import Data.Maybe (fromJust)
 import Data.Vector.Storable (Vector, generate, unfoldr)
 import Data.Word
 import Foreign.Storable (Storable)
@@ -85,8 +86,10 @@ instance Pixel Bool where
     pixIndex     p _ = p
 
 -- | Provides an abstraction for images which are not defined for each of their
--- pixels. The interface is similar to 'Image' except that indexing functions
--- don't always return.
+-- pixels.
+--
+-- The interface is similar to 'Image' except that indexing functions don't
+-- always return.
 --
 -- Image origin (@'ix2' 0 0@) is located in the upper left corner.
 class Storable (ImagePixel i) => MaskedImage i where
@@ -117,11 +120,57 @@ class Storable (ImagePixel i) => MaskedImage i where
                 | otherwise                           = step (i + 1)
     {-# INLINE values #-}
 
-    {-# MINIMAL shape, (maskedIndex | maskedLinearIndex) #-}
+    type LineConstant   i
+    type ColumnConstant i
+
+    lineConstant   :: Int -> LineConstant i
+    columnConstant :: Int -> ColumnConstant i
+
+    -- | For some representations, some computed values are constant for a given
+    -- line and/or column. 'maskedCachedIndex' tries to avoid to recompute these
+    -- values.
+    --
+    -- You should prefer 'maskedCachedIndex' to 'maskedIndex' when iterating
+    -- over the whole image sequentially, as it's more efficient.
+    --
+    -- Exemple:
+    --
+    -- > let Z :. height :. width = shape srcImg
+    -- >
+    -- > forM_ [0..height-1] $ \y -> do
+    -- >     let lineConst = lineConstant y
+    -- >     forM_ [0..width-1] $ \x -> do
+    -- >         let colConst = columnConstant x
+    -- >             pixelVal = maskedCachedIndex srcImg lineConst colConst
+    -- >                                          (ix2 y x)
+    -- >             print pixelVal
+    maskedCachedIndex :: i -> LineConstant i -> ColumnConstant i -> Point
+                      -> Maybe (ImagePixel i)
+    maskedCachedIndex img _ _ pt = maskedIndex img pt
+    {-# INLINE maskedCachedIndex #-}
+
+    -- | For some representations, some computed values are constant for a given
+    -- line and/or column. 'maskedCachedLinearIndex' tries to avoid to recompute
+    -- these values.
+    --
+    -- You should prefer 'maskedCachedLinearIndex' to 'maskedLinearIndex' when
+    -- iterating over the whole image sequentially, as it's more efficient.
+    --
+    -- See 'maskedCachedIndex' for an example.
+    maskedCachedLinearIndex :: i -> LineConstant i -> ColumnConstant i -> Int
+                            -> Maybe (ImagePixel i)
+    maskedCachedLinearIndex img _ _ ix = maskedLinearIndex img ix
+    {-# INLINE maskedCachedLinearIndex #-}
+
+    {-# MINIMAL shape, (maskedIndex | maskedLinearIndex), lineConstant
+              , columnConstant #-}
 
 type ImageChannel i = PixelChannel (ImagePixel i)
 
 -- | Provides an abstraction over the internal representation of an image.
+--
+-- Unlike 'MaskedImage's, 'Image's are entierly defined, i.e. they have no pixel
+-- for which 'maskedIndex' returns 'Nothing'.
 --
 -- Image origin (@'ix2' 0 0@) is located in the upper left corner.
 class MaskedImage i => Image i where
@@ -133,7 +182,7 @@ class MaskedImage i => Image i where
     -- | Returns the pixel value as if the image was a single dimension vector
     -- (row-major representation).
     linearIndex :: i -> Int -> ImagePixel i
-    linearIndex img = (img `index`) . fromLinearIndex (shape img)
+    linearIndex img = fromJust . (img `maskedLinearIndex`)
     {-# INLINE linearIndex #-}
 
     -- | Returns every pixel values as if the image was a single dimension
@@ -142,7 +191,33 @@ class MaskedImage i => Image i where
     vector img = generate (shapeLength $ shape img) (img `linearIndex`)
     {-# INLINE vector #-}
 
-    {-# MINIMAL index | linearIndex #-}
+    -- | For some representations, some computed values are constant for a given
+    -- line and/or column. 'cachedIndex' tries to avoid to recompute these
+    -- values.
+    --
+    -- You should prefer 'cachedIndex' to 'index' when iterating over the whole
+    -- image sequentially, as it's more efficient.
+    --
+    -- See 'maskedCachedIndex' for an example.
+    cachedIndex :: i -> LineConstant i -> ColumnConstant i -> Point
+                -> ImagePixel i
+    cachedIndex img _ _ pt = index img pt
+    {-# INLINE cachedIndex #-}
+
+    -- | For some representations, some computed values are constant for a given
+    -- line and/or column. 'cachedLinearIndex' tries to avoid to recompute these
+    -- values.
+    --
+    -- You should prefer 'cachedLinearIndex' to 'linearIndex' when iterating
+    -- over the whole image sequentially, as it's more efficient.
+    --
+    -- See 'maskedCachedIndex' for an example.
+    cachedLinearIndex :: i -> LineConstant i -> ColumnConstant i -> Int
+                      -> ImagePixel i
+    cachedLinearIndex img _ _ ix = linearIndex img ix
+    {-# INLINE cachedLinearIndex #-}
+
+    {-# MINIMAL #-}
 
 -- | Provides ways to construct an image from a function.
 class FromFunction i where
@@ -155,7 +230,7 @@ class FromFunction i where
     -- | Generates an image by calling the last function for each pixel of the
     -- constructed image.
     --
-    -- The first function is called for each line, generating a line invariant
+    -- The first function is called for each line, generating a line constant
     -- value.
     --
     -- This function is faster for some image representations as some recurring
@@ -170,11 +245,11 @@ class FromFunction i where
     -- constructed image.
     --
     -- The first function is called for each column, generating a column
-    -- invariant value.
+    -- constant value.
     --
     -- This function *can* be faster for some image representations as some
     -- recurring computations can be cached. However, it may requires a vector
-    -- allocation for these values. If the column invariant is cheap to
+    -- allocation for these values. If the column constant is cheap to
     -- compute, prefer 'fromFunction'.
     fromFunctionCol :: Storable b => Size -> (Int -> b)
                     -> (b -> Point -> FromFunctionPixel i) -> i
@@ -186,11 +261,11 @@ class FromFunction i where
     -- constructed image.
     --
     -- The two first functions are called for each line and for each column,
-    -- respectively, generating common line and column invariant values.
+    -- respectively, generating common line and column constant values.
     --
     -- This function is faster for some image representations as some recurring
     -- computation can be cached. However, it may requires a vector
-    -- allocation for column values. If the column invariant is cheap to
+    -- allocation for column values. If the column constant is cheap to
     -- compute, prefer 'fromFunctionLine'.
     fromFunctionCached :: Storable b => Size
                        -> (Int -> a)               -- ^ Line function

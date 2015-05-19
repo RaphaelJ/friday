@@ -60,6 +60,18 @@ instance Storable p => MaskedImage (Manifest p) where
     values = manifestVector
     {-# INLINE values #-}
 
+    -- Manifest images don't have any constant values to be cached when
+    -- iterated.
+
+    type LineConstant   (Manifest p) = ()
+    type ColumnConstant (Manifest p) = ()
+
+    lineConstant   _ = ()
+    {-# INLINE lineConstant #-}
+
+    columnConstant _ = ()
+    {-# INLINE columnConstant #-}
+
 instance Storable p => Image (Manifest p) where
     Manifest _ vec `linearIndex` ix = vec V.! ix
     {-# INLINE linearIndex #-}
@@ -72,6 +84,7 @@ instance Storable p => FromFunction (Manifest p) where
 
     fromFunction !size@(Z :. h :. w) f =
         Manifest size $ create $ do
+            -- Note: create is faster than unfoldrN.
             arr <- new (h * w)
 
             forM_ (enumFromN 0 h) $ \y -> do
@@ -144,6 +157,7 @@ instance (Image src, Storable p) => FunctorImage src (Manifest p) where
 -- | A delayed image is an image which is constructed using a function.
 --
 -- Usually, a delayed image maps each of its pixels over another image.
+--
 -- Delayed images are useful by avoiding intermediate images in a
 -- transformation pipeline of images or by avoiding the computation of the whole
 -- resulting image when only a portion of its pixels will be accessed.
@@ -160,6 +174,15 @@ instance Storable p => MaskedImage (Delayed p) where
 
     maskedIndex img = Just . delayedFun img
     {-# INLINE maskedIndex #-}
+
+    type LineConstant   (Delayed p) = ()
+    type ColumnConstant (Delayed p) = ()
+
+    lineConstant   _ = ()
+    {-# INLINE lineConstant #-}
+
+    columnConstant _ = ()
+    {-# INLINE columnConstant #-}
 
 instance Storable p => Image (Delayed p) where
     index = delayedFun
@@ -190,6 +213,15 @@ instance Storable p => MaskedImage (DelayedMask p) where
 
     maskedIndex = delayedMaskFun
     {-# INLINE maskedIndex #-}
+
+    type LineConstant   (DelayedMask p) = ()
+    type ColumnConstant (DelayedMask p) = ()
+
+    lineConstant   _ = ()
+    {-# INLINE lineConstant #-}
+
+    columnConstant _ = ()
+    {-# INLINE columnConstant #-}
 
 instance Storable p => FromFunction (DelayedMask p) where
     type FromFunctionPixel (DelayedMask p) = Maybe p
