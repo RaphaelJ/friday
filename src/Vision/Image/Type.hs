@@ -138,13 +138,6 @@ instance Storable p => FromFunctionCol (Manifest p) c where
         !cols = V.generate w col
     {-# INLINE fromFunctionCol #-}
 
--- fromFunctionColVoid     size _ f = fromFunction size (f ())
--- {-# INLINE fromFunctionColVoid #-}
-
--- fromFunctionLineColVoid size line _ f =
---     fromFunctionLine size line (\l -> f l ())
--- {-# INLINE fromFunctionLineColVoid #-}
-
 instance Storable p => FromFunctionLineCol (Manifest p) l c where
     fromFunctionLineCol !size@(Z :. h :. w) line col f =
         Manifest size $ VS.create $ do

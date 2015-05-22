@@ -313,6 +313,33 @@ class (FromFunctionLine i l, FromFunctionCol i c)
 
     {-# MINIMAL #-}
 
+-- These rules replaces the call to 'fromFunctionLine', 'fromFunctionCol' or
+-- 'fromFunctionLineCol' to call to 'fromFunction', 'fromFunctionLine' or
+-- 'fromFunctionCol' when LineConstant = () or ColumnConstant = ().
+
+{-# RULES
+"fromFunctionLine with LineConstant = ()"
+    forall size line (f :: Storable p => () -> Point -> p).
+    fromFunctionLine size line f = fromFunction size (f ())
+
+"fromFunctionCol with ColumnConstant = ()"
+    forall size col (f :: Storable p => () -> Point -> p).
+    fromFunctionCol size col f = fromFunction size (f ())
+
+"fromFunctionLineCol with LineConstant = () and ColumnConstant = ()"
+    forall size line col (f :: Storable p => () -> () -> Point -> p).
+    fromFunctionLineCol size line col f = fromFunction size (f () ())
+
+"fromFunctionLineCol with LineConstant = ()"
+    forall size line col (f :: Storable p => () -> c -> Point -> p).
+    fromFunctionLineCol size line col f = fromFunctionCol size col (f ())
+
+"fromFunctionLineCol with ColumnConstant = ()"
+    forall size line col (f :: Storable p => l -> () -> Point -> p).
+    fromFunctionLineCol size line col f = fromFunctionLine size line
+                                                           (\l -> f l ())
+ #-}
+
 -- | Defines a class for images on which a function can be applied. The class is
 -- different from 'Functor' as there could be some constraints and
 -- transformations the pixel and image types.
