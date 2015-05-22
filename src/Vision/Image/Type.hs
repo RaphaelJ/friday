@@ -157,6 +157,64 @@ instance Storable p => FromFunctionLineCol (Manifest p) l c where
         !cols = V.generate w col
     {-# INLINE fromFunctionLineCol #-}
 
+-- These rules replace call to 'fromFunctionCol' and 'fromFunctionLineCol' with
+-- Storable vector instances when ColumnConstant is an instance of Storable.
+
+{-# RULES
+"fromFunctionCol with ColumnConstant being an Storable instance"
+    forall size  col (f :: (Storable c, Storable p) => c -> Point -> p).
+    fromFunctionCol size col f = fromFunctionColStorable size col f
+
+"fromFunctionLineCol with ColumnConstant being an Storable instance"
+    forall size line col (f :: (Storable c, Storable p)
+                            => l -> c -> Point -> p).
+    fromFunctionLineCol size line col f = undefined
+ #-}
+
+-- | 'fromFunctionCol' specialized for 'Storable' 'ColumnConstant'.
+fromFunctionColStorable :: (Storable p, Storable c)
+                        => Size -> (Int -> c) -> (c ->  Point -> p)
+                        -> Manifest p
+fromFunctionColStorable !size@(Z :. h :. w) col f =
+    Manifest size $ VS.create $ do
+        -- Note: create is faster than unfoldrN.
+        arr <- VSM.new (h * w)
+
+        VS.forM_ (VS.enumFromN 0 h) $ \y -> do
+            let !lineOffset = y * w
+            VS.forM_ (VS.enumFromN 0 w) $ \x -> do
+                let !offset = lineOffset + x
+                    !val    = f (cols VS.! x) (ix2 y x)
+                VSM.write arr offset val
+
+        return arr
+  where
+    !cols = VS.generate w col
+{-# INLINE fromFunctionColStorable #-}
+
+-- | 'fromFunctionLineCol' specialized for 'Storable' 'ColumnConstant'.
+fromFunctionLineColStorable :: (Storable p, Storable c)
+                            => Size -> (Int -> l) -> (Int -> c)
+                            -> (l -> c ->  Point -> p)
+                            -> Manifest p
+fromFunctionLineColStorable !size@(Z :. h :. w) line col f =
+    Manifest size $ VS.create $ do
+        -- Note: create is faster than unfoldrN.
+        arr <- VSM.new (h * w)
+
+        VS.forM_ (VS.enumFromN 0 h) $ \y -> do
+            let !lineVal    = line y
+                !lineOffset = y * w
+            VS.forM_ (VS.enumFromN 0 w) $ \x -> do
+                let !offset = lineOffset + x
+                    !val    = f lineVal (cols VS.! x) (ix2 y x)
+                VSM.write arr offset val
+
+        return arr
+  where
+    !cols = VS.generate w col
+{-# INLINE fromFunctionLineColStorable #-}
+
 instance (Image src, Storable p) => FunctorImage src (Manifest p) where
     map f img = fromFunctionLineCol (shape img) (lineConstant img)
                                     (columnConstant img)
@@ -263,7 +321,6 @@ instance FromFunctionLineCol (DelayedMask p) l c where
 instance MaskedImage src => FunctorImage src (DelayedMask p) where
     map f img = fromFunction (shape img) (\pt -> f <$> (img `maskedIndex` pt))
     {-# INLINE map #-}
-
 
 -- Conversion and type helpers -------------------------------------------------
 
