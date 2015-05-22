@@ -31,7 +31,9 @@ import Prelude hiding (map)
 
 import qualified Data.Vector.Storable as V
 
-import Vision.Image.Class (Pixel, MaskedImage, Image, ImagePixel, FunctorImage)
+import Vision.Image.Class (
+      Pixel, MaskedImageValues, ImageVector, ImagePixel, FunctorImage
+    )
 import Vision.Image.Grey.Type (GreyPixel (..))
 import Vision.Image.HSV.Type  (HSVPixel (..))
 import Vision.Image.RGBA.Type (RGBAPixel (..))
@@ -171,8 +173,8 @@ pixToBin size p =
 --
 -- If the size of the histogram is specified, every bin of a given dimension
 -- will be of the same size (uniform histogram).
-histogram :: ( MaskedImage i, ToHistogram (ImagePixel i), Storable a, Num a
-             , HistogramShape (PixelValueSpace (ImagePixel i)))
+histogram :: ( MaskedImageValues i, ToHistogram (ImagePixel i), Num a
+             , Storable a, HistogramShape (PixelValueSpace (ImagePixel i)))
          => Maybe (PixelValueSpace (ImagePixel i)) -> i
          -> Histogram (PixelValueSpace (ImagePixel i)) a
 histogram mSize img =
@@ -201,9 +203,9 @@ histogram mSize img =
 -- @'Z' ':.' red channel ':.' green channel ':.' blue channel ':.' y region
 -- ':.' x region@.
 --
--- As there is no reason to create an histogram as large as the number of pixels
--- of the image, a size is always needed.
-histogram2D :: ( Image i, ToHistogram (ImagePixel i), Storable a, Num a
+-- As there is no point in creating an histogram as large as the number of
+-- pixels in the image, a size is always required.
+histogram2D :: ( ImageVector i, ToHistogram (ImagePixel i), Num a, Storable a
                , HistogramShape (PixelValueSpace (ImagePixel i)))
             => (PixelValueSpace (ImagePixel i)) :. Int :. Int -> i
             -> Histogram ((PixelValueSpace (ImagePixel i)) :. Int :. Int) a
@@ -306,8 +308,8 @@ normalize norm !hist@(Histogram _ vec) =
 -- @H@ the cumulative of the histogram normalized over an @L1@ norm.
 --
 -- See <https://en.wikipedia.org/wiki/Histogram_equalization>.
-equalizeImage :: ( FunctorImage i i, Integral (ImagePixel i)
-                 , ToHistogram (ImagePixel i)
+equalizeImage :: ( MaskedImageValues i, FunctorImage i i
+                 , Integral (ImagePixel i), ToHistogram (ImagePixel i)
                  , PixelValueSpace (ImagePixel i) ~ DIM1)
               => i -> i
 equalizeImage img =

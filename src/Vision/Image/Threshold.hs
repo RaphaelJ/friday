@@ -16,11 +16,12 @@ module Vision.Image.Threshold (
 import Data.Int
 import Foreign.Storable (Storable)
 
-import qualified Data.Vector.Storable as V
-import qualified Data.Vector as VU
+import qualified Data.Vector.Storable   as V
+import qualified Data.Vector            as VU
 
 import Vision.Image.Class (
-      Image, ImagePixel, FromFunction (..), FunctorImage, (!), shape
+      MaskedImageValues, Image, ImagePixel, FromFunction (..), FunctorImage
+    , (!), shape
     )
 import Vision.Image.Filter.Internal (
       Filter (..), BoxFilter, Kernel (..), SeparableFilter, SeparatelyFiltrable
@@ -34,8 +35,8 @@ import Vision.Histogram (
     )
 import Vision.Primitive (Z (..), (:.) (..), Size, shapeLength)
 
-import qualified Vision.Histogram as H
-import qualified Vision.Image.Class as I
+import qualified Vision.Histogram       as H
+import qualified Vision.Image.Class     as I
 
 -- | Specifies what to do with pixels matching the threshold predicate.
 --
@@ -146,8 +147,9 @@ adaptiveThresholdFilter !kernelType !radius !thres !thresType =
 --
 -- See <https://en.wikipedia.org/wiki/Otsu's_method>.
 otsu :: ( HistogramShape (PixelValueSpace (ImagePixel src))
-        , ToHistogram (ImagePixel src), FunctorImage src res
-        , Ord (ImagePixel src), Num (ImagePixel src), Enum (ImagePixel src))
+        , MaskedImageValues src, ToHistogram (ImagePixel src)
+        , FunctorImage src res, Ord (ImagePixel src), Num (ImagePixel src)
+        , Enum (ImagePixel src))
      => ThresholdType (ImagePixel src) (ImagePixel res) -> src -> res
 otsu !thresType !img =
     threshold (<= thresh) thresType img

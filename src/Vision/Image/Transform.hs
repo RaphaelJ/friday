@@ -15,7 +15,8 @@ import Control.Monad.Primitive (PrimMonad (..))
 import Data.RatioInt (RatioInt, (%))
 
 import Vision.Image.Class (
-      MaskedImage (..), Image (..), ImageChannel, FromFunction (..), (!)
+      MaskedImage (..), Image (..), ImageChannel, (!)
+    , FromFunction (..), FromFunctionLine (..), FromFunctionLineCol (..)
     )
 import Vision.Image.Interpolate (Interpolable, bilinearInterpol)
 import Vision.Image.Mutable (MutableImage (..))
@@ -40,8 +41,9 @@ crop !(Rect rx ry rw rh) !img =
 {-# INLINABLE crop #-}
 
 -- | Resizes the 'Image' using the given interpolation method.
-resize :: (Image i1, Interpolable (ImagePixel i1), FromFunction i2
-         , ImagePixel i1 ~ FromFunctionPixel i2, Integral (ImageChannel i1))
+resize :: ( Image i1, Interpolable (ImagePixel i1), Integral (ImageChannel i1)
+          , FromFunctionLine i2 Int, FromFunctionLineCol i2 RatioInt RatioInt
+          , ImagePixel i1 ~ FromFunctionPixel i2)
        => InterpolMethod -> Size -> i1 -> i2
 resize !method !size'@(Z :. h' :. w') !img =
     case method of
@@ -86,13 +88,13 @@ resize !method !size'@(Z :. h' :. w') !img =
                 {-# INLINE col #-}
                 f !y !x _ = img `bilinearInterpol` RPoint x y
                 {-# INLINE f #-}
-            in fromFunctionCached size' line col f
+            in fromFunctionLineCol size' line col f
   where
     !(Z :. h :. w) = shape img
 {-# INLINABLE resize #-}
 
 -- | Reverses the image horizontally.
-horizontalFlip :: (Image i1, FromFunction i2
+horizontalFlip :: ( Image i1, FromFunction i2
                   , ImagePixel i1 ~ FromFunctionPixel i2)
                => i1 -> i2
 horizontalFlip !img =
@@ -106,7 +108,7 @@ horizontalFlip !img =
 {-# INLINABLE horizontalFlip #-}
 
 -- | Reverses the image vertically.
-verticalFlip :: (Image i1, FromFunction i2
+verticalFlip :: ( Image i1, FromFunctionLine i2 Int
                 , ImagePixel i1 ~ FromFunctionPixel i2)
              => i1 -> i2
 verticalFlip !img =

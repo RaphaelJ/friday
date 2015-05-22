@@ -12,13 +12,15 @@ import Control.Applicative ((<*>), (<$>))
 #endif
 
 import Data.Vector.Storable (Storable, replicateM)
+import Data.RatioInt (RatioInt)
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck (Arbitrary (..), choose)
 
 import Vision.Image (
-      MaskedImage (..), Image (..), Interpolable, FromFunction (..)
-    , ImageChannel, Manifest (..), Delayed (..)
+      MaskedImage (..), Image (..), ImageChannel, Interpolable
+    , FromFunction (..), FromFunctionLine, FromFunctionLineCol
+    , Manifest (..), Delayed (..)
     , Grey, GreyPixel (..), HSVPixel
     , RGBA, RGBAPixel (..), RGBADelayed
     , RGB, RGBPixel (..), InterpolMethod (..)
@@ -89,7 +91,8 @@ propRGBHSV pix =
 
 -- | Tests if by increasing the size of the image by a factor of two and then
 -- reducing by a factor of two give the original image.
-propImageResize :: (Image i, FromFunction i, FromFunctionPixel i ~ ImagePixel i
+propImageResize :: ( Image i, FromFunctionLineCol i RatioInt RatioInt
+                   , FromFunctionLine i Int, FromFunctionPixel i ~ ImagePixel i
                    , Interpolable (ImagePixel i), Integral (ImageChannel i)
                    , Eq i)
                 => i -> Bool
@@ -98,7 +101,8 @@ propImageResize img =
   where
     size@(Z :. h :. w) = shape img
 
-    resize' :: (Image i, FromFunction i, FromFunctionPixel i ~ ImagePixel i
+    resize' :: ( Image i, FromFunctionLineCol i RatioInt RatioInt
+               , FromFunctionLine i Int, FromFunctionPixel i ~ ImagePixel i
                , Interpolable (ImagePixel i), Integral (ImageChannel i))
             => Size -> i -> i
     resize' size' = resize NearestNeighbor size'
@@ -113,8 +117,9 @@ propHorizontalFlip img =
     delayedFlip = horizontalFlip
 
 -- | Tests if applying the vertical flip twice gives the original image.
-propVerticalFlip :: (Image i, FromFunction i
-                      , FromFunctionPixel i ~ ImagePixel i, Eq i) => i -> Bool
+propVerticalFlip :: ( Image i, Eq i, FromFunctionLine i Int
+                    , FromFunctionPixel i ~ ImagePixel i)
+                 => i -> Bool
 propVerticalFlip img =
     img == verticalFlip (delayedFlip img)
   where

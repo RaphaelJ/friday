@@ -2,11 +2,22 @@
 
 v0.3        May 2014
  BREAKING CHANGES:
-   * MaskedImage instances are required to provide an implementation for the
-     lineConstant and columnConstant methods.
+   * 'MaskedImage' instances are required to provide an implementation for the
+     'lineConstant' and 'columnConstant' methods.
+   * The 'FromFunction' class has been split in four classes ('FromFunction',
+     'FromFunctionLine', 'FromFunctionCol' and 'FromFunctionLineCol').
+     Line and column constants are now type parameters and constraints can be
+     defined on them.
+   * The 'fromFunctionCached' method as been renamed 'fromFunctionLineCol'.
+   * The 'values' method from the 'MaskedImage' class has been moved to the
+     new 'MaskedImageValues' class.
+   * The 'vector' method from the 'Image' class has been moved to the new
+     'ImageVector' class.
 
- * Image instances are no more required to provide an implementation for index
-   nor linearIndex.
+ * 'MaskedImage' instances are no more required to have pixels being an
+   instance of 'Storable'.
+ * 'Image' instances are no more required to provide an implementation for
+   'index' nor 'linearIndex'.
 
 v0.2.1.2    May 2015
  * Add test modules under `other-modules`.
