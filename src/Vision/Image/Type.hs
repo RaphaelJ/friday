@@ -93,9 +93,9 @@ instance Storable p => FromFunction (Manifest p) where
             -- Note: create is faster than unfoldrN.
             arr <- VSM.new (h * w)
 
-            VS.forM_ (VS.enumFromN 0 h) $ \y -> do
+            forRangeM_ 0 h $ \y -> do
                 let !lineOffset = y * w
-                VS.forM_ (VS.enumFromN 0 w) $ \x -> do
+                forRangeM_ 0 w $ \x -> do
                     let !offset = lineOffset + x
                         !val    = f (ix2 y x)
                     VSM.write arr offset val
@@ -109,10 +109,10 @@ instance Storable p => FromFunctionLine (Manifest p) l where
             -- Note: create is faster than unfoldrN.
             arr <- VSM.new (h * w)
 
-            VS.forM_ (VS.enumFromN 0 h) $ \y -> do
+            forRangeM_ 0 h $ \y -> do
                 let !lineVal    = line y
                     !lineOffset = y * w
-                VS.forM_ (VS.enumFromN 0 w) $ \x -> do
+                forRangeM_ 0 w $ \x -> do
                     let !offset = lineOffset + x
                         !val    = f lineVal (ix2 y x)
                     VSM.write arr offset val
@@ -126,9 +126,9 @@ instance Storable p => FromFunctionCol (Manifest p) c where
             -- Note: create is faster than unfoldrN.
             arr <- VSM.new (h * w)
 
-            VS.forM_ (VS.enumFromN 0 h) $ \y -> do
+            forRangeM_ 0 h $ \y -> do
                 let !lineOffset = y * w
-                VS.forM_ (VS.enumFromN 0 w) $ \x -> do
+                forRangeM_ 0 w $ \x -> do
                     let !offset = lineOffset + x
                         !val    = f (cols V.! x) (ix2 y x)
                     VSM.write arr offset val
@@ -144,10 +144,10 @@ instance Storable p => FromFunctionLineCol (Manifest p) l c where
             -- Note: create is faster than unfoldrN.
             arr <- VSM.new (h * w)
 
-            VS.forM_ (VS.enumFromN 0 h) $ \y -> do
+            forRangeM_ 0 h $ \y -> do
                 let !lineVal    = line y
                     !lineOffset = y * w
-                VS.forM_ (VS.enumFromN 0 w) $ \x -> do
+                forRangeM_ 0 w $ \x -> do
                     let !offset = lineOffset + x
                         !val    = f lineVal (cols V.! x) (ix2 y x)
                     VSM.write arr offset val
@@ -168,7 +168,8 @@ instance Storable p => FromFunctionLineCol (Manifest p) l c where
 "fromFunctionLineCol with ColumnConstant being an Storable instance"
     forall size line col (f :: (Storable c, Storable p)
                             => l -> c -> Point -> p).
-    fromFunctionLineCol size line col f = undefined
+    fromFunctionLineCol size line col f = fromFunctionLineColStorable size line
+                                                                      col f
  #-}
 
 -- | 'fromFunctionCol' specialized for 'Storable' 'ColumnConstant'.
@@ -180,9 +181,9 @@ fromFunctionColStorable !size@(Z :. h :. w) col f =
         -- Note: create is faster than unfoldrN.
         arr <- VSM.new (h * w)
 
-        VS.forM_ (VS.enumFromN 0 h) $ \y -> do
+        forRangeM_ 0 h $ \y -> do
             let !lineOffset = y * w
-            VS.forM_ (VS.enumFromN 0 w) $ \x -> do
+            forRangeM_ 0 w $ \x -> do
                 let !offset = lineOffset + x
                     !val    = f (cols VS.! x) (ix2 y x)
                 VSM.write arr offset val
@@ -202,10 +203,10 @@ fromFunctionLineColStorable !size@(Z :. h :. w) line col f =
         -- Note: create is faster than unfoldrN.
         arr <- VSM.new (h * w)
 
-        VS.forM_ (VS.enumFromN 0 h) $ \y -> do
+        forRangeM_ 0 h $ \y -> do
             let !lineVal    = line y
                 !lineOffset = y * w
-            VS.forM_ (VS.enumFromN 0 w) $ \x -> do
+            forRangeM_ 0 w $ \x -> do
                 let !offset = lineOffset + x
                     !val    = f lineVal (cols VS.! x) (ix2 y x)
                 VSM.write arr offset val
@@ -362,3 +363,15 @@ delayed = id
 -- | Forces an image to be in its manifest represenation. Does nothing.
 manifest :: Manifest p -> Manifest p
 manifest = id
+
+-- -----------------------------------------------------------------------------
+
+-- | Equivalent to @forM_ [from..to-1]@.
+forRangeM_ :: Monad m => Int -> Int -> (Int -> m a) -> m ()
+forRangeM_ start stop f =
+    go start
+  where
+    go i | i >= stop = return ()
+         | otherwise = f i >> go (i + 1)
+
+{-# INLINE forRangeM_ #-}

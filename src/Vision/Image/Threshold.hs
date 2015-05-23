@@ -79,9 +79,9 @@ threshold !cond !thresType =
 --
 -- With 'MeanKernel', pixels of the kernel have the same weight.
 --
--- With @'GaussianKernel' sigma@, pixels are weighted according to their distance
--- from the thresholded pixel using a Gaussian function parametred by @sigma@.
--- See 'gaussianBlur' for details.
+-- With @'GaussianKernel' sigma@, pixels are weighted according to their
+-- distance from the thresholded pixel using a Gaussian function parametred by
+-- @sigma@. See 'gaussianBlur' for details.
 data AdaptiveThresholdKernel acc where
     MeanKernel     :: Integral acc => AdaptiveThresholdKernel acc
     GaussianKernel :: (Floating acc, RealFrac acc)

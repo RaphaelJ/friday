@@ -46,9 +46,9 @@ import qualified Vision.Image.Filter.Internal as Internal
 dilate, erode :: ( Image src, Ord (ImagePixel src)
                  , FromFunction res, FromFunctionPixel res ~ ImagePixel src
                  , SeparatelyFiltrable src res (ImagePixel src))
-       => Int           -- ^ Kernel radius.
-       -> src
-       -> res
+              => Int    -- ^ Kernel radius.
+              -> src
+              -> res
 
 dilate radius img = Internal.dilate radius `Internal.apply` img
 {-# INLINABLE dilate #-}

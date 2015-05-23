@@ -18,6 +18,9 @@ v0.3        May 2014
    instance of 'Storable'.
  * 'Image' instances are no more required to provide an implementation for
    'index' nor 'linearIndex'.
+ * Some SPECIALIZE pragmas were removed because of being responsible of long
+   warning messages when compiled with GHC.
+ * Improved performances.
 
 v0.2.1.2    May 2015
  * Add test modules under `other-modules`.
