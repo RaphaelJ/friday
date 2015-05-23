@@ -20,6 +20,7 @@ import Vision.Image.Class (
     )
 import Vision.Image.Interpolate (Interpolable, bilinearInterpol)
 import Vision.Image.Mutable (MutableImage (..))
+import Vision.Image.Type (Delayed)
 import Vision.Primitive (
       Z (..), (:.) (..), Point, RPoint (..), Rect (..), Size, ix2, toLinearIndex
     )
@@ -39,6 +40,7 @@ crop !(Rect rx ry rw rh) !img =
     fromFunction (Z :. rh :. rw) $ \(Z :. y :. x) ->
         img ! ix2 (ry + y) (rx + x)
 {-# INLINABLE crop #-}
+{-# SPECIALIZE INLINE crop :: Rect -> Delayed p -> Delayed p #-}
 
 -- | Resizes the 'Image' using the given interpolation method.
 resize :: ( Image i1, Interpolable (ImagePixel i1), Integral (ImageChannel i1)

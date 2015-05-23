@@ -12,10 +12,14 @@ import Vision.Image.Transform (
     )
 import Vision.Primitive ({-DIM3, DIM5, -}Rect, Size)
 
-{-# SPECIALIZE crop           :: Rect -> RGB -> RGB #-}
-{-# SPECIALIZE horizontalFlip :: RGB -> RGB #-}
-{-# SPECIALIZE resize         :: InterpolMethod -> Size -> RGB -> RGB #-}
-{-# SPECIALIZE verticalFlip   :: RGB -> RGB #-}
+{-# SPECIALIZE NOINLINE crop           :: Rect -> RGB -> RGB #-}
+
+{-# SPECIALIZE NOINLINE horizontalFlip :: RGB -> RGB #-}
+
+{-# SPECIALIZE NOINLINE resize         :: InterpolMethod -> Size -> RGB
+                                       -> RGB #-}
+
+{-# SPECIALIZE NOINLINE verticalFlip   :: RGB -> RGB #-}
 
 -- FIXME: GHC 7.10 fails to specialize the following rules :
 --

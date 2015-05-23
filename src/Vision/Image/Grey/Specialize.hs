@@ -19,38 +19,44 @@ import Vision.Image.Transform (
 import Vision.Image.Type (Manifest)
 import Vision.Primitive ({-DIM1, DIM3, -}Rect, Size)
 
-{-# SPECIALIZE blur           :: Int -> Grey -> Grey #-}
+{-# SPECIALIZE NOINLINE blur           :: Int -> Grey -> Grey #-}
 
-{-# SPECIALIZE crop           :: Rect -> Grey -> Grey #-}
+{-# SPECIALIZE NOINLINE crop           :: Rect -> Grey -> Grey #-}
 
-{-# SPECIALIZE dilate         :: Int -> Grey -> Grey #-}
+{-# SPECIALIZE NOINLINE dilate         :: Int -> Grey -> Grey #-}
 
-{-# SPECIALIZE equalizeImage  :: Grey -> Grey #-}
+{-# SPECIALIZE NOINLINE equalizeImage  :: Grey -> Grey #-}
 
-{-# SPECIALIZE erode          :: Int -> Grey -> Grey #-}
+{-# SPECIALIZE NOINLINE erode          :: Int -> Grey -> Grey #-}
 
-{-# SPECIALIZE gaussianBlur   :: Int -> Maybe Double -> Grey -> Grey
-                              ,  Int -> Maybe Float  -> Grey -> Grey #-}
+{-# SPECIALIZE NOINLINE gaussianBlur   :: Int -> Maybe Double -> Grey -> Grey
+                                       ,  Int -> Maybe Float  -> Grey -> Grey
+                                       #-}
 
-{-# SPECIALIZE horizontalFlip :: Grey -> Grey #-}
+{-# SPECIALIZE NOINLINE horizontalFlip :: Grey -> Grey #-}
 
-{-# SPECIALIZE mean           :: Size -> Grey -> Manifest Double
-                              ,  Size -> Grey -> Manifest Float #-}
+{-# SPECIALIZE NOINLINE mean           :: Size -> Grey -> Manifest Double
+                                       ,  Size -> Grey -> Manifest Float #-}
 
-{-# SPECIALIZE resize         :: InterpolMethod -> Size -> Grey -> Grey #-}
+{-# SPECIALIZE NOINLINE resize         :: InterpolMethod -> Size -> Grey -> Grey #-}
 
-{-# SPECIALIZE scharr         :: DerivativeType -> Grey -> Grey
-                              ,  DerivativeType -> Grey -> Manifest Int16 #-}
+{-# SPECIALIZE NOINLINE scharr         :: DerivativeType -> Grey -> Grey
+                                       ,  DerivativeType -> Grey
+                                                         -> Manifest Int16 #-}
 
-{-# SPECIALIZE scharr         :: DerivativeType -> Grey -> Manifest Int32
-                              ,  DerivativeType -> Grey -> Manifest Int   #-}
+{-# SPECIALIZE NOINLINE scharr         :: DerivativeType -> Grey
+                                                         -> Manifest Int32
+                                       ,  DerivativeType -> Grey
+                                                         -> Manifest Int #-}
 
-{-# SPECIALIZE sobel          :: Int -> DerivativeType -> Grey -> Grey
-                              ,  Int -> DerivativeType -> Grey -> Manifest Int16
-                              ,  Int -> DerivativeType -> Grey -> Manifest Int32
-                              ,  Int -> DerivativeType -> Grey -> Manifest Int
-                              #-}
-{-# SPECIALIZE verticalFlip   :: Grey -> Grey #-}
+{-# SPECIALIZE NOINLINE sobel          :: Int -> DerivativeType -> Grey -> Grey
+                                       ,  Int -> DerivativeType -> Grey
+                                              -> Manifest Int16
+                                       ,  Int -> DerivativeType -> Grey
+                                              -> Manifest Int32
+                                       ,  Int -> DerivativeType -> Grey
+                                              -> Manifest Int #-}
+{-# SPECIALIZE NOINLINE verticalFlip   :: Grey -> Grey #-}
 
 -- FIXME: GHC 7.10 fails to specialize the following rules :
 --
