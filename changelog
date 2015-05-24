@@ -13,6 +13,10 @@ v0.3        May 2014
      new 'MaskedImageValues' class.
    * The 'vector' method from the 'Image' class has been moved to the new
      'ImageVector' class.
+   * The 'InterpolMethod' type used with the 'resize' method no longer exist.
+     Its three constructors ('TruncateInteger', 'NearestNeighbor' and
+     'Bilinear') are now their own (phantom) types. This way, the resizing
+     method is now resolved at compile time.
 
  * 'MaskedImage' instances are no more required to have pixels being an
    instance of 'Storable'.

@@ -8,7 +8,8 @@ module Vision.Image.RGBA.Specialize () where
 -- import Vision.Histogram (Histogram, histogram, histogram2D)
 import Vision.Image.RGBA.Type (RGBA)
 import Vision.Image.Transform (
-      InterpolMethod, crop, resize, horizontalFlip, verticalFlip
+      TruncateInteger, NearestNeighbor, Bilinear
+    , crop, resize, horizontalFlip, verticalFlip
     )
 import Vision.Primitive ({-DIM4, DIM6, -}Rect, Size)
 
@@ -16,8 +17,11 @@ import Vision.Primitive ({-DIM4, DIM6, -}Rect, Size)
 
 {-# SPECIALIZE NOINLINE horizontalFlip :: RGBA -> RGBA #-}
 
-{-# SPECIALIZE NOINLINE resize         :: InterpolMethod -> Size -> RGBA
-                                       -> RGBA #-}
+{-# SPECIALIZE NOINLINE resize         :: TruncateInteger -> Size -> RGBA
+                                                          -> RGBA
+                                       ,  NearestNeighbor -> Size -> RGBA
+                                                          -> RGBA
+                                       ,  Bilinear -> Size -> RGBA -> RGBA #-}
 
 {-# SPECIALIZE NOINLINE verticalFlip   :: RGBA -> RGBA #-}
 

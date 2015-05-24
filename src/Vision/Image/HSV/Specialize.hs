@@ -8,7 +8,8 @@ module Vision.Image.HSV.Specialize () where
 -- import Vision.Histogram (Histogram, histogram, histogram2D)
 import Vision.Image.HSV.Type (HSV)
 import Vision.Image.Transform (
-      InterpolMethod, crop, resize, horizontalFlip, verticalFlip
+      TruncateInteger, NearestNeighbor, Bilinear
+    , crop, resize, horizontalFlip, verticalFlip
     )
 import Vision.Primitive ({-DIM3, DIM5, -}Rect, Size)
 
@@ -16,8 +17,9 @@ import Vision.Primitive ({-DIM3, DIM5, -}Rect, Size)
 
 {-# SPECIALIZE NOINLINE horizontalFlip :: HSV -> HSV #-}
 
-{-# SPECIALIZE NOINLINE resize         :: InterpolMethod -> Size -> HSV
-                                       -> HSV #-}
+{-# SPECIALIZE NOINLINE resize         :: TruncateInteger -> Size -> HSV -> HSV
+                                       ,  NearestNeighbor -> Size -> HSV -> HSV
+                                       ,  Bilinear -> Size -> HSV -> HSV #-}
 
 {-# SPECIALIZE NOINLINE verticalFlip   :: HSV -> HSV #-}
 

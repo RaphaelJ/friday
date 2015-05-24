@@ -8,7 +8,8 @@ module Vision.Image.RGB.Specialize () where
 -- import Vision.Histogram (Histogram, histogram, histogram2D)
 import Vision.Image.RGB.Type (RGB)
 import Vision.Image.Transform (
-      InterpolMethod, crop, resize, horizontalFlip, verticalFlip
+      TruncateInteger, NearestNeighbor, Bilinear
+    , crop, resize, horizontalFlip, verticalFlip
     )
 import Vision.Primitive ({-DIM3, DIM5, -}Rect, Size)
 
@@ -16,8 +17,9 @@ import Vision.Primitive ({-DIM3, DIM5, -}Rect, Size)
 
 {-# SPECIALIZE NOINLINE horizontalFlip :: RGB -> RGB #-}
 
-{-# SPECIALIZE NOINLINE resize         :: InterpolMethod -> Size -> RGB
-                                       -> RGB #-}
+{-# SPECIALIZE NOINLINE resize         :: TruncateInteger -> Size -> RGB -> RGB
+                                       ,  NearestNeighbor -> Size -> RGB -> RGB
+                                       ,  Bilinear -> Size -> RGB -> RGB #-}
 
 {-# SPECIALIZE NOINLINE verticalFlip   :: RGB -> RGB #-}
 

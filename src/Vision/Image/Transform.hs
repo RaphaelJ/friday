@@ -1,13 +1,24 @@
 {-# LANGUAGE BangPatterns
            , FlexibleContexts
-           , TypeFamilies #-}
+           , FlexibleInstances
+           , MultiParamTypeClasses
+           , TypeFamilies
+           , UndecidableInstances #-}
 
 -- | Provides high level functions to do geometric transformations on images.
 --
 -- Every transformation is been declared @INLINABLE@ so new image types could be
 -- specialized.
 module Vision.Image.Transform (
-      InterpolMethod (..), crop, resize, horizontalFlip, verticalFlip, floodFill
+    -- * Crop
+      crop
+    -- * Resize
+    , Resizable, TruncateInteger (..), NearestNeighbor (..), Bilinear (..)
+    , resize
+    -- * Flipping
+    , horizontalFlip, verticalFlip
+    -- * Flood fill
+    , floodFill
     ) where
 
 import Control.Monad (when)
@@ -25,13 +36,7 @@ import Vision.Primitive (
       Z (..), (:.) (..), Point, RPoint (..), Rect (..), Size, ix2, toLinearIndex
     )
 
--- | Defines the set of possible methods for pixel interpolations when looking
--- for a pixel at floating point coordinates.
-data InterpolMethod =
-      TruncateInteger -- ^ Selects the top left pixel (fastest).
-    | NearestNeighbor -- ^ Selects the nearest pixel (fast).
-    | Bilinear        -- ^ Does a double linear interpolation over the four
-                      -- surrounding points (slow).
+-- Crop ------------------------------------------------------------------------
 
 -- | Maps the content of the image\'s rectangle in a new image.
 crop :: (Image i1, FromFunction i2, ImagePixel i1 ~ FromFunctionPixel i2)
@@ -42,58 +47,97 @@ crop !(Rect rx ry rw rh) !img =
 {-# INLINABLE crop #-}
 {-# SPECIALIZE INLINE crop :: Rect -> Delayed p -> Delayed p #-}
 
+-- Resize ----------------------------------------------------------------------
+
+-- | Class for methods which can be used to resize an image.
+class Resizable method src dst where
+    resize' :: method -> Size -> src -> dst
+
+-- 'resize' is not a method of 'Resizable' because methods can't be SPECIALIZE
+-- outside their instance's declarations. By being a simple function, 'resize'
+-- can be specialized for new image types.
+
 -- | Resizes the 'Image' using the given interpolation method.
-resize :: ( Image i1, Interpolable (ImagePixel i1), Integral (ImageChannel i1)
-          , FromFunctionLine i2 Int, FromFunctionLineCol i2 RatioInt RatioInt
-          , ImagePixel i1 ~ FromFunctionPixel i2)
-       => InterpolMethod -> Size -> i1 -> i2
-resize !method !size'@(Z :. h' :. w') !img =
-    case method of
-        TruncateInteger ->
-            let !widthRatio   = double w / double w'
-                !heightRatio  = double h / double h'
-                line !y' = truncate $ (double y' + 0.5) * heightRatio - 0.5
-                {-# INLINE line #-}
-                col  !x' = truncate $ (double x' + 0.5) * widthRatio  - 0.5
-                {-# INLINE col #-}
-                f !y !(Z :. _ :. x') = let !x = col x'
-                                       in img ! ix2 y x
-                {-# INLINE f #-}
-            in fromFunctionLine size' line f
-        NearestNeighbor ->
-            let !widthRatio   = double w / double w'
-                !heightRatio  = double h / double h'
-                line !y' = round $ (double y' + 0.5) * heightRatio - 0.5
-                {-# INLINE line #-}
-                col  !x' = round $ (double x' + 0.5) * widthRatio  - 0.5
-                {-# INLINE col #-}
-                f !y !(Z :. _ :. x') = let !x = col x'
-                                       in img ! ix2 y x
-                {-# INLINE f #-}
-            in fromFunctionLine size' line f
-        Bilinear ->
-            let !widthRatio  = w % w'
-                !maxWidth = ratio (w - 1)
-                !heightRatio = (h - 1) % (h' - 1)
-                !maxHeight = ratio (h - 1)
-
-                -- Limits the interpolation to inner pixel as first and last
-                -- pixels can have out of bound coordinates.
-                bound !limit = min limit . max 0
-                {-# INLINE bound #-}
-
-                line !y' = bound maxHeight $   (ratio y' + 0.5) * heightRatio
-                                             - 0.5
-                {-# INLINE line #-}
-                col  !x' = bound maxWidth  $   (ratio x' + 0.5) * widthRatio
-                                             - 0.5
-                {-# INLINE col #-}
-                f !y !x _ = img `bilinearInterpol` RPoint x y
-                {-# INLINE f #-}
-            in fromFunctionLineCol size' line col f
-  where
-    !(Z :. h :. w) = shape img
+resize :: Resizable method src dst => method -> Size -> src -> dst
+resize method size img = resize' method size img
 {-# INLINABLE resize #-}
+
+-- | Selects the top left pixel (fastest).
+data TruncateInteger = TruncateInteger
+
+instance ( Image src, FromFunctionLine dst Int
+         , ImagePixel src ~ FromFunctionPixel dst)
+         => Resizable TruncateInteger src dst where
+    resize' TruncateInteger !size'@(Z :. h' :. w') !img =
+        let !widthRatio  = double w / double w'
+            !heightRatio = double h / double h'
+            line !y' = truncate $ (double y' + 0.5) * heightRatio - 0.5
+            {-# INLINE line #-}
+            col  !x' = truncate $ (double x' + 0.5) * widthRatio  - 0.5
+            {-# INLINE col #-}
+            f !y !(Z :. _ :. x') = let !x = col x'
+                                   in img ! ix2 y x
+            {-# INLINE f #-}
+        in fromFunctionLine size' line f
+      where
+        !(Z :. h :. w) = shape img
+    {-# INLINE resize' #-}
+
+-- | Selects the nearest pixel (fast).
+data NearestNeighbor = NearestNeighbor
+
+instance ( Image src, FromFunctionLine dst Int
+         , ImagePixel src ~ FromFunctionPixel dst)
+         => Resizable NearestNeighbor src dst where
+    resize' NearestNeighbor !size'@(Z :. h' :. w') !img =
+        let !widthRatio   = double w / double w'
+            !heightRatio  = double h / double h'
+            line !y' = round $ (double y' + 0.5) * heightRatio - 0.5
+            {-# INLINE line #-}
+            col  !x' = round $ (double x' + 0.5) * widthRatio  - 0.5
+            {-# INLINE col #-}
+            f !y !(Z :. _ :. x') = let !x = col x'
+                                    in img ! ix2 y x
+            {-# INLINE f #-}
+        in fromFunctionLine size' line f
+      where
+        !(Z :. h :. w) = shape img
+    {-# INLINE resize' #-}
+
+-- | Does a double linear interpolation over the four surrounding points (slow).
+--
+-- See 'bilinearInterpol'.
+data Bilinear = Bilinear
+
+instance ( Image src, Interpolable (ImagePixel src), Integral (ImageChannel src)
+         ,FromFunctionLineCol dst RatioInt RatioInt
+         , ImagePixel src ~ FromFunctionPixel dst)
+         => Resizable Bilinear src dst where
+    resize' Bilinear !size'@(Z :. h' :. w') !img =
+        let !widthRatio  = w % w'
+            !maxWidth    = ratio (w - 1)
+            !heightRatio = (h - 1) % (h' - 1)
+            !maxHeight   = ratio (h - 1)
+
+            -- Limits the interpolation to inner pixel as first and last
+            -- pixels can have out of bound coordinates.
+            bound !limit = min limit . max 0
+            {-# INLINE bound #-}
+
+            line !y' = bound maxHeight $   (ratio y' + 0.5) * heightRatio
+                                         - 0.5
+            {-# INLINE line #-}
+            col  !x' = bound maxWidth  $   (ratio x' + 0.5) * widthRatio
+                                         - 0.5
+            {-# INLINE col #-}
+            f !y !x _ = img `bilinearInterpol` RPoint x y
+            {-# INLINE f #-}
+        in fromFunctionLineCol size' line col f
+      where
+        !(Z :. h :. w) = shape img
+    {-# INLINE resize' #-}
+
+-- Flipping --------------------------------------------------------------------
 
 -- | Reverses the image horizontally.
 horizontalFlip :: ( Image i1, FromFunction i2
@@ -123,6 +167,8 @@ verticalFlip !img =
     !size@(Z :. h :. _) = shape img
     !maxY = h - 1
 {-# INLINABLE verticalFlip #-}
+
+-- Flood fill ------------------------------------------------------------------
 
 -- | Paints with a new value the pixels surrounding the given point of the image
 -- which have the same value as the starting point.
@@ -176,6 +222,10 @@ floodFill !start !newVal !img = do
             go val pt linearIX
             visitLine val maxLinearIX (y :. (x + 1)) (linearIX + 1)
 {-# INLINABLE floodFill #-}
+
+
+
+-- -----------------------------------------------------------------------------
 
 double :: Integral a => a -> Double
 double = fromIntegral

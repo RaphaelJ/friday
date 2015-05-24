@@ -14,7 +14,8 @@ import Vision.Image.Grey.Type (Grey{-, GreyPixel-})
 --       ThresholdType, AdaptiveThresholdKernel, adaptiveThreshold, otsu, scw
 --     )
 import Vision.Image.Transform (
-      InterpolMethod, crop, resize, horizontalFlip, verticalFlip
+      TruncateInteger, NearestNeighbor, Bilinear
+    , crop, resize, horizontalFlip, verticalFlip
     )
 import Vision.Image.Type (Manifest)
 import Vision.Primitive ({-DIM1, DIM3, -}Rect, Size)
@@ -38,7 +39,11 @@ import Vision.Primitive ({-DIM1, DIM3, -}Rect, Size)
 {-# SPECIALIZE NOINLINE mean           :: Size -> Grey -> Manifest Double
                                        ,  Size -> Grey -> Manifest Float #-}
 
-{-# SPECIALIZE NOINLINE resize         :: InterpolMethod -> Size -> Grey -> Grey #-}
+{-# SPECIALIZE NOINLINE resize         :: TruncateInteger -> Size -> Grey
+                                                          -> Grey
+                                       ,  NearestNeighbor -> Size -> Grey
+                                                          -> Grey
+                                       ,  Bilinear -> Size -> Grey -> Grey #-}
 
 {-# SPECIALIZE NOINLINE scharr         :: DerivativeType -> Grey -> Grey
                                        ,  DerivativeType -> Grey
