@@ -27,7 +27,7 @@ data RGBPixel = RGBPixel {
 
 type RGB = Manifest RGBPixel
 
-type RGBDelayed = Delayed RGBPixel
+type RGBDelayed l c = Delayed l c RGBPixel
 
 instance Storable RGBPixel where
     sizeOf _ = 3 * sizeOf (undefined :: Word8)

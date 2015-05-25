@@ -64,7 +64,9 @@ import Foreign.Storable (Storable)
 
 import qualified Data.Vector.Storable as V
 
-import Vision.Image.Class (MaskedImage (..), Image (..), FromFunction (..), (!))
+import Vision.Image.Class (
+      MaskedImage (..), Image (..), FromFunctionPixel, FromFunction (..), (!)
+    )
 import Vision.Image.Type (Manifest, Delayed)
 import Vision.Primitive (Z (..), (:.) (..), DIM1, Point, Size, ix1, ix2)
 
@@ -160,8 +162,8 @@ class ( Image (SeparableFilterAccumulator src res acc)
 instance Storable acc => SeparatelyFiltrable src (Manifest p) acc where
     type SeparableFilterAccumulator src (Manifest p) acc = Manifest acc
 
-instance Storable acc => SeparatelyFiltrable src (Delayed p) acc where
-    type SeparableFilterAccumulator src (Delayed p) acc = Delayed acc
+instance Storable acc => SeparatelyFiltrable src (Delayed l c p) acc where
+    type SeparableFilterAccumulator src (Delayed l c p) acc = Delayed () () acc
 
 -- | Uses the result of the provided function as the initial value of the
 -- kernel's accumulator, depending on the center coordinates in the image.

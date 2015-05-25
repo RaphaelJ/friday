@@ -27,7 +27,7 @@ data RGBAPixel = RGBAPixel {
 
 type RGBA = Manifest RGBAPixel
 
-type RGBADelayed = Delayed RGBAPixel
+type RGBADelayed l c = Delayed l c RGBAPixel
 
 instance Storable RGBAPixel where
     sizeOf _ = 4 * sizeOf (undefined :: Word8)

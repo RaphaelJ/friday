@@ -20,7 +20,8 @@ import qualified Data.Vector.Storable   as V
 import qualified Data.Vector            as VU
 
 import Vision.Image.Class (
-      MaskedImageValues, Image, ImagePixel, FromFunction (..), FunctorImage
+      MaskedImageValues, Image, ImagePixel
+    , FromFunctionPixel, FromFunction (..), FunctorImage
     , (!), shape
     )
 import Vision.Image.Filter.Internal (

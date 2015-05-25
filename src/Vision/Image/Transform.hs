@@ -27,11 +27,11 @@ import Data.RatioInt (RatioInt, (%))
 
 import Vision.Image.Class (
       MaskedImage (..), Image (..), ImageChannel, (!)
-    , FromFunction (..), FromFunctionLine (..), FromFunctionLineCol (..)
+    , FromFunctionPixel, FromFunction (..), FromFunctionLine (..)
+    , FromFunctionLineCol (..)
     )
 import Vision.Image.Interpolate (Interpolable, bilinearInterpol)
 import Vision.Image.Mutable (MutableImage (..))
-import Vision.Image.Type (Delayed)
 import Vision.Primitive (
       Z (..), (:.) (..), Point, RPoint (..), Rect (..), Size, ix2, toLinearIndex
     )
@@ -45,15 +45,16 @@ crop !(Rect rx ry rw rh) !img =
     fromFunction (Z :. rh :. rw) $ \(Z :. y :. x) ->
         img ! ix2 (ry + y) (rx + x)
 {-# INLINABLE crop #-}
-{-# SPECIALIZE INLINE crop :: Rect -> Delayed p -> Delayed p #-}
+-- {-# SPECIALIZE INLINE crop :: Rect -> Delayed l c p -> Delayed l c p #-}
 
 -- Resize ----------------------------------------------------------------------
 
--- | Class for methods which can be used to resize an image.
+-- | Class for methods which can be used to resize an image of type 'src' to an
+-- image of type 'dst'.
 class Resizable method src dst where
     resize' :: method -> Size -> src -> dst
 
--- 'resize' is not a method of 'Resizable' because methods can't be SPECIALIZE
+-- 'resize' is not a method of 'Resizable' because methods can't be SPECIALIZEd
 -- outside their instance's declarations. By being a simple function, 'resize'
 -- can be specialized for new image types.
 

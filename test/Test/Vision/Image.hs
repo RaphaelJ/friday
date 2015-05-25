@@ -19,11 +19,13 @@ import Test.QuickCheck (Arbitrary (..), choose)
 
 import Vision.Image (
       MaskedImage (..), Image (..), ImageChannel, Interpolable
-    , FromFunction (..), FromFunctionLine, FromFunctionLineCol
+    , FromFunctionPixel, FromFunction (..), FromFunctionLine
+    , FromFunctionLineCol
     , Manifest (..), Delayed (..)
     , Grey, GreyPixel (..), HSVPixel
-    , RGBA, RGBAPixel (..), RGBADelayed
-    , RGB, RGBPixel (..), InterpolMethod (..)
+    , RGBA, RGBAPixel (..)
+    , RGB, RGBPixel (..)
+    , NearestNeighbor (..)
     , convert, resize, horizontalFlip, verticalFlip
     )
 import Vision.Primitive (Z (..), (:.) (..), Size)
@@ -74,7 +76,7 @@ tests = [
 -- | Tests if the conversions between RGB and RGBA images give the same images.
 propRGBRGBA :: RGB -> Bool
 propRGBRGBA img =
-    let img' = convert (convert img :: RGBADelayed) :: RGB
+    let img' = convert (convert img :: RGBA) :: RGB
     in img == img'
 
 -- | Tests if the conversions between RGB and HSV images give the same images.
@@ -113,7 +115,7 @@ propHorizontalFlip :: (Image i, FromFunction i
 propHorizontalFlip img =
     img == horizontalFlip (delayedFlip img)
   where
-    delayedFlip :: (Image i, ImagePixel i ~ p) => i -> Delayed p
+    delayedFlip :: (Image i, ImagePixel i ~ p) => i -> Delayed () () p
     delayedFlip = horizontalFlip
 
 -- | Tests if applying the vertical flip twice gives the original image.
@@ -123,5 +125,5 @@ propVerticalFlip :: ( Image i, Eq i, FromFunctionLine i Int
 propVerticalFlip img =
     img == verticalFlip (delayedFlip img)
   where
-    delayedFlip :: (Image i, ImagePixel i ~ p) => i -> Delayed p
+    delayedFlip :: (Image i, ImagePixel i ~ p) => i -> Delayed Int () p
     delayedFlip = verticalFlip

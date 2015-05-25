@@ -20,7 +20,7 @@ newtype GreyPixel = GreyPixel Word8
 
 type Grey = Manifest GreyPixel
 
-type GreyDelayed = Delayed GreyPixel
+type GreyDelayed l c = Delayed l c GreyPixel
 
 instance Pixel GreyPixel where
     type PixelChannel GreyPixel = Word8

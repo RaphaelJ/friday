@@ -8,8 +8,8 @@ module Vision.Image.Class (
     , MaskedImage (..), MaskedImageValues (..)
     , Image (..), ImageVector (..), ImageChannel
     -- ** Image construction
-    , FromFunction (..), FromFunctionLine (..), FromFunctionCol (..)
-    , FromFunctionLineCol (..)
+    , FromFunctionPixel, FromFunction (..), FromFunctionLine (..)
+    , FromFunctionCol (..), FromFunctionLineCol (..)
     -- ** Image transformations
     , FunctorImage (..)
     -- * Functions
@@ -24,8 +24,7 @@ import Foreign.Storable (Storable)
 import Prelude hiding (map, read)
 
 import Vision.Primitive (
-      Z (..), (:.) (..), Point, Size
-    , fromLinearIndex, toLinearIndex, shapeLength
+      Point, Size, fromLinearIndex, toLinearIndex, shapeLength
     )
 
 -- Classes ---------------------------------------------------------------------
@@ -106,13 +105,13 @@ class MaskedImage i where
 
     -- | Returns the pixel\'s value at 'Z :. y, :. x'.
     maskedIndex :: i -> Point -> Maybe (ImagePixel i)
-    maskedIndex img = (img `maskedLinearIndex`) . toLinearIndex (shape img)
+    maskedIndex !img = maskedLinearIndex img . toLinearIndex (shape img)
     {-# INLINE maskedIndex #-}
 
     -- | Returns the pixel\'s value as if the image was a single dimension
     -- vector (row-major representation).
     maskedLinearIndex :: i -> Int -> Maybe (ImagePixel i)
-    maskedLinearIndex img = (img `maskedIndex`) . fromLinearIndex (shape img)
+    maskedLinearIndex !img = maskedIndex img . fromLinearIndex (shape img)
     {-# INLINE maskedLinearIndex #-}
 
     type LineConstant   i
@@ -141,7 +140,7 @@ class MaskedImage i where
     -- >             print pixelVal
     maskedCachedIndex :: i -> LineConstant i -> ColumnConstant i -> Point
                       -> Maybe (ImagePixel i)
-    maskedCachedIndex img _ _ pt = maskedIndex img pt
+    maskedCachedIndex !img _ _ !pt = maskedIndex img pt
     {-# INLINE maskedCachedIndex #-}
 
     -- | For some representations, some computed values are constant for a given
@@ -154,7 +153,7 @@ class MaskedImage i where
     -- See 'maskedCachedIndex' for an example.
     maskedCachedLinearIndex :: i -> LineConstant i -> ColumnConstant i -> Int
                             -> Maybe (ImagePixel i)
-    maskedCachedLinearIndex img _ _ ix = maskedLinearIndex img ix
+    maskedCachedLinearIndex !img _ _ !ix = maskedLinearIndex img ix
     {-# INLINE maskedCachedLinearIndex #-}
 
     {-# MINIMAL shape, (maskedIndex | maskedLinearIndex), lineConstant
@@ -188,13 +187,13 @@ type ImageChannel i = PixelChannel (ImagePixel i)
 class MaskedImage i => Image i where
     -- | Returns the pixel value at 'Z :. y :. x'.
     index :: i -> Point -> ImagePixel i
-    index img = (img `linearIndex`) . toLinearIndex (shape img)
+    index !img = fromJust . maskedIndex img
     {-# INLINE index #-}
 
     -- | Returns the pixel value as if the image was a single dimension vector
     -- (row-major representation).
     linearIndex :: i -> Int -> ImagePixel i
-    linearIndex img = fromJust . (img `maskedLinearIndex`)
+    linearIndex !img = fromJust . maskedLinearIndex img
     {-# INLINE linearIndex #-}
 
     -- | For some representations, some computed values are constant for a given
@@ -207,7 +206,7 @@ class MaskedImage i => Image i where
     -- See 'maskedCachedIndex' for an example.
     cachedIndex :: i -> LineConstant i -> ColumnConstant i -> Point
                 -> ImagePixel i
-    cachedIndex img _ _ pt = index img pt
+    cachedIndex !img !line !col = fromJust . maskedCachedIndex img line col
     {-# INLINE cachedIndex #-}
 
     -- | For some representations, some computed values are constant for a given
@@ -220,7 +219,7 @@ class MaskedImage i => Image i where
     -- See 'maskedCachedIndex' for an example.
     cachedLinearIndex :: i -> LineConstant i -> ColumnConstant i -> Int
                       -> ImagePixel i
-    cachedLinearIndex img _ _ ix = linearIndex img ix
+    cachedLinearIndex !img _ _ !ix = linearIndex img ix
     {-# INLINE cachedLinearIndex #-}
 
     {-# MINIMAL #-}
@@ -236,9 +235,16 @@ class (Image i, Storable (ImagePixel i)) => ImageVector i where
 
     {-# MINIMAL #-}
 
+-- | Pixel type which must be returned by functions which create an image from
+-- a function.
+--
+-- 'FromFunctionPixel' could be different from 'ImagePixel' for some
+-- representations. For exemple, with maskable images, if 'ImagePixel' is 'p'
+-- then 'FromFunctionPixel' is 'Maybe p'.
+type family FromFunctionPixel i
+
 -- | Provides ways to construct an image from a function.
 class FromFunction i where
-    type FromFunctionPixel i
 
     -- | Generates an image by calling the given function for each pixel of the
     -- constructed image.
@@ -246,7 +252,7 @@ class FromFunction i where
 
     {-# MINIMAL fromFunction #-}
 
-class FromFunction i => FromFunctionLine i l where
+class FromFunctionLine i l where
 
     -- | Generates an image by calling the last function for each pixel of the
     -- constructed image.
@@ -256,17 +262,12 @@ class FromFunction i => FromFunctionLine i l where
     --
     -- This function is faster for some image representations than
     -- 'fromFunction' as some recurring computations can be cached.
-    --
-    -- Default implementation uses 'fromFunction'.
     fromFunctionLine :: Size -> (Int -> l)
                      -> (l -> Point -> FromFunctionPixel i) -> i
-    fromFunctionLine size line f =
-        fromFunction size (\pt@(Z :. y :. _) -> f (line y) pt)
-    {-# INLINE fromFunctionLine #-}
 
-    {-# MINIMAL #-}
+    {-# MINIMAL fromFunctionLine #-}
 
-class FromFunction i => FromFunctionCol i c where
+class FromFunctionCol i c where
     -- | Generates an image by calling the last function for each pixel of the
     -- constructed image.
     --
@@ -277,18 +278,12 @@ class FromFunction i => FromFunctionCol i c where
     -- recurring computations can be cached. However, it may requires a vector
     -- allocation for these values. If the column constant is cheap to
     -- compute, prefer 'fromFunction'.
-    --
-    -- Default implementation uses 'fromFunction'.
     fromFunctionCol :: Size -> (Int -> c)
                     -> (c -> Point -> FromFunctionPixel i) -> i
-    fromFunctionCol size col f =
-        fromFunction size (\pt@(Z :. _ :. x) -> f (col x) pt)
-    {-# INLINE fromFunctionCol #-}
 
-    {-# MINIMAL #-}
+    {-# MINIMAL fromFunctionCol #-}
 
-class (FromFunctionLine i l, FromFunctionCol i c)
-        => FromFunctionLineCol i l c where
+class FromFunctionLineCol i l c where
     -- | Generates an image by calling the last function for each pixel of the
     -- constructed image.
     --
@@ -299,46 +294,14 @@ class (FromFunctionLine i l, FromFunctionCol i c)
     -- computations can be cached. However, it may requires a vector
     -- allocation for column values. If the column constant is cheap to
     -- compute, prefer 'fromFunctionLine'.
-    --
-    -- Default implementation uses 'fromFunction'.
     fromFunctionLineCol :: Size
                         -> (Int -> l)               -- ^ Line function
                         -> (Int -> c)               -- ^ Column function
                         -> (l -> c -> Point
                             -> FromFunctionPixel i) -- ^ Pixel function
                         -> i
-    fromFunctionLineCol size line col f =
-        fromFunction size (\pt@(Z :. y :. x) -> f (line y) (col x) pt)
-    {-# INLINE fromFunctionLineCol #-}
 
-    {-# MINIMAL #-}
-
--- These rules replaces the call to 'fromFunctionLine', 'fromFunctionCol' or
--- 'fromFunctionLineCol' to call to 'fromFunction', 'fromFunctionLine' or
--- 'fromFunctionCol' when LineConstant = () or ColumnConstant = ().
-
-{-# RULES
-"fromFunctionLine with LineConstant = ()"
-    forall size line (f :: Storable p => () -> Point -> p).
-    fromFunctionLine size line f = fromFunction size (f ())
-
-"fromFunctionCol with ColumnConstant = ()"
-    forall size col (f :: Storable p => () -> Point -> p).
-    fromFunctionCol size col f = fromFunction size (f ())
-
-"fromFunctionLineCol with LineConstant = () and ColumnConstant = ()"
-    forall size line col (f :: Storable p => () -> () -> Point -> p).
-    fromFunctionLineCol size line col f = fromFunction size (f () ())
-
-"fromFunctionLineCol with LineConstant = ()"
-    forall size line col (f :: Storable p => () -> c -> Point -> p).
-    fromFunctionLineCol size line col f = fromFunctionCol size col (f ())
-
-"fromFunctionLineCol with ColumnConstant = ()"
-    forall size line col (f :: Storable p => l -> () -> Point -> p).
-    fromFunctionLineCol size line col f = fromFunctionLine size line
-                                                           (\l -> f l ())
- #-}
+    {-# MINIMAL fromFunctionLineCol #-}
 
 -- | Defines a class for images on which a function can be applied. The class is
 -- different from 'Functor' as there could be some constraints and

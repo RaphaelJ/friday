@@ -32,7 +32,9 @@ module Vision.Image.Filter (
 import Data.Int
 import Foreign.Storable (Storable)
 
-import Vision.Image.Class (MaskedImage (..), Image (..), FromFunction (..))
+import Vision.Image.Class (
+      MaskedImage (..), Image (..), FromFunctionPixel, FromFunction (..)
+    )
 import Vision.Image.Filter.Internal (
       Filterable, Filter, SeparatelyFiltrable (..)
     , DerivativeType

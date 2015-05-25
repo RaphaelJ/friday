@@ -36,7 +36,7 @@ data HSVPixel = HSVPixel {
 -- to RGB.
 type HSV = Manifest HSVPixel
 
-type HSVDelayed = Delayed HSVPixel
+type HSVDelayed l c = Delayed l c HSVPixel
 
 instance Storable HSVPixel where
     sizeOf _ = 3 * sizeOf (undefined :: Word8)

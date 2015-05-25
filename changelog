@@ -17,6 +17,8 @@ v0.3        May 2014
      Its three constructors ('TruncateInteger', 'NearestNeighbor' and
      'Bilinear') are now their own (phantom) types. This way, the resizing
      method is now resolved at compile time.
+   * 'Delayed' images are now constructed from three functions, one for the line
+     constant value, one for the column constant value and one for the pixels.
 
  * 'MaskedImage' instances are no more required to have pixels being an
    instance of 'Storable'.
