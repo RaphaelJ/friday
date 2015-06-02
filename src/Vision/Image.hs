@@ -20,6 +20,7 @@ module Vision.Image (
     , module Vision.Image.HSV
     , module Vision.Image.Interpolate
     , module Vision.Image.Mutable
+    , module Vision.Image.Parallel
     , module Vision.Image.RGB
     , module Vision.Image.RGBA
     , module Vision.Image.Threshold
@@ -34,6 +35,7 @@ import Vision.Image.Filter
 import Vision.Image.HSV
 import Vision.Image.Interpolate
 import Vision.Image.Mutable
+import Vision.Image.Parallel
 import Vision.Image.RGB
 import Vision.Image.RGBA
 import Vision.Image.Threshold

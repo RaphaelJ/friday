@@ -2,7 +2,7 @@ name:                   friday
 --                      +-+------- breaking API changes
 --                      | | +----- non-breaking API additions
 --                      | | | +--- code changes with no API change
-version:                0.2.1.2
+version:                0.2.2.0
 synopsis:               A functional image processing library for Haskell.
 homepage:               https://github.com/RaphaelJ/friday
 license:                LGPL-3
@@ -38,6 +38,8 @@ stability:              Experimental
 build-type:             Simple
 cabal-version:          >= 1.10
 
+extra-source-files:     changelog
+
 source-repository       head
     type:               git
     location:           https://github.com/RaphaelJ/friday
@@ -58,10 +60,11 @@ library
                         Vision.Image.HSV.Type
                         Vision.Image.Interpolate
                         Vision.Image.Mutable
+                        Vision.Image.Parallel
                         Vision.Image.RGBA
                         Vision.Image.RGBA.Specialize
                         Vision.Image.RGBA.Type
-                        Vision.Image.RGB
+                        Vision.Image.RGB 
                         Vision.Image.RGB.Specialize
                         Vision.Image.RGB.Type
                         Vision.Image.Threshold

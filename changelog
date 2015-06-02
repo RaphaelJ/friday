@@ -1,5 +1,8 @@
 -*-change-log-*-
 
+v0.2.2.0 June 2015
+ * New 'computeP' function to compute an image in parallel.
+
 v0.2.1.2 May 2015
  * Add test modules under `other-modules`.
 
