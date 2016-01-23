@@ -1,5 +1,9 @@
 -*-change-log-*-
 
+v0.2.3.0 TBD
+ * Add Contour Tracing (Vision.Image.Contour)
+ * Add pointer to friday-juicypixels
+
 v0.2.2.0 June 2015
  * New 'computeP' function to compute an image in parallel.
 
