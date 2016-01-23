@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns
            , CPP
            , FlexibleInstances
+           , TypeFamilies, MultiParamTypeClasses, FlexibleContexts
            , TypeOperators #-}
 
 -- | 'Shape's are similar to what you could found in @repa@. 'Shape' are used
@@ -28,6 +29,10 @@ import Data.Word
 
 import Foreign.Storable (Storable (..))
 import Foreign.Ptr (castPtr, plusPtr)
+import Data.Vector.Unboxed (Unbox)
+import qualified Data.Vector.Unboxed as VU
+import Data.Vector.Generic.Mutable (MVector(..))
+import qualified Data.Vector.Generic as VG
 
 -- | Class of types that can be used as array shapes and indices.
 class Eq sh => Shape sh where
@@ -70,6 +75,57 @@ data Z = Z deriving (Show, Read, Eq, Ord)
 infixl 3 :.
 data tail :. head = !tail :. !head
     deriving (Show, Read, Eq, Ord)
+
+newtype instance VU.MVector s Z = MV_Z (VU.MVector s ())
+newtype instance VU.Vector    Z = V_Z  (VU.Vector    ())
+
+instance MVector VU.MVector Z where
+  {-# INLINE basicLength #-}
+  basicLength (MV_Z v)          = basicLength v
+  basicUnsafeSlice s e (MV_Z v) = MV_Z $ basicUnsafeSlice s e v
+  basicUnsafeRead (MV_Z v) i    = basicUnsafeRead  v i >>= \_ -> return Z
+  basicUnsafeNew   i            = MV_Z `fmap` basicUnsafeNew i
+  basicUnsafeWrite (MV_Z v) i a = a `seq` basicUnsafeWrite v i ()
+  basicOverlaps (MV_Z a) (MV_Z b) = basicOverlaps a b
+
+instance VG.Vector VU.Vector Z where
+  {-# INLINE basicLength #-}
+  basicLength (V_Z v)          = VG.basicLength v
+  basicUnsafeFreeze (MV_Z v)   = V_Z `fmap` VG.basicUnsafeFreeze v
+  basicUnsafeThaw (V_Z v)      = MV_Z `fmap` VG.basicUnsafeThaw v
+  basicUnsafeSlice s e (V_Z v) = V_Z $ VG.basicUnsafeSlice s e v
+  basicUnsafeIndexM (V_Z v) i  = VG.basicUnsafeIndexM v i >>= \_ -> return Z
+
+instance Unbox Z
+
+newtype instance VU.MVector s (t :. h) = MV_Dim (VU.MVector s (t , h))
+newtype instance VU.Vector    (t :. h) = V_Dim  (VU.Vector    (t , h))
+
+instance (Unbox t, Unbox h) => MVector VU.MVector (t :. h) where
+  {-# INLINE basicLength #-}
+  basicLength (MV_Dim v)          = basicLength v
+  basicUnsafeSlice s e (MV_Dim v) = MV_Dim $ basicUnsafeSlice s e v
+  basicUnsafeRead (MV_Dim v) i    = pairToPoint `fmap` basicUnsafeRead  v i
+  basicUnsafeNew   i              = MV_Dim `fmap` basicUnsafeNew i
+  basicUnsafeWrite (MV_Dim v) i a = basicUnsafeWrite v i (pointToPair a)
+  basicOverlaps (MV_Dim a) (MV_Dim b) = basicOverlaps a b
+
+instance (Unbox t, Unbox h) => VG.Vector VU.Vector (t :. h) where
+  {-# INLINE basicLength #-}
+  basicLength (V_Dim v) = VG.basicLength v
+  basicUnsafeFreeze (MV_Dim v)   = V_Dim `fmap` VG.basicUnsafeFreeze v
+  basicUnsafeThaw (V_Dim v)      = MV_Dim `fmap` VG.basicUnsafeThaw v
+  basicUnsafeSlice s e (V_Dim v) = V_Dim $ VG.basicUnsafeSlice s e v
+  basicUnsafeIndexM (V_Dim v) i  = pairToPoint `fmap` VG.basicUnsafeIndexM v i
+
+instance (Unbox t, Unbox h) => Unbox (t :. h)
+
+pairToPoint :: (tail, head) -> tail :. head
+pairToPoint (a,b) = a :. b
+
+pointToPair :: tail :. head -> (tail, head)
+pointToPair (a :. b) = (a,b)
+
 
 -- Common dimensions.
 type DIM0 = Z
