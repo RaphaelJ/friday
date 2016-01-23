@@ -211,6 +211,12 @@ provides FFI calls to the *DevIL* image library. The library is written in C and
 supports a wide variety of image formats, including BMP, JPG, PNG, GIF, ICO and
 PSD.
 
+The popular *[JuicyPixels](https://hackage.haskell.org/package/JuicyPixels)*
+package is a native Haskell library for decoding many image types.  Efficient,
+zero copy, conversion between JuicyPixels and Friday Haskell types is provided
+by
+*[friday-juicypixels](http://hackage.haskell.org/package/friday-juicypixels)*.
+
 # Examples
 
 See the *[friday-examples](https://github.com/RaphaelJ/friday-examples)*
