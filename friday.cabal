@@ -85,7 +85,7 @@ library
                       , primitive               >= 0.5.2.1      && < 0.7
                       , ratio-int               >= 0.1.2        && < 0.2
                       , vector                  >= 0.10.0.1     && < 1
-                      , transformers            >= 0.3          && < 0.5
+                      , transformers            >= 0.3          && < 0.6
 
 Test-Suite      test
     type:       exitcode-stdio-1.0
