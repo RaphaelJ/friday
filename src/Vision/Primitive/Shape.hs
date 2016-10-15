@@ -222,12 +222,12 @@ instance Storable sh => Storable (sh :. Int) where
 
     peek !ptr = do
         let !ptr' = castPtr ptr
-        (:.) <$> peek (castPtr $! ptr' `plusPtr` 1) <*> peek ptr'
+        (:.) <$> peek (castPtr $! ptr' `plusPtr` sizeOf (undefined :: Int)) <*> peek ptr'
     {-# INLINE peek #-}
 
     poke !ptr (sh :. n) = do
         let !ptr' = castPtr ptr
-        poke (castPtr $! ptr' `plusPtr` 1) sh >> poke ptr' n
+        poke (castPtr $! ptr' `plusPtr` sizeOf n) sh >> poke ptr' n
     {-# INLINE poke #-}
 
 -- | Helper for index construction.
