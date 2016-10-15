@@ -10,12 +10,10 @@ module Test.Vision.Primitive
 import Control.Applicative ((<*>), (<$>))
 #endif
 
-import Foreign
-
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck (Arbitrary (..), Property)
-import Test.QuickCheck.Monadic (monadicIO, run, assert)
+import Test.Utils (propStorableRoundtrip)
 
 import Vision.Primitive
 
@@ -25,14 +23,9 @@ instance Arbitrary Z where
 instance (Arbitrary t, Arbitrary h) => Arbitrary (t :. h) where
     arbitrary = (:.) <$> arbitrary <*> arbitrary
 
-propStorableRoundtrip :: (Eq a, Storable a) => a -> Property
-propStorableRoundtrip a = monadicIO $ do
-    a' <- run . with a $ peek
-    assert $ a' == a
-
 tests :: [Test]
 tests =
-    [ testGroup "Storable Properties for DIM"
+    [ testGroup "Storable can roundtrip"
         [ testProperty "DIM0" $ (propStorableRoundtrip :: DIM0 -> Property)
         , testProperty "DIM1" $ (propStorableRoundtrip :: DIM1 -> Property)
         , testProperty "DIM2" $ (propStorableRoundtrip :: DIM2 -> Property)
