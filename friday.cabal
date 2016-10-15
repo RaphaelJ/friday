@@ -65,7 +65,7 @@ library
                         Vision.Image.RGBA
                         Vision.Image.RGBA.Specialize
                         Vision.Image.RGBA.Type
-                        Vision.Image.RGB 
+                        Vision.Image.RGB
                         Vision.Image.RGB.Specialize
                         Vision.Image.RGB.Type
                         Vision.Image.Threshold
@@ -93,6 +93,7 @@ Test-Suite      test
     main-is:            Test.hs
     other-modules:      Test.Vision.Histogram
                         Test.Vision.Image
+                        Test.Vision.Primitive
     ghc-options:        -Wall -O2 -rtsopts
     hs-source-dirs:     test/
     default-language:   Haskell2010
