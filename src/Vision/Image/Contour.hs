@@ -104,17 +104,17 @@ data Contours =
 allContourIds :: Contours -> [ContourId]
 allContourIds = Map.keys . contourOutlines
 
-contourPerimeter :: ContourId -> Contours -> [Point]
-contourPerimeter i m =
-    maybe [] (map fst . VU.toList . outerContour) (lookupContour i m)
+contourPerimeter :: Contours -> ContourId -> [Point]
+contourPerimeter m i =
+    maybe [] (map fst . VU.toList . outerContour) (lookupContour m i)
 
 contourSize :: Contours -> ContourId -> Int
 contourSize (Contours _ s) i
     | unCID i < 0 || unCID i >= VU.length s = 0
     | otherwise                             = s VU.! unCID i
 
-lookupContour :: ContourId -> Contours -> Maybe Contour
-lookupContour i m = Map.lookup i (contourOutlines m)
+lookupContour :: Contours -> ContourId -> Maybe Contour
+lookupContour m i = Map.lookup i (contourOutlines m)
 
 -- |Contours are identified by a numeric ID number.
 newtype ContourId = CID { unCID :: Int } deriving (Eq, Ord, Storable, Num, Show)
@@ -162,17 +162,17 @@ data ContourDrawStyle = OuterOutline | AllOutlines | Fill | FillWithHoles
 -- | Draws a given contour. The size specified must be large enough to
 -- include the coordinate originally occupied by the contour being drawn,
 -- no cropping or other transformation is done.
-drawContour :: Contours -> ContourDrawStyle -> ContourId -> Size -> Grey
-drawContour master sty c sz = drawContours master sty [c] sz
+drawContour :: Contours -> Size -> ContourDrawStyle -> ContourId -> Grey
+drawContour master sz sty c = drawContours master sz sty [c]
 
 -- |Draws many contours.  See 'drawContour'.
-drawContours :: Contours -> ContourDrawStyle -> [ContourId] -> Size -> Grey
-drawContours m AllOutlines ids sz = drawOutlines listOfUVec m ids sz
+drawContours :: Contours -> Size -> ContourDrawStyle -> [ContourId] -> Grey
+drawContours m sz AllOutlines ids  = drawOutlines listOfUVec m ids sz
  where listOfUVec (Contour o is) = o:is
-drawContours m OuterOutline ids sz = drawOutlines listOfUVec m ids sz
+drawContours m sz OuterOutline ids = drawOutlines listOfUVec m ids sz
  where listOfUVec (Contour o _) = [o]
-drawContours m sty ids sz = drawRows pnts sz
- where lk = (`lookupContour` m)
+drawContours m sz sty ids = drawRows pnts sz
+ where lk = lookupContour m
        pnts = case sty of
                   Fill          -> map (VU.toList . outerContour) $ catMaybes $ map lk ids -- map (map (\(a,x) -> (a,not x)) . lk) innerIds ++ map lk outerIds
                   FillWithHoles -> map  (concatMap VU.toList . maybe [] (\x -> outerContour x : innerContours x) . lk) ids
@@ -183,7 +183,7 @@ drawOutlines oper m ids sz = runST f
  where
   f = do
     i <- new' sz 0 :: ST s (MutableManifest GreyPixel s)
-    let vs = map fst $ concatMap VU.toList $ concatMap oper $ catMaybes $ map (`lookupContour` m) ids
+    let vs = map fst $ concatMap VU.toList $ concatMap oper $ catMaybes $ map (lookupContour m) ids
     mapM_ (\p -> write i p 255) vs
     Mut.unsafeFreeze i
 
