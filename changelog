@@ -1,5 +1,10 @@
 -*-change-log-*-
 
+v0.2.4.0 TDB
+
+v0.2.3.1 December 2016
+ * Merge fix for storable instance
+
 v0.2.3.0 December 2016
  * Add Contour Tracing (Vision.Image.Contour)
  * Add pointer to friday-juicypixels
