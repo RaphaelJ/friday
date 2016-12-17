@@ -14,12 +14,13 @@ import Control.Applicative ((<*>), (<$>))
 import Data.Vector.Storable (Storable, replicateM)
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.QuickCheck (Arbitrary (..), choose)
+import Test.QuickCheck (Arbitrary (..), choose, Property)
+import Test.Utils (propStorableRoundtrip)
 
 import Vision.Image (
       MaskedImage (..), Image (..), Interpolable, FromFunction (..)
     , ImageChannel, Manifest (..), Delayed (..)
-    , Grey, GreyPixel (..), HSVPixel
+    , Grey, GreyPixel (..), HSVPixel (..)
     , RGBA, RGBAPixel (..), RGBADelayed
     , RGB, RGBPixel (..), InterpolMethod (..)
     , convert, resize, horizontalFlip, verticalFlip
@@ -46,6 +47,9 @@ instance Arbitrary RGBAPixel where
 instance Arbitrary RGBPixel where
     arbitrary = RGBPixel <$> arbitrary <*> arbitrary <*> arbitrary
 
+instance Arbitrary HSVPixel where
+    arbitrary = HSVPixel <$> arbitrary <*> arbitrary <*> arbitrary
+
 tests :: [Test]
 tests = [
       testGroup "Conversions identities" [
@@ -66,6 +70,11 @@ tests = [
           testProperty "Grey" (propVerticalFlip :: Grey -> Bool)
         , testProperty "RGBA" (propVerticalFlip :: RGBA -> Bool)
         , testProperty "RGB"  (propVerticalFlip :: RGB  -> Bool)
+        ]
+    , testGroup "Storable can roundtrip" [
+          testProperty "HSVPixel" $ (propStorableRoundtrip :: HSVPixel -> Property)
+        , testProperty "RGBPixel" $ (propStorableRoundtrip :: RGBPixel -> Property)
+        , testProperty "RGBAPixel" $ (propStorableRoundtrip :: RGBAPixel -> Property)
         ]
     ]
 
