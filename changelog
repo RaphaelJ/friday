@@ -1,6 +1,7 @@
 -*-change-log-*-
 
 v0.2.4.0 TDB
+ * Minimum base is now 4.8
 
 v0.2.3.1 December 2016
  * Merge fix for storable instance
