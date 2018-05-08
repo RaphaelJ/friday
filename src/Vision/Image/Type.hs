@@ -234,10 +234,10 @@ instance (Storable p1, Storable p2, Convertible p1 p2)
     safeConvert = Right . map convert
     {-# INLINE safeConvert #-}
 
--- | Forces an image to be in its delayed represenation. Does nothing.
+-- | Forces an image to be in its delayed representation. Does nothing.
 delayed :: Delayed p -> Delayed p
 delayed = id
 
--- | Forces an image to be in its manifest represenation. Does nothing.
+-- | Forces an image to be in its manifest representation. Does nothing.
 manifest :: Manifest p -> Manifest p
 manifest = id
