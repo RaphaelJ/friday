@@ -54,7 +54,7 @@ instance Storable p => MaskedImage (Manifest p) where
     shape = manifestSize
     {-# INLINE shape #-}
 
-    Manifest _ vec `maskedLinearIndex` ix = Just $! vec V.! ix
+    Manifest _ vec `maskedLinearIndex` ix = vec V.!? ix
     {-# INLINE maskedLinearIndex #-}
 
     values = manifestVector
